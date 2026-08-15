@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VRC-DressDrop Generator</title>
+    <!-- Three.js (3Dプレビュー用) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 30px; text-align: center; }
+        .container { background: #fff; padding: 20px; border-radius: 10px; max-width: 600px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        #preview { width: 100%; height: 400px; background: #333; margin: 20px 0; border-radius: 8px; overflow: hidden; }
+        button { padding: 15px 30px; font-size: 16px; background: #000; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #333; }
+        input[type="file"] { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>VRC-DressDrop プレビュー版</h2>
+        <p>1. テクスチャ画像を選択してね</p>
+        <input type="file" id="imageUpload" accept="image/png, image/jpeg">
+
+        <div id="preview"></div>
+
+        <p>2. UnityPackageを生成</p>
+        <button id="downloadBtn">ダウンロード</button>
+    </div>
+
+    <script>
+        // --- 1. 3Dプレビューの設定（今は仮でキューブ） ---
+        const container = document.getElementById('preview');
+        const scene = new THREE.Scene();
+        // コンテナのサイズに合わせてカメラを設定
+        const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        container.appendChild(renderer.domElement);
+
+        // ライトを追加
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(1, 1, 2);
+        scene.add(light);
+        scene.add(new THREE.AmbientLight(0x666666));
+
+        // 仮のモデル（立方体）と真っ白なマテリアル
+        const geometry = new THREE.BoxGeometry(2, 2, 2);
+        const material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        const model = new THREE.Mesh(geometry, material);
+        scene.add(model);
+        camera.position.z = 4;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            model.rotation.x += 0.005;
+            model.rotation.y += 0.01;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- 2. 画像がアップロードされたら3Dに貼り付ける処理 ---
+        let uploadedImageDataUrl = null;
+        document.getElementById('imageUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                uploadedImageDataUrl = event.target.result;
+                const texLoader = new THREE.TextureLoader();
+                texLoader.load(uploadedImageDataUrl, (texture) => {
+                    material.map = texture;
+                    material.needsUpdate = true;
+                });
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // --- 3. ダウンロードボタンの処理 ---
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            if(!uploadedImageDataUrl) {
+                alert("先に画像をアップロードしてね！");
+                return;
+            }
+            // ここにあとでfflateを使った本番のパッキング処理を入れる
+            alert("ここにUnityPackageの書き出し処理が入るよ！");
+        });
+    </script>
+</body>
+</html>
