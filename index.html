@@ -9,8 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     
-    <!-- ↓ここを追加！ パッキング用ライブラリ (圧縮とtar化) -->
-    <script src="https://cdn.jsdelivr.net/npm/tinytar@0.1.1/dist/tinytar.js"></script>
+    <!-- パッキング用ライブラリ (gzip圧縮のfflateのみ残す) -->
     <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.0/umd/index.js"></script>
 
     <style>
@@ -99,19 +98,51 @@
             reader.readAsDataURL(file);
         });
 
+        // --- TARファイルをブラウザ内で直接生成する自作関数 ---
+        function createTar(files) {
+            let blocks = 0;
+            for (let f of files) blocks += 1 + Math.ceil(f.data.length / 512);
+            blocks += 2; // 終端の空ブロック
+
+            const tar = new Uint8Array(blocks * 512);
+            let offset = 0;
+
+            for (let f of files) {
+                const header = new Uint8Array(512);
+                header.set(new TextEncoder().encode(f.name).slice(0, 100), 0);
+                header.set(new TextEncoder().encode("0000777\0"), 100);
+                header.set(new TextEncoder().encode("0000000\0"), 108);
+                header.set(new TextEncoder().encode("0000000\0"), 116);
+                header.set(new TextEncoder().encode(f.data.length.toString(8).padStart(11, '0') + '\0'), 124);
+                header.set(new TextEncoder().encode(Math.floor(Date.now() / 1000).toString(8).padStart(11, '0') + '\0'), 136);
+                header.set(new TextEncoder().encode("        "), 148);
+                header[156] = 48; // '0' (通常ファイル)
+                header.set(new TextEncoder().encode("ustar\000"), 257);
+
+                let checksum = 0;
+                for (let i = 0; i < 512; i++) checksum += header[i];
+                header.set(new TextEncoder().encode(checksum.toString(8).padStart(6, '0') + '\0 '), 148);
+
+                tar.set(header, offset);
+                offset += 512;
+                tar.set(f.data, offset);
+                offset += Math.ceil(f.data.length / 512) * 512;
+            }
+            return tar;
+        }
+
         // --- 3. ダウンロードボタンの処理 (パッキングの心臓部) ---
-        document.getElementById('downloadBtn').addEventListener('click', () => {
+        // async を追加して、画像変換処理を高速化しました
+        document.getElementById('downloadBtn').addEventListener('click', async () => {
             if(!uploadedImageDataUrl) {
                 alert("先に画像をアップロードしてね！");
                 return;
             }
 
-            // 1. 画像データをバイナリ(Uint8Array)に変換
-            const imgData = atob(uploadedImageDataUrl.split(',')[1]);
-            const imgUint8 = new Uint8Array(imgData.length);
-            for (let i = 0; i < imgData.length; i++) {
-                imgUint8[i] = imgData.charCodeAt(i);
-            }
+            // 1. 画像データ(Data URL)をバイナリ(Uint8Array)に高速変換
+            const response = await fetch(uploadedImageDataUrl);
+            const imgBuffer = await response.arrayBuffer();
+            const imgUint8 = new Uint8Array(imgBuffer);
 
             // 2. Unity用の32桁のランダムなID(GUID)を生成
             const generateGUID = () => crypto.randomUUID().replace(/-/g, '');
@@ -141,8 +172,8 @@
                 { name: `${matGuid}/pathname`, data: textToUint8(`${basePath}/CustomMaterial.mat`) }
             ];
 
-            // 6. tar形式にまとめてから、gzip(fflate)で圧縮する
-            const tarBuffer = tinytar.tar(files);
+            // 6. 自作関数でTAR形式にまとめてから、gzip(fflate)で圧縮する
+            const tarBuffer = createTar(files);
             const gzBuffer = fflate.gzipSync(tarBuffer);
 
             // 7. ブラウザ上でダウンロードを発火
