@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VRC-DressDrop Generator</title>
-    <!-- Three.js (3Dプレビュー用) -->
+   <!-- Three.js (3Dプレビュー用) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- ↓これを追加！ (外部モデル読み込み用) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <style>
         body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 30px; text-align: center; }
         .container { background: #fff; padding: 20px; border-radius: 10px; max-width: 600px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
@@ -44,12 +46,33 @@
         scene.add(light);
         scene.add(new THREE.AmbientLight(0x666666));
 
-        // 仮のモデル（立方体）と真っ白なマテリアル
-        const geometry = new THREE.BoxGeometry(2, 2, 2);
-        const material = new THREE.MeshStandardMaterial({ color: 0xffffff });
-        const model = new THREE.Mesh(geometry, material);
-        scene.add(model);
         camera.position.z = 4;
+        
+        let targetMaterial = null; // 後で画像を貼り付けるための変数
+        const model = new THREE.Object3D(); // 回転アニメーション用の親コンテナ
+        scene.add(model);
+
+        // GLBモデルの読み込み
+        const loader = new THREE.GLTFLoader();
+        loader.load('./Tshirt.glb', function(gltf) {
+            const mesh = gltf.scene;
+            
+            // モデルのサイズや位置を画面に合わせて調整（大きすぎる場合は 0.5 などに変更）
+            mesh.scale.set(1, 1, 1);
+            mesh.position.set(0, -1, 0);
+
+            // 読み込んだモデルからマテリアルを探し出す
+            mesh.traverse((child) => {
+                if (child.isMesh) {
+                    targetMaterial = child.material;
+                    targetMaterial.color.setHex(0xffffff); // ベースを白に
+                }
+            });
+
+            model.add(mesh);
+        }, undefined, function(error) {
+            console.error("モデルの読み込みエラー:", error);
+        });
 
         function animate() {
             requestAnimationFrame(animate);
@@ -69,8 +92,10 @@
                 uploadedImageDataUrl = event.target.result;
                 const texLoader = new THREE.TextureLoader();
                 texLoader.load(uploadedImageDataUrl, (texture) => {
-                    material.map = texture;
-                    material.needsUpdate = true;
+                    if(targetMaterial) {
+                        targetMaterial.map = texture;
+                        targetMaterial.needsUpdate = true;
+                    }
                 });
             };
             reader.readAsDataURL(file);
