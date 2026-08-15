@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     
-    <!-- パッキング用ライブラリ (gzip圧縮のfflateのみ残す) -->
+    <!-- パッキング用ライブラリ -->
     <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.0/umd/index.js"></script>
 
     <style>
@@ -19,6 +19,12 @@
         button { padding: 15px 30px; font-size: 16px; background: #000; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
         button:hover { background: #333; }
         input[type="file"] { margin-bottom: 10px; }
+        
+        /* スライダーUI用のデザイン追加 */
+        .controls { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-top: 15px; text-align: left; display: none; }
+        .controls label { display: block; margin-bottom: 10px; font-size: 14px; font-weight: bold; color: #333; }
+        .controls input[type="range"] { width: 100%; margin-top: 5px; cursor: pointer; }
+        .val-display { float: right; color: #007bff; }
     </style>
 </head>
 <body>
@@ -27,6 +33,23 @@
         <h2>VRC-DressDrop プレビュー版</h2>
         <p>1. テクスチャ画像を選択してね</p>
         <input type="file" id="imageUpload" accept="image/png, image/jpeg">
+
+        <!-- 新規追加: テクスチャ調整用のスライダーパネル (画像アップロード後に表示されます) -->
+        <div class="controls" id="textureControls">
+            <p style="margin-top: 0; border-bottom: 1px solid #ddd; padding-bottom: 5px;">テクスチャ調整 (Tiling / Offset)</p>
+            <label>サイズ横 (Scale X): <span class="val-display" id="valScaleX">1.0</span>
+                <input type="range" id="scaleX" min="0.1" max="5" step="0.1" value="1">
+            </label>
+            <label>サイズ縦 (Scale Y): <span class="val-display" id="valScaleY">1.0</span>
+                <input type="range" id="scaleY" min="0.1" max="5" step="0.1" value="1">
+            </label>
+            <label>位置横 (Offset X): <span class="val-display" id="valOffsetX">0.00</span>
+                <input type="range" id="offsetX" min="-2" max="2" step="0.01" value="0">
+            </label>
+            <label>位置縦 (Offset Y): <span class="val-display" id="valOffsetY">0.00</span>
+                <input type="range" id="offsetY" min="-2" max="2" step="0.01" value="0">
+            </label>
+        </div>
 
         <div id="preview"></div>
 
@@ -50,6 +73,8 @@
         camera.position.set(0, 0, 2);
         
         let targetMaterial = null;
+        let currentTexture = null; // テクスチャを保持する変数を追加
+
         const model = new THREE.Object3D();
         scene.add(model);
 
@@ -78,6 +103,30 @@
         }
         animate();
 
+        // --- スライダーの値をテクスチャに反映させる処理 ---
+        const updateTextureTransform = () => {
+            if (!currentTexture) return;
+            const sX = parseFloat(document.getElementById('scaleX').value);
+            const sY = parseFloat(document.getElementById('scaleY').value);
+            const oX = parseFloat(document.getElementById('offsetX').value);
+            const oY = parseFloat(document.getElementById('offsetY').value);
+            
+            // 数値表示の更新
+            document.getElementById('valScaleX').innerText = sX.toFixed(1);
+            document.getElementById('valScaleY').innerText = sY.toFixed(1);
+            document.getElementById('valOffsetX').innerText = oX.toFixed(2);
+            document.getElementById('valOffsetY').innerText = oY.toFixed(2);
+            
+            // Three.js側のテクスチャに適用
+            currentTexture.repeat.set(sX, sY);
+            currentTexture.offset.set(oX, oY);
+        };
+
+        // スライダーを動かした時に発火するイベントを登録
+        ['scaleX', 'scaleY', 'offsetX', 'offsetY'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateTextureTransform);
+        });
+
         // --- 2. 画像がアップロードされたら3Dに貼り付ける処理 ---
         let uploadedImageDataUrl = null;
         document.getElementById('imageUpload').addEventListener('change', function(e) {
@@ -89,10 +138,20 @@
                 const texLoader = new THREE.TextureLoader();
                 texLoader.load(uploadedImageDataUrl, (texture) => {
                     texture.flipY = false;
+                    // 画像のループ処理を許可する（これが無いと位置調整でエラーになる）
+                    texture.wrapS = THREE.RepeatWrapping;
+                    texture.wrapT = THREE.RepeatWrapping;
+                    
+                    currentTexture = texture;
+                    
                     if(targetMaterial) {
                         targetMaterial.map = texture;
                         targetMaterial.needsUpdate = true;
                     }
+
+                    // スライダーパネルを表示して初期値を反映
+                    document.getElementById('textureControls').style.display = 'block';
+                    updateTextureTransform();
                 });
             };
             reader.readAsDataURL(file);
@@ -102,7 +161,7 @@
         function createTar(files) {
             let blocks = 0;
             for (let f of files) blocks += 1 + Math.ceil(f.data.length / 512);
-            blocks += 2; // 終端の空ブロック
+            blocks += 2; 
 
             const tar = new Uint8Array(blocks * 512);
             let offset = 0;
@@ -116,7 +175,7 @@
                 header.set(new TextEncoder().encode(f.data.length.toString(8).padStart(11, '0') + '\0'), 124);
                 header.set(new TextEncoder().encode(Math.floor(Date.now() / 1000).toString(8).padStart(11, '0') + '\0'), 136);
                 header.set(new TextEncoder().encode("        "), 148);
-                header[156] = 48; // '0' (通常ファイル)
+                header[156] = 48; 
                 header.set(new TextEncoder().encode("ustar\000"), 257);
 
                 let checksum = 0;
@@ -131,14 +190,19 @@
             return tar;
         }
 
-        // --- 3. ダウンロードボタンの処理 (パッキングの心臓部) ---
+        // --- 3. ダウンロードボタンの処理 ---
         document.getElementById('downloadBtn').addEventListener('click', async () => {
             if(!uploadedImageDataUrl) {
                 alert("先に画像をアップロードしてね！");
                 return;
             }
 
-            // 1. 画像データとFBXデータを取得してバイナリに変換
+            // ★ここでスライダーから最終的な数値を読み取る
+            const sX = document.getElementById('scaleX').value;
+            const sY = document.getElementById('scaleY').value;
+            const oX = document.getElementById('offsetX').value;
+            const oY = document.getElementById('offsetY').value;
+
             const responseImg = await fetch(uploadedImageDataUrl);
             const imgBuffer = await responseImg.arrayBuffer();
             const imgUint8 = new Uint8Array(imgBuffer);
@@ -147,7 +211,6 @@
             const fbxBuffer = await responseFbx.arrayBuffer();
             const fbxUint8 = new Uint8Array(fbxBuffer);
 
-            // 2. Unity用の32桁のランダムなID(GUID)を生成
             const generateGUID = () => crypto.randomUUID().replace(/-/g, '');
             const texGuid = generateGUID();
             const matGuid = generateGUID();
@@ -155,20 +218,15 @@
 
             const textToUint8 = (text) => new TextEncoder().encode(text);
 
-            // 3. メタデータ(設定ファイル)のテキストを錬成
-            
-            // テクスチャのメタデータ (CubeMap自動生成を完全に無効化し、2Dを強制)
             const texMeta = `fileFormatVersion: 2\nguid: ${texGuid}\nTextureImporter:\n  serializedVersion: 12\n  textureType: 0\n  textureShape: 1\n  generateCubemap: 0\n  isReadable: 1\n`;
-            
             const matMeta = `fileFormatVersion: 2\nguid: ${matGuid}\nNativeFormatImporter:\n  mainObjectFileID: 2100000\n`;
             const fbxMeta = `fileFormatVersion: 2\nguid: ${fbxGuid}\nModelImporter:\n  serializedVersion: 202000\n  internalIDToNameTable: []\n`;
             
-            // マテリアルの中身 (Unityがテクスチャを認識できるようにScaleとOffsetを明記)
-            const matContent = `%YAML 1.1\n%TAG !u! tag:unity3d.com,2011:\n--- !u!21 &2100000\nMaterial:\n  serializedVersion: 8\n  m_Name: CustomMaterial\n  m_Shader: {fileID: 46, guid: 0000000000000000f000000000000000, type: 0}\n  m_SavedProperties:\n    serializedVersion: 3\n    m_TexEnvs:\n    - _MainTex:\n        m_Texture: {fileID: 2800000, guid: ${texGuid}, type: 3}\n        m_Scale: {x: 1, y: 1}\n        m_Offset: {x: 0, y: 0}\n`;
+            // ★マテリアルの中身にスライダーの数値を注入
+            const matContent = `%YAML 1.1\n%TAG !u! tag:unity3d.com,2011:\n--- !u!21 &2100000\nMaterial:\n  serializedVersion: 8\n  m_Name: CustomMaterial\n  m_Shader: {fileID: 46, guid: 0000000000000000f000000000000000, type: 0}\n  m_SavedProperties:\n    serializedVersion: 3\n    m_TexEnvs:\n    - _MainTex:\n        m_Texture: {fileID: 2800000, guid: ${texGuid}, type: 3}\n        m_Scale: {x: ${sX}, y: ${sY}}\n        m_Offset: {x: ${oX}, y: ${oY}}\n`;
 
             const basePath = "Assets/SorakazeHuuta/VRC-DressDrop";
 
-            // 4. 梱包するファイルのリストにFBXを追加
             const files = [
                 { name: `${texGuid}/asset`, data: imgUint8 },
                 { name: `${texGuid}/asset.meta`, data: textToUint8(texMeta) },
@@ -183,11 +241,9 @@
                 { name: `${fbxGuid}/pathname`, data: textToUint8(`${basePath}/Tshirt.fbx`) }
             ];
 
-            // 5. 自作関数でTAR形式にまとめてから、gzip(fflate)で圧縮する
             const tarBuffer = createTar(files);
             const gzBuffer = fflate.gzipSync(tarBuffer);
 
-            // 6. ブラウザ上でダウンロードを発火
             const blob = new Blob([gzBuffer], { type: 'application/octet-stream' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
