@@ -131,7 +131,7 @@
             return tar;
         }
 
-       // --- 3. ダウンロードボタンの処理 (パッキングの心臓部) ---
+        // --- 3. ダウンロードボタンの処理 (パッキングの心臓部) ---
         document.getElementById('downloadBtn').addEventListener('click', async () => {
             if(!uploadedImageDataUrl) {
                 alert("先に画像をアップロードしてね！");
@@ -192,20 +192,6 @@
             const a = document.createElement('a');
             a.href = url;
             a.download = "Custom_Tshirt_withModel.unitypackage";
-            a.click();
-            URL.revokeObjectURL(url);
-        });
-
-            // 6. 自作関数でTAR形式にまとめてから、gzip(fflate)で圧縮する
-            const tarBuffer = createTar(files);
-            const gzBuffer = fflate.gzipSync(tarBuffer);
-
-            // 7. ブラウザ上でダウンロードを発火
-            const blob = new Blob([gzBuffer], { type: 'application/octet-stream' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = "Custom_Tshirt.unitypackage";
             a.click();
             URL.revokeObjectURL(url);
         });
