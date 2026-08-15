@@ -143,7 +143,6 @@
             const imgBuffer = await responseImg.arrayBuffer();
             const imgUint8 = new Uint8Array(imgBuffer);
 
-            // ↓★ここを追加：同じフォルダにある Tshirt.fbx を読み込む
             const responseFbx = await fetch('./Tshirt.fbx');
             const fbxBuffer = await responseFbx.arrayBuffer();
             const fbxUint8 = new Uint8Array(fbxBuffer);
@@ -152,17 +151,20 @@
             const generateGUID = () => crypto.randomUUID().replace(/-/g, '');
             const texGuid = generateGUID();
             const matGuid = generateGUID();
-            const fbxGuid = generateGUID(); // FBX用のGUIDも追加
+            const fbxGuid = generateGUID(); 
 
             const textToUint8 = (text) => new TextEncoder().encode(text);
 
             // 3. メタデータ(設定ファイル)のテキストを錬成
-            const texMeta = `fileFormatVersion: 2\nguid: ${texGuid}\nTextureImporter:\n  isReadable: 1\n  mipmapEnabled: 1\n`;
+            
+            // テクスチャのメタデータ (textureShape: 1 を明示的に指定して2Dにする)
+            const texMeta = `fileFormatVersion: 2\nguid: ${texGuid}\nTextureImporter:\n  internalIDToNameTable: []\n  externalObjects: {}\n  serializedVersion: 12\n  mipmaps:\n    mipMapMode: 0\n    enableMipMap: 1\n    sRGBTexture: 1\n    linearTexture: 0\n    fadeOut: 0\n    borderMipMap: 0\n    mipMapsPreserveCoverage: 0\n    alphaTestReferenceValue: 0.5\n    mipMapFadeDistanceStart: 1\n    mipMapFadeDistanceEnd: 3\n  bumpmap:\n    convertToNormalMap: 0\n    externalNormalMap: 0\n    heightScale: 0.25\n    normalMapFilter: 0\n  isReadable: 1\n  streamingMipmaps: 0\n  streamingMipmapsPriority: 0\n  vTOnly: 0\n  ignoreMasterTextureLimit: 0\n  grayScaleToAlpha: 0\n  generateCubemap: 6\n  cubemapConvolution: 0\n  seamlessCubemap: 0\n  textureFormat: 1\n  maxTextureSize: 2048\n  textureSettings:\n    serializedVersion: 2\n    filterMode: 1\n    aniso: 1\n    mipBias: 0\n    wrapU: 0\n    wrapV: 0\n    wrapW: 0\n  nPOTScale: 1\n  lightmap: 0\n  compressionQuality: 50\n  spriteMode: 0\n  spriteExtrude: 1\n  spriteMeshType: 1\n  alignment: 0\n  spritePivot: {x: 0.5, y: 0.5}\n  spritePixelsToUnits: 100\n  spriteBorder: {x: 0, y: 0, z: 0, w: 0}\n  spriteGenerateFallbackPhysicsShape: 1\n  alphaUsage: 1\n  alphaIsTransparency: 0\n  spriteTessellationDetail: -1\n  textureType: 0\n  textureShape: 1\n  singleChannelComponent: 0\n  flipbookRows: 1\n  flipbookColumns: 1\n  maxTextureSizeSet: 0\n  compressionQualitySet: 0\n  textureFormatSet: 0\n  ignorePngGamma: 0\n  applyGammaDecoding: 0\n  swizzle: 50462976\n`;
+            
             const matMeta = `fileFormatVersion: 2\nguid: ${matGuid}\nNativeFormatImporter:\n  mainObjectFileID: 2100000\n`;
-            // ↓★ここを追加：FBX用のシンプルなメタデータ
             const fbxMeta = `fileFormatVersion: 2\nguid: ${fbxGuid}\nModelImporter:\n  serializedVersion: 202000\n  internalIDToNameTable: []\n`;
             
-            const matContent = `%YAML 1.1\n%TAG !u! tag:unity3d.com,2011:\n--- !u!21 &2100000\nMaterial:\n  m_Name: Custom_Tshirt_Mat\n  m_Shader: {fileID: 46, guid: 0000000000000000f000000000000000, type: 0}\n  m_SavedProperties:\n    m_TexEnvs:\n    - _MainTex:\n        m_Texture: {fileID: 2800000, guid: ${texGuid}, type: 3}\n`;
+            // マテリアルの中身 (m_Name をファイル名と同じ CustomMaterial に統一)
+            const matContent = `%YAML 1.1\n%TAG !u! tag:unity3d.com,2011:\n--- !u!21 &2100000\nMaterial:\n  m_Name: CustomMaterial\n  m_Shader: {fileID: 46, guid: 0000000000000000f000000000000000, type: 0}\n  m_SavedProperties:\n    m_TexEnvs:\n    - _MainTex:\n        m_Texture: {fileID: 2800000, guid: ${texGuid}, type: 3}\n`;
 
             const basePath = "Assets/SorakazeHuuta/VRC-DressDrop";
 
@@ -176,7 +178,6 @@
                 { name: `${matGuid}/asset.meta`, data: textToUint8(matMeta) },
                 { name: `${matGuid}/pathname`, data: textToUint8(`${basePath}/CustomMaterial.mat`) },
 
-                // ↓★ここを追加：FBXの実体とメタデータを梱包
                 { name: `${fbxGuid}/asset`, data: fbxUint8 },
                 { name: `${fbxGuid}/asset.meta`, data: textToUint8(fbxMeta) },
                 { name: `${fbxGuid}/pathname`, data: textToUint8(`${basePath}/Tshirt.fbx`) }
