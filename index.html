@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VRC-DressDrop Generator</title>
-   <!-- Three.js (3Dプレビュー用) -->
+    <!-- Three.js (3Dプレビュー用) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- ↓これを追加！ (外部モデル読み込み用) -->
+    <!-- 外部モデル読み込み用 (GLTFLoader) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- マウス操作用 (OrbitControls) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <style>
         body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 30px; text-align: center; }
         .container { background: #fff; padding: 20px; border-radius: 10px; max-width: 600px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
@@ -31,25 +33,27 @@
     </div>
 
     <script>
-        // --- 1. 3Dプレビューの設定（今は仮でキューブ） ---
+        // --- 1. 3Dプレビューの設定 ---
         const container = document.getElementById('preview');
         const scene = new THREE.Scene();
+        
         // コンテナのサイズに合わせてカメラを設定
         const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(container.clientWidth, container.clientHeight);
         container.appendChild(renderer.domElement);
 
-        // ライトを追加
-        const light = new THREE.DirectionalLight(0xffffff, 1);
+        // ライトを追加 (少し明るく調整)
+        const light = new THREE.DirectionalLight(0xffffff, 1.2);
         light.position.set(1, 1, 2);
         scene.add(light);
-        scene.add(new THREE.AmbientLight(0x666666));
+        scene.add(new THREE.AmbientLight(0x888888));
 
-        camera.position.z = 4;
+        // カメラをZ軸の2の位置まで近づける
+        camera.position.set(0, 0, 2);
         
         let targetMaterial = null; // 後で画像を貼り付けるための変数
-        const model = new THREE.Object3D(); // 回転アニメーション用の親コンテナ
+        const model = new THREE.Object3D(); // 親コンテナ
         scene.add(model);
 
         // GLBモデルの読み込み
@@ -57,9 +61,9 @@
         loader.load('./Tshirt.glb', function(gltf) {
             const mesh = gltf.scene;
             
-            // モデルのサイズや位置を画面に合わせて調整（大きすぎる場合は 0.5 などに変更）
-            mesh.scale.set(1, 1, 1);
-            mesh.position.set(0, -1, 0);
+            // 画面に合わせてTシャツを大きくする
+            mesh.scale.set(5, 5, 5); 
+            mesh.position.set(0, -0.5, 0); // 大きくした分、少し下にずらす
 
             // 読み込んだモデルからマテリアルを探し出す
             mesh.traverse((child) => {
@@ -74,10 +78,14 @@
             console.error("モデルの読み込みエラー:", error);
         });
 
+        // マウス操作（OrbitControls）の設定を追加
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // 慣性をつけてヌルヌル動かす
+        controls.dampingFactor = 0.05;
+
         function animate() {
             requestAnimationFrame(animate);
-            model.rotation.x += 0.005;
-            model.rotation.y += 0.01;
+            controls.update(); // マウス操作を毎フレーム更新する
             renderer.render(scene, camera);
         }
         animate();
@@ -92,6 +100,9 @@
                 uploadedImageDataUrl = event.target.result;
                 const texLoader = new THREE.TextureLoader();
                 texLoader.load(uploadedImageDataUrl, (texture) => {
+                    // GLBモデル特有のテクスチャ上下反転を防ぐ処理
+                    texture.flipY = false;
+                    
                     if(targetMaterial) {
                         targetMaterial.map = texture;
                         targetMaterial.needsUpdate = true;
