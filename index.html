@@ -131,37 +131,42 @@
             return tar;
         }
 
-        // --- 3. ダウンロードボタンの処理 (パッキングの心臓部) ---
-        // async を追加して、画像変換処理を高速化しました
+       // --- 3. ダウンロードボタンの処理 (パッキングの心臓部) ---
         document.getElementById('downloadBtn').addEventListener('click', async () => {
             if(!uploadedImageDataUrl) {
                 alert("先に画像をアップロードしてね！");
                 return;
             }
 
-            // 1. 画像データ(Data URL)をバイナリ(Uint8Array)に高速変換
-            const response = await fetch(uploadedImageDataUrl);
-            const imgBuffer = await response.arrayBuffer();
+            // 1. 画像データとFBXデータを取得してバイナリに変換
+            const responseImg = await fetch(uploadedImageDataUrl);
+            const imgBuffer = await responseImg.arrayBuffer();
             const imgUint8 = new Uint8Array(imgBuffer);
+
+            // ↓★ここを追加：同じフォルダにある Tshirt.fbx を読み込む
+            const responseFbx = await fetch('./Tshirt.fbx');
+            const fbxBuffer = await responseFbx.arrayBuffer();
+            const fbxUint8 = new Uint8Array(fbxBuffer);
 
             // 2. Unity用の32桁のランダムなID(GUID)を生成
             const generateGUID = () => crypto.randomUUID().replace(/-/g, '');
             const texGuid = generateGUID();
             const matGuid = generateGUID();
+            const fbxGuid = generateGUID(); // FBX用のGUIDも追加
 
             const textToUint8 = (text) => new TextEncoder().encode(text);
 
             // 3. メタデータ(設定ファイル)のテキストを錬成
             const texMeta = `fileFormatVersion: 2\nguid: ${texGuid}\nTextureImporter:\n  isReadable: 1\n  mipmapEnabled: 1\n`;
             const matMeta = `fileFormatVersion: 2\nguid: ${matGuid}\nNativeFormatImporter:\n  mainObjectFileID: 2100000\n`;
+            // ↓★ここを追加：FBX用のシンプルなメタデータ
+            const fbxMeta = `fileFormatVersion: 2\nguid: ${fbxGuid}\nModelImporter:\n  serializedVersion: 202000\n  internalIDToNameTable: []\n`;
             
-            // アップロードされた画像のGUIDを組み込んだマテリアルデータ
             const matContent = `%YAML 1.1\n%TAG !u! tag:unity3d.com,2011:\n--- !u!21 &2100000\nMaterial:\n  m_Name: Custom_Tshirt_Mat\n  m_Shader: {fileID: 46, guid: 0000000000000000f000000000000000, type: 0}\n  m_SavedProperties:\n    m_TexEnvs:\n    - _MainTex:\n        m_Texture: {fileID: 2800000, guid: ${texGuid}, type: 3}\n`;
 
-            // 4. Unityエディタ内で展開されるフォルダ階層を指定
             const basePath = "Assets/SorakazeHuuta/VRC-DressDrop";
 
-            // 5. 梱包するファイルのリストを作成
+            // 4. 梱包するファイルのリストにFBXを追加
             const files = [
                 { name: `${texGuid}/asset`, data: imgUint8 },
                 { name: `${texGuid}/asset.meta`, data: textToUint8(texMeta) },
@@ -169,8 +174,27 @@
                 
                 { name: `${matGuid}/asset`, data: textToUint8(matContent) },
                 { name: `${matGuid}/asset.meta`, data: textToUint8(matMeta) },
-                { name: `${matGuid}/pathname`, data: textToUint8(`${basePath}/CustomMaterial.mat`) }
+                { name: `${matGuid}/pathname`, data: textToUint8(`${basePath}/CustomMaterial.mat`) },
+
+                // ↓★ここを追加：FBXの実体とメタデータを梱包
+                { name: `${fbxGuid}/asset`, data: fbxUint8 },
+                { name: `${fbxGuid}/asset.meta`, data: textToUint8(fbxMeta) },
+                { name: `${fbxGuid}/pathname`, data: textToUint8(`${basePath}/Tshirt.fbx`) }
             ];
+
+            // 5. 自作関数でTAR形式にまとめてから、gzip(fflate)で圧縮する
+            const tarBuffer = createTar(files);
+            const gzBuffer = fflate.gzipSync(tarBuffer);
+
+            // 6. ブラウザ上でダウンロードを発火
+            const blob = new Blob([gzBuffer], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "Custom_Tshirt_withModel.unitypackage";
+            a.click();
+            URL.revokeObjectURL(url);
+        });
 
             // 6. 自作関数でTAR形式にまとめてから、gzip(fflate)で圧縮する
             const tarBuffer = createTar(files);
