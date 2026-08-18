@@ -4,49 +4,134 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VRC-DressDrop Generator</title>
-    <!-- Three.js (3Dプレビュー用) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    
-    <!-- パッキング用ライブラリ -->
+
     <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.0/umd/index.js"></script>
 
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 30px; text-align: center; }
-        .container { background: #fff; padding: 20px; border-radius: 10px; max-width: 600px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        #preview { width: 100%; height: 400px; background: #333; margin: 20px 0; border-radius: 8px; overflow: hidden; }
-        button { padding: 15px 30px; font-size: 16px; background: #000; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #333; }
-        input[type="file"] { margin-bottom: 10px; }
-        
-        /* スライダーUI用のデザイン追加 */
-        .controls { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-top: 15px; text-align: left; display: none; }
-        .controls label { display: block; margin-bottom: 10px; font-size: 14px; font-weight: bold; color: #333; }
-        .controls input[type="range"] { width: 100%; margin-top: 5px; cursor: pointer; }
-        .val-display { float: right; color: #007bff; }
+        body {
+            font-family: sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 600px;
+            margin: 0 auto;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        #preview {
+            width: 100%;
+            height: 400px;
+            background: #333;
+            margin: 20px 0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            background: #000;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+            button:hover {
+                background: #333;
+            }
+
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+
+        /* スライダーとカラーピッカーのUIデザイン */
+        .controls {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: left;
+            display: none;
+        }
+
+            .controls label {
+                display: block;
+                margin-bottom: 10px;
+                font-size: 14px;
+                font-weight: bold;
+                color: #333;
+            }
+
+            .controls input[type="range"] {
+                width: 100%;
+                margin-top: 5px;
+                cursor: pointer;
+            }
+
+        .val-display {
+            float: right;
+            color: #007bff;
+        }
+
+        .color-picker-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        input[type="color"] {
+            cursor: pointer;
+            border: none;
+            width: 50px;
+            height: 30px;
+            background: none;
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
         <h2>VRC-DressDrop プレビュー版</h2>
+
         <p>1. テクスチャ画像を選択してね</p>
         <input type="file" id="imageUpload" accept="image/png, image/jpeg">
 
-        <!-- 新規追加: テクスチャ調整用のスライダーパネル (画像アップロード後に表示されます) -->
         <div class="controls" id="textureControls">
-            <p style="margin-top: 0; border-bottom: 1px solid #ddd; padding-bottom: 5px;">テクスチャ調整 (Tiling / Offset)</p>
-            <label>サイズ横 (Scale X): <span class="val-display" id="valScaleX">1.0</span>
+            <div class="color-picker-wrap">
+                <label style="margin-bottom: 0;">Tシャツの生地色 (Base Color):</label>
+                <input type="color" id="baseColor" value="#ffffff">
+            </div>
+
+            <p style="margin-top: 0; padding-bottom: 5px;">プリント調整 (Tiling / Offset)</p>
+            <label>
+                サイズ横 (Scale X): <span class="val-display" id="valScaleX">1.0</span>
                 <input type="range" id="scaleX" min="0.1" max="5" step="0.1" value="1">
             </label>
-            <label>サイズ縦 (Scale Y): <span class="val-display" id="valScaleY">1.0</span>
+            <label>
+                サイズ縦 (Scale Y): <span class="val-display" id="valScaleY">1.0</span>
                 <input type="range" id="scaleY" min="0.1" max="5" step="0.1" value="1">
             </label>
-            <label>位置横 (Offset X): <span class="val-display" id="valOffsetX">0.00</span>
+            <label>
+                位置横 (Offset X): <span class="val-display" id="valOffsetX">0.00</span>
                 <input type="range" id="offsetX" min="-2" max="2" step="0.01" value="0">
             </label>
-            <label>位置縦 (Offset Y): <span class="val-display" id="valOffsetY">0.00</span>
+            <label>
+                位置縦 (Offset Y): <span class="val-display" id="valOffsetY">0.00</span>
                 <input type="range" id="offsetY" min="-2" max="2" step="0.01" value="0">
             </label>
         </div>
@@ -71,22 +156,33 @@
         scene.add(light);
         scene.add(new THREE.AmbientLight(0x888888));
         camera.position.set(0, 0, 2);
-        
-        let targetMaterial = null;
-        let currentTexture = null; // テクスチャを保持する変数を追加
+
+        let matPrint = null; // プリント用マテリアル
+        let matBase = null;  // 生地色用マテリアル
+        let currentTexture = null;
 
         const model = new THREE.Object3D();
         scene.add(model);
 
         const loader = new THREE.GLTFLoader();
-        loader.load('./Tshirt.glb', function(gltf) {
+        loader.load('./Tshirt.glb', function (gltf) {
             const mesh = gltf.scene;
-            mesh.scale.set(5, 5, 5); 
+            mesh.scale.set(5, 5, 5);
             mesh.position.set(0, -0.5, 0);
+
+            // Blenderで付けた名前をもとにマテリアルを探す
             mesh.traverse((child) => {
                 if (child.isMesh) {
-                    targetMaterial = child.material;
-                    targetMaterial.color.setHex(0xffffff);
+                    if (child.material.name === 'Mat_Print' || child.material.name.includes('Print')) {
+                        matPrint = child.material;
+                        matPrint.color.setHex(0xffffff);
+                    } else if (child.material.name === 'Mat_Base' || child.material.name.includes('Base')) {
+                        matBase = child.material;
+                        matBase.color.setHex(0xffffff);
+                    } else {
+                        // もし名前が見つからなければ、とりあえず最初に見つけたものをPrintにする（保険の処理）
+                        if (!matPrint) matPrint = child.material;
+                    }
                 }
             });
             model.add(mesh);
@@ -103,6 +199,13 @@
         }
         animate();
 
+        // --- カラーピッカーを動かした時の処理 ---
+        document.getElementById('baseColor').addEventListener('input', (e) => {
+            if (matBase) {
+                matBase.color.set(e.target.value);
+            }
+        });
+
         // --- スライダーの値をテクスチャに反映させる処理 ---
         const updateTextureTransform = () => {
             if (!currentTexture) return;
@@ -110,46 +213,42 @@
             const sY = parseFloat(document.getElementById('scaleY').value);
             const oX = parseFloat(document.getElementById('offsetX').value);
             const oY = parseFloat(document.getElementById('offsetY').value);
-            
-            // 数値表示の更新
+
             document.getElementById('valScaleX').innerText = sX.toFixed(1);
             document.getElementById('valScaleY').innerText = sY.toFixed(1);
             document.getElementById('valOffsetX').innerText = oX.toFixed(2);
             document.getElementById('valOffsetY').innerText = oY.toFixed(2);
-            
-            // Three.js側のテクスチャに適用
+
             currentTexture.repeat.set(sX, sY);
             currentTexture.offset.set(oX, oY);
         };
 
-        // スライダーを動かした時に発火するイベントを登録
         ['scaleX', 'scaleY', 'offsetX', 'offsetY'].forEach(id => {
             document.getElementById(id).addEventListener('input', updateTextureTransform);
         });
 
         // --- 2. 画像がアップロードされたら3Dに貼り付ける処理 ---
         let uploadedImageDataUrl = null;
-        document.getElementById('imageUpload').addEventListener('change', function(e) {
+        document.getElementById('imageUpload').addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(event) {
+            reader.onload = function (event) {
                 uploadedImageDataUrl = event.target.result;
                 const texLoader = new THREE.TextureLoader();
                 texLoader.load(uploadedImageDataUrl, (texture) => {
                     texture.flipY = false;
-                    // 画像のループ処理を許可する（これが無いと位置調整でエラーになる）
                     texture.wrapS = THREE.RepeatWrapping;
                     texture.wrapT = THREE.RepeatWrapping;
-                    
+
                     currentTexture = texture;
-                    
-                    if(targetMaterial) {
-                        targetMaterial.map = texture;
-                        targetMaterial.needsUpdate = true;
+
+                    // Mat_Print にだけ画像を貼り付ける
+                    if (matPrint) {
+                        matPrint.map = texture;
+                        matPrint.needsUpdate = true;
                     }
 
-                    // スライダーパネルを表示して初期値を反映
                     document.getElementById('textureControls').style.display = 'block';
                     updateTextureTransform();
                 });
@@ -161,11 +260,9 @@
         function createTar(files) {
             let blocks = 0;
             for (let f of files) blocks += 1 + Math.ceil(f.data.length / 512);
-            blocks += 2; 
-
+            blocks += 2;
             const tar = new Uint8Array(blocks * 512);
             let offset = 0;
-
             for (let f of files) {
                 const header = new Uint8Array(512);
                 header.set(new TextEncoder().encode(f.name).slice(0, 100), 0);
@@ -175,13 +272,11 @@
                 header.set(new TextEncoder().encode(f.data.length.toString(8).padStart(11, '0') + '\0'), 124);
                 header.set(new TextEncoder().encode(Math.floor(Date.now() / 1000).toString(8).padStart(11, '0') + '\0'), 136);
                 header.set(new TextEncoder().encode("        "), 148);
-                header[156] = 48; 
+                header[156] = 48;
                 header.set(new TextEncoder().encode("ustar\000"), 257);
-
                 let checksum = 0;
                 for (let i = 0; i < 512; i++) checksum += header[i];
                 header.set(new TextEncoder().encode(checksum.toString(8).padStart(6, '0') + '\0 '), 148);
-
                 tar.set(header, offset);
                 offset += 512;
                 tar.set(f.data, offset);
@@ -192,16 +287,21 @@
 
         // --- 3. ダウンロードボタンの処理 ---
         document.getElementById('downloadBtn').addEventListener('click', async () => {
-            if(!uploadedImageDataUrl) {
+            if (!uploadedImageDataUrl) {
                 alert("先に画像をアップロードしてね！");
                 return;
             }
 
-            // ★ここでスライダーから最終的な数値を読み取る
             const sX = document.getElementById('scaleX').value;
             const sY = document.getElementById('scaleY').value;
             const oX = document.getElementById('offsetX').value;
             const oY = document.getElementById('offsetY').value;
+
+            // カラーピッカーから色を取得し、Unity用の 0.0〜1.0 形式に変換
+            const hexColor = document.getElementById('baseColor').value;
+            const r = (parseInt(hexColor.slice(1, 3), 16) / 255).toFixed(3);
+            const g = (parseInt(hexColor.slice(3, 5), 16) / 255).toFixed(3);
+            const b = (parseInt(hexColor.slice(5, 7), 16) / 255).toFixed(3);
 
             const responseImg = await fetch(uploadedImageDataUrl);
             const imgBuffer = await responseImg.arrayBuffer();
@@ -213,17 +313,22 @@
 
             const generateGUID = () => crypto.randomUUID().replace(/-/g, '');
             const texGuid = generateGUID();
-            const matGuid = generateGUID();
-            const fbxGuid = generateGUID(); 
+            const matPrintGuid = generateGUID();
+            const matBaseGuid = generateGUID(); // 生地色用のGUIDを追加
+            const fbxGuid = generateGUID();
 
             const textToUint8 = (text) => new TextEncoder().encode(text);
 
             const texMeta = `fileFormatVersion: 2\nguid: ${texGuid}\nTextureImporter:\n  serializedVersion: 12\n  textureType: 0\n  textureShape: 1\n  generateCubemap: 0\n  isReadable: 1\n`;
-            const matMeta = `fileFormatVersion: 2\nguid: ${matGuid}\nNativeFormatImporter:\n  mainObjectFileID: 2100000\n`;
+            const matPrintMeta = `fileFormatVersion: 2\nguid: ${matPrintGuid}\nNativeFormatImporter:\n  mainObjectFileID: 2100000\n`;
+            const matBaseMeta = `fileFormatVersion: 2\nguid: ${matBaseGuid}\nNativeFormatImporter:\n  mainObjectFileID: 2100000\n`;
             const fbxMeta = `fileFormatVersion: 2\nguid: ${fbxGuid}\nModelImporter:\n  serializedVersion: 202000\n  internalIDToNameTable: []\n`;
-            
-            // ★マテリアルの中身にスライダーの数値を注入
-            const matContent = `%YAML 1.1\n%TAG !u! tag:unity3d.com,2011:\n--- !u!21 &2100000\nMaterial:\n  serializedVersion: 8\n  m_Name: CustomMaterial\n  m_Shader: {fileID: 46, guid: 0000000000000000f000000000000000, type: 0}\n  m_SavedProperties:\n    serializedVersion: 3\n    m_TexEnvs:\n    - _MainTex:\n        m_Texture: {fileID: 2800000, guid: ${texGuid}, type: 3}\n        m_Scale: {x: ${sX}, y: ${sY}}\n        m_Offset: {x: ${oX}, y: ${oY}}\n`;
+
+            // プリント用のマテリアル (.mat)
+            const matPrintContent = `%YAML 1.1\n%TAG !u! tag:unity3d.com,2011:\n--- !u!21 &2100000\nMaterial:\n  serializedVersion: 8\n  m_Name: Mat_Print\n  m_Shader: {fileID: 46, guid: 0000000000000000f000000000000000, type: 0}\n  m_SavedProperties:\n    serializedVersion: 3\n    m_TexEnvs:\n    - _MainTex:\n        m_Texture: {fileID: 2800000, guid: ${texGuid}, type: 3}\n        m_Scale: {x: ${sX}, y: ${sY}}\n        m_Offset: {x: ${oX}, y: ${oY}}\n`;
+
+            // ★新規追加: 生地色用のマテリアル (.mat) ※_ColorプロパティにRGB値を流し込む
+            const matBaseContent = `%YAML 1.1\n%TAG !u! tag:unity3d.com,2011:\n--- !u!21 &2100000\nMaterial:\n  serializedVersion: 8\n  m_Name: Mat_Base\n  m_Shader: {fileID: 46, guid: 0000000000000000f000000000000000, type: 0}\n  m_SavedProperties:\n    serializedVersion: 3\n    m_Colors:\n    - _Color: {r: ${r}, g: ${g}, b: ${b}, a: 1}\n`;
 
             const basePath = "Assets/SorakazeHuuta/VRC-DressDrop";
 
@@ -231,10 +336,14 @@
                 { name: `${texGuid}/asset`, data: imgUint8 },
                 { name: `${texGuid}/asset.meta`, data: textToUint8(texMeta) },
                 { name: `${texGuid}/pathname`, data: textToUint8(`${basePath}/CustomTexture.png`) },
-                
-                { name: `${matGuid}/asset`, data: textToUint8(matContent) },
-                { name: `${matGuid}/asset.meta`, data: textToUint8(matMeta) },
-                { name: `${matGuid}/pathname`, data: textToUint8(`${basePath}/CustomMaterial.mat`) },
+
+                { name: `${matPrintGuid}/asset`, data: textToUint8(matPrintContent) },
+                { name: `${matPrintGuid}/asset.meta`, data: textToUint8(matPrintMeta) },
+                { name: `${matPrintGuid}/pathname`, data: textToUint8(`${basePath}/Mat_Print.mat`) },
+
+                { name: `${matBaseGuid}/asset`, data: textToUint8(matBaseContent) },
+                { name: `${matBaseGuid}/asset.meta`, data: textToUint8(matBaseMeta) },
+                { name: `${matBaseGuid}/pathname`, data: textToUint8(`${basePath}/Mat_Base.mat`) },
 
                 { name: `${fbxGuid}/asset`, data: fbxUint8 },
                 { name: `${fbxGuid}/asset.meta`, data: textToUint8(fbxMeta) },
