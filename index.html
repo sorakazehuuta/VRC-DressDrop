@@ -163,7 +163,7 @@
         scene.add(model);
 
         const loader = new THREE.GLTFLoader();
-        loader.load('./Tshirt.glb', function (gltf) {
+        loader.load('./models/Tshirt.glb', function (gltf) {
             const mesh = gltf.scene;
             mesh.scale.set(5, 5, 5);
             mesh.position.set(0, -0.5, 0);
@@ -299,7 +299,7 @@
             const imgBuffer = await responseImg.arrayBuffer();
             const imgUint8 = new Uint8Array(imgBuffer);
 
-            const responseFbx = await fetch('./Tshirt.fbx');
+            const responseFbx = await fetch('./models/Tshirt.fbx');
             const fbxBuffer = await responseFbx.arrayBuffer();
             const fbxUint8 = new Uint8Array(fbxBuffer);
 
