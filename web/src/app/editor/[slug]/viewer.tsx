@@ -38,69 +38,91 @@ export default function Viewer(props: ViewerProps) {
   );
 }
 
+// 正面（+Z 方向）から全体が収まる位置にカメラを戻す
 function ResetView({ signal }: { signal: number }) {
   const bounds = useBounds();
   useEffect(() => {
-    if (signal > 0) bounds.refresh().clip().fit();
+    if (signal === 0) return;
+    const { center, distance } = bounds.refresh().getSize();
+    bounds.to({ position: [center.x, center.y, center.z + distance], target: [center.x, center.y, center.z] });
   }, [signal, bounds]);
   return null;
 }
 
+type Rig = {
+  scene: THREE.Object3D;
+  materials: Map<string, THREE.MeshStandardMaterial>;
+  prints: Map<string, { canvas: HTMLCanvasElement; texture: THREE.CanvasTexture }>;
+};
+
+// glTF のキャッシュを書き換えないよう、シーン・マテリアル・テクスチャを毎回まとめて新しく作る。
+// 開発時の React は useMemo を2回実行することがあるため、作ったものの外側を書き換えてはいけない
+function buildRig(source: THREE.Object3D, slots: Slot[]): Rig {
+  const scene = cloneSkinned(source);
+  const materials = new Map<string, THREE.MeshStandardMaterial>();
+  scene.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    // スキンメッシュは境界の計算がずれて消えることがあるため、視錐台カリングを切る
+    mesh.frustumCulled = false;
+    const replace = (m: THREE.Material) => {
+      let copy = materials.get(m.name);
+      if (!copy) {
+        copy = (m as THREE.MeshStandardMaterial).clone();
+        materials.set(m.name, copy);
+      }
+      return copy;
+    };
+    mesh.material = Array.isArray(mesh.material) ? mesh.material.map(replace) : replace(mesh.material);
+  });
+
+  const prints = new Map<string, { canvas: HTMLCanvasElement; texture: THREE.CanvasTexture }>();
+  for (const slot of slots) {
+    if (slot.type !== "print") continue;
+    const canvas = document.createElement("canvas");
+    const size = textureDimensions(slot);
+    canvas.width = size.width;
+    canvas.height = size.height;
+    const texture = new THREE.CanvasTexture(canvas);
+    // glTF の UV は画像の上端が v=0
+    texture.flipY = false;
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 8;
+    prints.set(slot.key, { canvas, texture });
+
+    const material = materials.get(slot.material);
+    if (material) {
+      material.map = texture;
+      material.color.set("#ffffff");
+      const transparent = slot.background === "transparent";
+      material.transparent = transparent;
+      material.alphaTest = transparent ? 0.01 : 0;
+      // 生地と地続きのプリント面は、つやを生地に合わせて境目を目立たなくする
+      if (slot.background !== "transparent") {
+        const bgKey = slot.background.slot;
+        const bgMaterial = materials.get(slots.find((s) => s.key === bgKey)?.material ?? "");
+        if (bgMaterial) {
+          material.roughness = bgMaterial.roughness;
+          material.metalness = bgMaterial.metalness;
+        }
+      }
+      material.needsUpdate = true;
+    }
+  }
+  return { scene, materials, prints };
+}
+
 function Model({ modelUrl, slots, params, images }: ViewerProps) {
   const gltf = useGLTF(modelUrl);
-  const scene = useMemo(() => cloneSkinned(gltf.scene), [gltf.scene]);
+  const { scene, materials, prints: printTextures } = useMemo(() => buildRig(gltf.scene, slots), [gltf.scene, slots]);
 
-  // マテリアル名ごとに複製し、元の glTF キャッシュを書き換えないようにする
-  const materials = useMemo(() => {
-    const byName = new Map<string, THREE.MeshStandardMaterial>();
-    scene.traverse((obj) => {
-      const mesh = obj as THREE.Mesh;
-      if (!mesh.isMesh) return;
-      // スキンメッシュは境界の計算がずれて消えることがあるため、視錐台カリングを切る
-      mesh.frustumCulled = false;
-      const replace = (m: THREE.Material) => {
-        let copy = byName.get(m.name);
-        if (!copy) {
-          copy = (m as THREE.MeshStandardMaterial).clone();
-          byName.set(m.name, copy);
-        }
-        return copy;
-      };
-      mesh.material = Array.isArray(mesh.material) ? mesh.material.map(replace) : replace(mesh.material);
-    });
-    return byName;
-  }, [scene]);
-
-  const printTextures = useMemo(() => {
-    const result = new Map<string, { canvas: HTMLCanvasElement; texture: THREE.CanvasTexture }>();
-    for (const slot of slots) {
-      if (slot.type !== "print") continue;
-      const canvas = document.createElement("canvas");
-      const size = textureDimensions(slot);
-      canvas.width = size.width;
-      canvas.height = size.height;
-      const texture = new THREE.CanvasTexture(canvas);
-      // glTF の UV は画像の上端が v=0
-      texture.flipY = false;
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.anisotropy = 8;
-      result.set(slot.key, { canvas, texture });
-
-      const material = materials.get(slot.material);
-      if (material) {
-        material.map = texture;
-        material.color.set("#ffffff");
-        const transparent = slot.background === "transparent";
-        material.transparent = transparent;
-        material.alphaTest = transparent ? 0.01 : 0;
-        material.needsUpdate = true;
-      }
-    }
-    return result;
-  }, [slots, materials]);
-
-  useEffect(() => () => printTextures.forEach(({ texture }) => texture.dispose()), [printTextures]);
-  useEffect(() => () => materials.forEach((m) => m.dispose()), [materials]);
+  useEffect(
+    () => () => {
+      printTextures.forEach(({ texture }) => texture.dispose());
+      materials.forEach((m) => m.dispose());
+    },
+    [printTextures, materials],
+  );
 
   useEffect(() => {
     for (const slot of slots) {
