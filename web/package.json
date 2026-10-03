@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "templates:check": "tsx scripts/sync-templates.ts --dry-run",
-    "templates:sync": "tsx --env-file=.env.local scripts/sync-templates.ts"
+    "templates:sync": "tsx --env-file=.env.local scripts/sync-templates.ts",
+    "templates:thumbnails": "tsx scripts/render-thumbnails.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
@@ -31,6 +32,7 @@
     "@types/three": "^0.186.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"

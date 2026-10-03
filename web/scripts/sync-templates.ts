@@ -140,9 +140,10 @@ async function main() {
   for (const { dir, manifest } of loaded) {
     const previewPath = await upload("template-assets", manifest.slug, path.join(dir, manifest.files.preview));
     const packagePath = await upload("template-packages", manifest.slug, path.join(dir, manifest.files.package));
-    const thumbnailPath = manifest.files.thumbnail
-      ? await upload("template-assets", manifest.slug, path.join(dir, manifest.files.thumbnail))
-      : null;
+    // template.json で指定がなければ、templates:thumbnails が自動生成した thumbnail.png を使う
+    const thumbnailFile = manifest.files.thumbnail ?? (existsSync(path.join(dir, "thumbnail.png")) ? "thumbnail.png" : null);
+    const thumbnailPath = thumbnailFile ? await upload("template-assets", manifest.slug, path.join(dir, thumbnailFile)) : null;
+    if (!thumbnailFile) console.log(`   注意: ${manifest.slug} にサムネイルがありません（npm run templates:thumbnails で作れます）`);
 
     const { error } = await supabase.from("templates").upsert(
       {

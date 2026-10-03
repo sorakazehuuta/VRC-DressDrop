@@ -22,7 +22,7 @@ templates/
     template.json
     model.glb
     model.fbx
-    thumbnail.png       ← 任意（一覧に表示される画像。4:3 推奨）
+    thumbnail.png       ← 任意（一覧に表示される画像。4:3 推奨。なければ自動生成できる）
 ```
 
 ## 3. template.json を書く
@@ -75,9 +75,12 @@ templates/
 
 ```bash
 npm run templates:check            # 検証だけ（何も登録しない）
+npm run templates:thumbnails       # サムネイル（thumbnail.png）がなければ3Dモデルから自動で作る
 npm run templates:sync             # 全テンプレートを Supabase に登録・更新
 npm run templates:sync -- acrylic-stand   # 1つだけ登録・更新
 ```
+
+`templates:thumbnails` は、モデルを正面から描画し、プリント面に見本として VRPrintLab のアイコンを貼った 800×600 の画像を作ります。モデルを差し替えたときは `-- --force` を付けて作り直してください。template.json の `files.thumbnail` で自分で用意した画像を指定している場合は、そちらが使われます（初回だけ `npx playwright install chromium` が必要です）。
 
 `templates:check` は次の点を自動で確認します。問題があれば、何も登録せずにエラーを表示します。
 

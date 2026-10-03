@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html, body { margin: 0; background: #e4e4e7; }
+      canvas { display: block; }
+    </style>
+    <script type="importmap">
+      { "imports": { "three": "/three/build/three.module.js", "three/addons/": "/three/examples/jsm/" } }
+    </script>
+  </head>
+  <body>
+    <script type="module">
+      // テンプレート一覧のサムネイルを描く。照明・背景色・色の扱いはエディタのプレビュー（viewer.tsx）に合わせている
+      import * as THREE from "three";
+      import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+      const { width, height, slots, sampleScale } = await (await fetch("/config.json")).json();
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(1);
+      renderer.setSize(width, height);
+      renderer.toneMapping = THREE.NoToneMapping;
+      document.body.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color("#e4e4e7");
+      scene.add(new THREE.HemisphereLight("#ffffff", "#8a8a8a", 1.6));
+      const key = new THREE.DirectionalLight("#ffffff", 1.8);
+      key.position.set(2, 3, 4);
+      const rim = new THREE.DirectionalLight("#ffffff", 0.7);
+      rim.position.set(-3, 1, -3);
+      scene.add(key, rim);
+
+      const gltf = await new GLTFLoader().loadAsync("/model.glb");
+      const model = gltf.scene;
+      const materials = new Map();
+      model.traverse((obj) => {
+        if (!obj.isMesh) return;
+        obj.frustumCulled = false;
+        for (const m of Array.isArray(obj.material) ? obj.material : [obj.material]) materials.set(m.name, m);
+      });
+
+      const sample = new Image();
+      sample.src = "/sample.png";
+      await sample.decode();
+
+      for (const slot of slots) {
+        const material = materials.get(slot.material);
+        if (!material) continue;
+        if (slot.type === "color") {
+          material.color.set(slot.defaultColor);
+          continue;
+        }
+        const canvas = document.createElement("canvas");
+        const size = slot.aspect >= 1 ? [1024, Math.round(1024 / slot.aspect)] : [Math.round(1024 * slot.aspect), 1024];
+        [canvas.width, canvas.height] = size;
+        const ctx = canvas.getContext("2d");
+        const bg = slot.background === "transparent" ? null : slots.find((s) => s.key === slot.background.slot);
+        if (bg) {
+          ctx.fillStyle = bg.defaultColor;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          const bgMaterial = materials.get(bg.material);
+          if (bgMaterial) {
+            material.roughness = bgMaterial.roughness;
+            material.metalness = bgMaterial.metalness;
+          }
+        }
+        const fit = Math.min(canvas.width / sample.width, canvas.height / sample.height) * sampleScale;
+        const w = sample.width * fit;
+        const h = sample.height * fit;
+        ctx.drawImage(sample, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.flipY = false;
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = 8;
+        material.map = texture;
+        material.color.set("#ffffff");
+        material.transparent = !bg;
+        material.alphaTest = bg ? 0 : 0.01;
+        material.needsUpdate = true;
+      }
+      scene.add(model);
+
+      // 正面（+Z）から全体が収まる距離に置く
+      const box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      const boxSize = box.getSize(new THREE.Vector3());
+      const camera = new THREE.PerspectiveCamera(35, width / height, 0.01, 100);
+      const half = THREE.MathUtils.degToRad(35 / 2);
+      const distance = Math.max(boxSize.y / 2 / Math.tan(half), boxSize.x / 2 / (Math.tan(half) * camera.aspect)) * 1.2 + boxSize.z / 2;
+      camera.position.set(center.x, center.y, center.z + distance);
+      camera.lookAt(center);
+
+      renderer.render(scene, camera);
+      window.__rendered = true;
+    </script>
+  </body>
+</html>
