@@ -15,6 +15,9 @@ export async function SiteHeader() {
           VRC-DressDrop
         </Link>
         <nav className="flex items-center gap-4 text-sm">
+          <Link href="/templates" className="hover:underline">
+            テンプレート
+          </Link>
           {loggedIn ? (
             <>
               <Link href="/account" className="rounded-full bg-zinc-100 px-3 py-1 font-semibold tabular-nums dark:bg-zinc-800">

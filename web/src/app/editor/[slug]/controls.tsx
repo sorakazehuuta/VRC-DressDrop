@@ -1,0 +1,238 @@
+"use client";
+
+import { useRef, useState, type DragEvent } from "react";
+import { Button } from "@/components/ui";
+import { PRINT_LIMITS, defaultPrintParams, type ColorParams, type PrintParams } from "@/lib/templates/params";
+import type { ColorSlot, PrintSlot } from "@/lib/templates/schema";
+import { IMAGE_LIMITS, type LoadedImage } from "./images";
+
+type Change<T> = (update: (prev: T) => T, commit?: boolean) => void;
+
+function Slider({
+  label,
+  value,
+  limits,
+  format,
+  onChange,
+  onCommit,
+}: {
+  label: string;
+  value: number;
+  limits: { min: number; max: number; step: number };
+  format: (v: number) => string;
+  onChange: (v: number) => void;
+  onCommit: () => void;
+}) {
+  return (
+    <label className="flex flex-col gap-1 text-sm">
+      <span className="flex justify-between">
+        <span>{label}</span>
+        <span className="tabular-nums text-zinc-500">{format(value)}</span>
+      </span>
+      <input
+        type="range"
+        min={limits.min}
+        max={limits.max}
+        step={limits.step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        onPointerUp={onCommit}
+        onKeyUp={onCommit}
+        onBlur={onCommit}
+        className="w-full cursor-pointer accent-zinc-900 dark:accent-zinc-100"
+      />
+    </label>
+  );
+}
+
+const percent = (v: number) => `${Math.round(v * 100)}%`;
+const signedPercent = (v: number) => `${v > 0 ? "+" : ""}${Math.round(v * 100)}%`;
+
+export function PrintControls({
+  slot,
+  params,
+  image,
+  onChange,
+  onCommit,
+  onImage,
+}: {
+  slot: PrintSlot;
+  params: PrintParams;
+  image: LoadedImage | undefined;
+  onChange: Change<PrintParams>;
+  onCommit: () => void;
+  onImage: (file: File) => Promise<void>;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [dragging, setDragging] = useState(false);
+
+  async function handleFile(file: File | undefined) {
+    if (!file) return;
+    setError(null);
+    setLoading(true);
+    try {
+      await onImage(file);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "画像を読み込めませんでした。");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function onDrop(e: DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    void handleFile(e.dataTransfer.files[0]);
+  }
+
+  const live = (patch: Partial<PrintParams>) => onChange((p) => ({ ...p, ...patch }), false);
+
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="font-semibold">{slot.label}</h2>
+
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        className={`flex flex-col items-center gap-2 rounded-lg border-2 border-dashed p-4 text-center text-sm transition-colors ${
+          dragging ? "border-zinc-900 bg-zinc-100 dark:border-zinc-100 dark:bg-zinc-800" : "border-zinc-300 dark:border-zinc-700"
+        }`}
+      >
+        {image ? (
+          <p className="break-all">
+            <span className="font-medium">{image.name}</span>
+            <span className="block text-xs text-zinc-500">
+              {image.width}×{image.height}px
+            </span>
+          </p>
+        ) : (
+          <p className="text-zinc-600 dark:text-zinc-400">
+            画像をここにドラッグ＆ドロップ
+            <span className="block text-xs">PNG（透過OK）/ JPEG・10MB・長辺{IMAGE_LIMITS.maxSide}pxまで</span>
+          </p>
+        )}
+        <div className="flex gap-2">
+          <Button type="button" variant="secondary" disabled={loading} onClick={() => inputRef.current?.click()}>
+            {loading ? "読み込み中…" : image ? "画像を変更" : "画像を選ぶ"}
+          </Button>
+          {image && (
+            <Button type="button" variant="secondary" onClick={() => onChange((p) => ({ ...p, imageId: null }))}>
+              外す
+            </Button>
+          )}
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept={IMAGE_LIMITS.types.join(",")}
+          className="hidden"
+          onChange={(e) => {
+            void handleFile(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+        {error && (
+          <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+            {error}
+          </p>
+        )}
+      </div>
+
+      <fieldset disabled={!image} className="flex flex-col gap-4 disabled:opacity-40">
+        <div className="flex flex-col gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={params.keepAspect}
+              onChange={(e) =>
+                onChange((p) => ({ ...p, keepAspect: e.target.checked, scaleY: e.target.checked ? p.scaleX : p.scaleY }))
+              }
+              className="accent-zinc-900 dark:accent-zinc-100"
+            />
+            縦横比を固定
+          </label>
+          {params.keepAspect ? (
+            <Slider
+              label="サイズ"
+              value={params.scaleX}
+              limits={PRINT_LIMITS.scale}
+              format={percent}
+              onChange={(v) => live({ scaleX: v, scaleY: v })}
+              onCommit={onCommit}
+            />
+          ) : (
+            <>
+              <Slider label="横幅" value={params.scaleX} limits={PRINT_LIMITS.scale} format={percent} onChange={(v) => live({ scaleX: v })} onCommit={onCommit} />
+              <Slider label="高さ" value={params.scaleY} limits={PRINT_LIMITS.scale} format={percent} onChange={(v) => live({ scaleY: v })} onCommit={onCommit} />
+            </>
+          )}
+        </div>
+        <Slider label="位置（左右）" value={params.offsetX} limits={PRINT_LIMITS.offset} format={signedPercent} onChange={(v) => live({ offsetX: v })} onCommit={onCommit} />
+        <Slider label="位置（上下）" value={params.offsetY} limits={PRINT_LIMITS.offset} format={signedPercent} onChange={(v) => live({ offsetY: v })} onCommit={onCommit} />
+        <Slider label="回転" value={params.rotation} limits={PRINT_LIMITS.rotation} format={(v) => `${v}°`} onChange={(v) => live({ rotation: v })} onCommit={onCommit} />
+        <Slider label="明るさ" value={params.brightness} limits={PRINT_LIMITS.brightness} format={(v) => `${v}%`} onChange={(v) => live({ brightness: v })} onCommit={onCommit} />
+        <Slider label="彩度" value={params.saturation} limits={PRINT_LIMITS.saturation} format={(v) => `${v}%`} onChange={(v) => live({ saturation: v })} onCommit={onCommit} />
+        <Button
+          type="button"
+          variant="secondary"
+          className="self-start"
+          onClick={() => onChange((p) => ({ ...defaultPrintParams(), imageId: p.imageId }))}
+        >
+          配置と色調をリセット
+        </Button>
+      </fieldset>
+    </section>
+  );
+}
+
+const SWATCHES = ["#ffffff", "#e5e5e5", "#6b7280", "#1f2937", "#111111", "#1e3a8a", "#38bdf8", "#16a34a", "#facc15", "#f97316", "#dc2626", "#f9a8d4"];
+
+export function ColorControls({
+  slot,
+  params,
+  onChange,
+  onCommit,
+}: {
+  slot: ColorSlot;
+  params: ColorParams;
+  onChange: Change<ColorParams>;
+  onCommit: () => void;
+}) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="font-semibold">{slot.label}</h2>
+      <div className="flex flex-wrap gap-2">
+        {SWATCHES.map((color) => (
+          <button
+            key={color}
+            type="button"
+            title={color}
+            aria-label={`色 ${color}`}
+            onClick={() => onChange((p) => ({ ...p, color }))}
+            className={`h-8 w-8 cursor-pointer rounded-full border shadow-sm ${
+              params.color.toLowerCase() === color ? "ring-2 ring-zinc-900 ring-offset-2 dark:ring-zinc-100 dark:ring-offset-zinc-900" : "border-zinc-300"
+            }`}
+            style={{ backgroundColor: color }}
+          />
+        ))}
+      </div>
+      <label className="flex items-center gap-3 text-sm">
+        <input
+          type="color"
+          value={params.color}
+          onChange={(e) => onChange((p) => ({ ...p, color: e.target.value }), false)}
+          onBlur={onCommit}
+          className="h-9 w-14 cursor-pointer rounded border border-zinc-300 bg-transparent"
+        />
+        <span>その他の色</span>
+        <span className="font-mono text-zinc-500">{params.color}</span>
+      </label>
+    </section>
+  );
+}

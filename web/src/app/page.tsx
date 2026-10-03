@@ -12,7 +12,10 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         画像を貼るだけで、VRChatのワールドに置ける展示用3Dモデルを作れます。
         即売会のブースに、あなたのグッズのサンプルを並べましょう。
       </p>
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
+        <Link href="/templates" className="rounded-md border border-zinc-300 px-5 py-3 font-semibold dark:border-zinc-700">
+          さっそく作ってみる
+        </Link>
         <Link href="/signup" className="rounded-md bg-zinc-900 px-5 py-3 font-semibold text-white dark:bg-white dark:text-zinc-900">
           無料で登録（3トークン付き）
         </Link>

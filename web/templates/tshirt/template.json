@@ -1,0 +1,31 @@
+{
+  "slug": "tshirt",
+  "name": "Tシャツ",
+  "category": "アパレル",
+  "description": "胸元に好きな画像をプリントできるTシャツ。生地の色も変えられます。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 10,
+  "files": {
+    "preview": "model.glb",
+    "package": "model.fbx"
+  },
+  "slots": [
+    {
+      "key": "base",
+      "type": "color",
+      "label": "生地の色",
+      "material": "Mat_Base",
+      "defaultColor": "#ffffff"
+    },
+    {
+      "key": "print",
+      "type": "print",
+      "label": "プリント",
+      "material": "Mat_Print",
+      "background": { "slot": "base" },
+      "aspect": 1,
+      "textureSize": 2048
+    }
+  ]
+}
