@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AuthLayout } from "@/components/auth-layout";
 import { ForgotPasswordForm } from "../auth/forms";
 
-export const metadata: Metadata = { title: "パスワードの再設定 | VRC-DressDrop" };
+export const metadata: Metadata = { title: "パスワードの再設定 | VRPrintLab" };
 
 export default function ForgotPasswordPage() {
   return (
@@ -15,7 +15,7 @@ export default function ForgotPasswordPage() {
         </Link>
       }
     >
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="text-sm text-zinc-600">
         登録したメールアドレスに、パスワード再設定用のリンクを送ります。
       </p>
       <ForgotPasswordForm />

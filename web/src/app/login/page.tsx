@@ -6,7 +6,7 @@ import { FormMessage } from "@/components/ui";
 import { getCurrentUser, safeNextPath } from "@/lib/auth";
 import { LoginForm, OAuthButtons } from "../auth/forms";
 
-export const metadata: Metadata = { title: "ログイン | VRC-DressDrop" };
+export const metadata: Metadata = { title: "ログイン | VRPrintLab" };
 
 const errorMessages: Record<string, string> = {
   callback: "ログインできませんでした。リンクの有効期限が切れているか、別のブラウザで開いた可能性があります。もう一度お試しください。",

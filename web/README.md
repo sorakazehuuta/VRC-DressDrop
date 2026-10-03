@@ -1,4 +1,4 @@
-# VRC-DressDrop Web
+# VRPrintLab Web
 
 要件は [../Document/project.md](../Document/project.md) を参照。
 

@@ -39,7 +39,7 @@ function Slider({
         onPointerUp={onCommit}
         onKeyUp={onCommit}
         onBlur={onCommit}
-        className="w-full cursor-pointer accent-zinc-900 dark:accent-zinc-100"
+        className="w-full cursor-pointer accent-brand"
       />
     </label>
   );
@@ -101,7 +101,7 @@ export function PrintControls({
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
         className={`flex flex-col items-center gap-2 rounded-lg border-2 border-dashed p-4 text-center text-sm transition-colors ${
-          dragging ? "border-zinc-900 bg-zinc-100 dark:border-zinc-100 dark:bg-zinc-800" : "border-zinc-300 dark:border-zinc-700"
+          dragging ? "border-brand bg-zinc-100" : "border-zinc-300"
         }`}
       >
         {image ? (
@@ -112,7 +112,7 @@ export function PrintControls({
             </span>
           </p>
         ) : (
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-zinc-600">
             画像をここにドラッグ＆ドロップ
             <span className="block text-xs">PNG（透過OK）/ JPEG・10MB・長辺{IMAGE_LIMITS.maxSide}pxまで</span>
           </p>
@@ -138,7 +138,7 @@ export function PrintControls({
           }}
         />
         {error && (
-          <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+          <p role="alert" className="text-sm text-red-700">
             {error}
           </p>
         )}
@@ -153,7 +153,7 @@ export function PrintControls({
               onChange={(e) =>
                 onChange((p) => ({ ...p, keepAspect: e.target.checked, scaleY: e.target.checked ? p.scaleX : p.scaleY }))
               }
-              className="accent-zinc-900 dark:accent-zinc-100"
+              className="accent-brand"
             />
             縦横比を固定
           </label>
@@ -216,7 +216,7 @@ export function ColorControls({
             aria-label={`色 ${color}`}
             onClick={() => onChange((p) => ({ ...p, color }))}
             className={`h-8 w-8 cursor-pointer rounded-full border shadow-sm ${
-              params.color.toLowerCase() === color ? "ring-2 ring-zinc-900 ring-offset-2 dark:ring-zinc-100 dark:ring-offset-zinc-900" : "border-zinc-300"
+              params.color.toLowerCase() === color ? "ring-2 ring-brand ring-offset-2" : "border-zinc-300"
             }`}
             style={{ backgroundColor: color }}
           />

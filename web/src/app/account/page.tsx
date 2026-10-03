@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { DeleteAccountForm, DisplayNameForm } from "./forms";
 
-export const metadata: Metadata = { title: "アカウント設定 | VRC-DressDrop" };
+export const metadata: Metadata = { title: "アカウント設定 | VRPrintLab" };
 
 const reasonLabels: Record<string, string> = {
   signup_grant: "新規登録特典",
@@ -54,7 +54,7 @@ export default async function AccountPage() {
           <span className="ml-1 text-base font-medium text-zinc-500">トークン</span>
         </p>
         {nextExpiry && (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm text-zinc-600">
             うち {nextExpiry.remaining} トークンの有効期限: {dateFormat.format(new Date(nextExpiry.expires_at))}
             （古いものから先に使われます）
           </p>
@@ -70,10 +70,10 @@ export default async function AccountPage() {
             </thead>
             <tbody>
               {history.map((tx) => (
-                <tr key={tx.id} className="border-t border-zinc-100 dark:border-zinc-800">
+                <tr key={tx.id} className="border-t border-zinc-100">
                   <td className="py-1.5">{dateFormat.format(new Date(tx.created_at))}</td>
                   <td className="py-1.5">{reasonLabels[tx.reason] ?? tx.reason}</td>
-                  <td className={`py-1.5 text-right tabular-nums ${tx.delta > 0 ? "text-emerald-700 dark:text-emerald-400" : ""}`}>
+                  <td className={`py-1.5 text-right tabular-nums ${tx.delta > 0 ? "text-emerald-700" : ""}`}>
                     {tx.delta > 0 ? `+${tx.delta}` : tx.delta}
                   </td>
                 </tr>
@@ -94,7 +94,7 @@ export default async function AccountPage() {
 
       <Card className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">パスワード</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-zinc-600">
           {hasPassword
             ? "ログインに使うパスワードを変更できます。"
             : "Google / Discord でログインしています。パスワードを設定すると、メールアドレスでもログインできるようになります。"}
@@ -104,9 +104,9 @@ export default async function AccountPage() {
         </Link>
       </Card>
 
-      <Card className="flex flex-col gap-3 border-red-200 dark:border-red-900">
-        <h2 className="text-lg font-semibold text-red-700 dark:text-red-400">退会</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      <Card className="flex flex-col gap-3 border-red-200">
+        <h2 className="text-lg font-semibold text-red-700">退会</h2>
+        <p className="text-sm text-zinc-600">
           保存した作品・アップロードした画像・残っているトークンはすべて削除され、元に戻せません。
           購入済みのトークンも払い戻しされません。
         </p>

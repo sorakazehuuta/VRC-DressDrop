@@ -61,7 +61,7 @@ export function Editor({ template }: { template: EditorTemplate }) {
   return (
     <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="flex flex-col gap-3">
-        <div className="h-[55vh] min-h-[320px] overflow-hidden rounded-xl border border-zinc-200 lg:h-[calc(100vh-11rem)] dark:border-zinc-800">
+        <div className="h-[55vh] min-h-[320px] overflow-hidden rounded-xl border border-zinc-200 lg:h-[calc(100vh-11rem)]">
           <Viewer
             modelUrl={template.previewModelUrl}
             slots={template.slots}
@@ -110,7 +110,7 @@ export function Editor({ template }: { template: EditorTemplate }) {
           return null;
         })}
 
-        <div className="mt-auto flex flex-col gap-2 rounded-lg bg-zinc-100 p-4 text-sm dark:bg-zinc-800">
+        <div className="mt-auto flex flex-col gap-2 rounded-lg bg-zinc-100 p-4 text-sm">
           <p>
             ダウンロードに必要なトークン: <strong className="text-base">{template.tokenCost}</strong>
           </p>

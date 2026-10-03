@@ -1,9 +1,12 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
+export const viewport: Viewport = { themeColor: "#031e42", colorScheme: "light" };
+
 export const metadata: Metadata = {
-  title: "VRC-DressDrop",
+  title: "VRPrintLab",
+  applicationName: "VRPrintLab",
   description: "画像を貼るだけで、VRChatに置ける展示用3Dモデルを作れるWebサービス",
 };
 

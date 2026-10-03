@@ -1,4 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
+import logo from "../../images/common/logos/VRPrintLab_logo.png";
 import { signOut } from "@/app/auth/actions";
 import { createClient } from "@/lib/supabase/server";
 
@@ -9,35 +11,35 @@ export async function SiteHeader() {
   const balance = loggedIn ? (await supabase.rpc("get_token_balance")).data : null;
 
   return (
-    <header className="border-b border-zinc-200 dark:border-zinc-800">
-      <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-4">
-        <Link href="/" className="text-lg font-bold">
-          VRC-DressDrop
+    <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/95 backdrop-blur">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-3 sm:px-4">
+        <Link href="/" className="shrink-0">
+          <Image src={logo} alt="VRPrintLab" priority className="h-9 w-auto sm:h-14" sizes="(min-width: 640px) 168px, 108px" />
         </Link>
-        <nav className="flex items-center gap-4 text-sm">
-          <Link href="/templates" className="hover:underline">
+        <nav className="flex items-center gap-2.5 whitespace-nowrap text-xs sm:gap-5 sm:text-sm">
+          <Link href="/templates" className="font-medium hover:text-accent-dark">
             テンプレート
           </Link>
           {loggedIn ? (
             <>
-              <Link href="/account" className="rounded-full bg-zinc-100 px-3 py-1 font-semibold tabular-nums dark:bg-zinc-800">
+              <Link href="/account" className="rounded-full bg-accent-soft px-3 py-1 font-semibold tabular-nums text-accent-dark">
                 {balance ?? 0} トークン
               </Link>
-              <Link href="/account" className="hover:underline">
+              <Link href="/account" className="hidden hover:text-accent-dark sm:inline">
                 アカウント
               </Link>
               <form action={signOut}>
-                <button type="submit" className="cursor-pointer text-zinc-600 hover:underline dark:text-zinc-400">
+                <button type="submit" className="cursor-pointer text-zinc-600 hover:underline">
                   ログアウト
                 </button>
               </form>
             </>
           ) : (
             <>
-              <Link href="/login" className="hover:underline">
+              <Link href="/login" className="hover:text-accent-dark">
                 ログイン
               </Link>
-              <Link href="/signup" className="rounded-md bg-zinc-900 px-3 py-1.5 font-semibold text-white dark:bg-white dark:text-zinc-900">
+              <Link href="/signup" className="rounded-md bg-brand px-2.5 py-1.5 font-semibold sm:px-3 text-white hover:bg-brand-light">
                 新規登録
               </Link>
             </>

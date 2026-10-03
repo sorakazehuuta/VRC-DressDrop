@@ -1,4 +1,4 @@
-あなたはフルスタックエンジニアです。`Document/project.md` の要件定義書に従って、VRC-DressDrop を実装してください。
+あなたはフルスタックエンジニアです。`Document/project.md` の要件定義書に従って、VRPrintLab を実装してください。
 
 ## 前提
 - 既存の試作 `index.html` に、Three.js によるプレビュー、Mat_Print/Mat_Base の扱い、ブラウザ内での .unitypackage(tar.gz) 生成ロジックがある。これをサーバー側（Next.js Route Handler）へ移植して再利用すること

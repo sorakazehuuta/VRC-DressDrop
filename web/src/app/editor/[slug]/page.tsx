@@ -6,7 +6,7 @@ import { Editor } from "./editor";
 
 export async function generateMetadata({ params }: PageProps<"/editor/[slug]">): Promise<Metadata> {
   const template = await getTemplate((await params).slug);
-  return { title: `${template?.name ?? "エディタ"} を編集 | VRC-DressDrop` };
+  return { title: `${template?.name ?? "エディタ"} を編集 | VRPrintLab` };
 }
 
 export default async function EditorPage({ params }: PageProps<"/editor/[slug]">) {

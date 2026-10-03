@@ -16,7 +16,7 @@ export function LoginForm({ next }: { next: string }) {
       <Button type="submit" disabled={pending}>
         {pending ? "ログイン中…" : "ログイン"}
       </Button>
-      <Link href="/forgot-password" className="text-center text-sm text-zinc-600 underline dark:text-zinc-400">
+      <Link href="/forgot-password" className="text-center text-sm text-zinc-600 underline">
         パスワードを忘れた方
       </Link>
     </form>

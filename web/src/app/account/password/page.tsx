@@ -4,7 +4,7 @@ import { AuthLayout } from "@/components/auth-layout";
 import { requireUser } from "@/lib/auth";
 import { PasswordForm } from "../../auth/forms";
 
-export const metadata: Metadata = { title: "パスワードの変更 | VRC-DressDrop" };
+export const metadata: Metadata = { title: "パスワードの変更 | VRPrintLab" };
 
 export default async function PasswordPage() {
   await requireUser("/account/password");
