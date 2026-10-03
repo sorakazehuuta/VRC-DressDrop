@@ -53,26 +53,46 @@ function ResetView({ signal }: { signal: number }) {
 
 const THUMBNAIL = { width: 480, height: 360 };
 
-// 今の見た目を 4:3 の JPEG にする（マイ作品のサムネイル用）
+// マイ作品のサムネイル（4:3 の JPEG）を撮る。利用者の視点やカメラの移動中かどうかに左右されないよう、
+// 撮影の瞬間だけカメラを正面に置き、描画して写し取ったら元に戻す（同期処理なので画面には映らない）
 function CaptureBridge({ onReady }: { onReady: (capture: () => Promise<Blob | null>) => void }) {
   const { gl, scene, camera } = useThree();
+  const bounds = useBounds();
   useEffect(() => {
     onReady(() => {
-      // preserveDrawingBuffer なしでも読めるよう、描画した直後に同じ処理の中で写し取る
+      const { center, distance } = bounds.refresh().getSize();
+      const savedPosition = camera.position.clone();
+      const savedQuaternion = camera.quaternion.clone();
+      camera.position.set(center.x, center.y, center.z + distance);
+      camera.lookAt(center);
+      camera.updateMatrixWorld();
       gl.render(scene, camera);
+
+      // preserveDrawingBuffer なしでも読めるよう、描画した直後に写し取る
       const src = gl.domElement;
       const out = document.createElement("canvas");
       out.width = THUMBNAIL.width;
       out.height = THUMBNAIL.height;
       const ctx = out.getContext("2d");
+      if (ctx) {
+        // 全体が収まる距離には余白があるため、中央を少し拡大して切り抜く
+        const scale = Math.max(out.width / src.width, out.height / src.height) * 1.15;
+        const w = src.width * scale;
+        const h = src.height * scale;
+        ctx.fillStyle = "#e4e4e7";
+        ctx.fillRect(0, 0, out.width, out.height);
+        ctx.drawImage(src, (out.width - w) / 2, (out.height - h) / 2, w, h);
+      }
+
+      camera.position.copy(savedPosition);
+      camera.quaternion.copy(savedQuaternion);
+      camera.updateMatrixWorld();
+      gl.render(scene, camera);
+
       if (!ctx) return Promise.resolve(null);
-      const scale = Math.max(out.width / src.width, out.height / src.height);
-      const w = src.width * scale;
-      const h = src.height * scale;
-      ctx.drawImage(src, (out.width - w) / 2, (out.height - h) / 2, w, h);
       return new Promise((resolve) => out.toBlob(resolve, "image/jpeg", 0.85));
     });
-  }, [gl, scene, camera, onReady]);
+  }, [gl, scene, camera, bounds, onReady]);
   return null;
 }
 

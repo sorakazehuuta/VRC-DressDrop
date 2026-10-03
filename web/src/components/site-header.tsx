@@ -17,7 +17,7 @@ export async function SiteHeader() {
           <Image src={logo} alt="VRPrintLab" priority className="h-9 w-auto sm:h-14" sizes="(min-width: 640px) 168px, 108px" />
         </Link>
         <nav className="flex items-center gap-2.5 whitespace-nowrap text-xs sm:gap-5 sm:text-sm">
-          <Link href="/templates" className="font-medium hover:text-accent-dark">
+          <Link href="/templates" className={`font-medium hover:text-accent-dark ${loggedIn ? "hidden sm:inline" : ""}`}>
             テンプレート
           </Link>
           {loggedIn ? (
@@ -31,7 +31,7 @@ export async function SiteHeader() {
               <Link href="/account" className="hidden hover:text-accent-dark sm:inline">
                 アカウント
               </Link>
-              <form action={signOut}>
+              <form action={signOut} className="hidden sm:block">
                 <button type="submit" className="cursor-pointer text-zinc-600 hover:underline">
                   ログアウト
                 </button>
