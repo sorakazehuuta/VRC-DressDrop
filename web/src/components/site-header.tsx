@@ -22,6 +22,9 @@ export async function SiteHeader() {
           </Link>
           {loggedIn ? (
             <>
+              <Link href="/works" className="font-medium hover:text-accent-dark">
+                マイ作品
+              </Link>
               <Link href="/account" className="rounded-full bg-accent-soft px-3 py-1 font-semibold tabular-nums text-accent-dark">
                 {balance ?? 0} トークン
               </Link>

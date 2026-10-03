@@ -16,7 +16,7 @@ export type LoadedImage = {
   source: ImageBitmap;
 };
 
-export async function loadImage(file: File): Promise<LoadedImage> {
+export async function loadImage(file: File, id: string = crypto.randomUUID()): Promise<LoadedImage> {
   if (!(IMAGE_LIMITS.types as readonly string[]).includes(file.type)) {
     throw new Error("PNG または JPEG の画像を選んでください。");
   }
@@ -47,5 +47,5 @@ export async function loadImage(file: File): Promise<LoadedImage> {
     bitmap.close();
   }
 
-  return { id: crypto.randomUUID(), file, name: file.name, width, height, source };
+  return { id, file, name: file.name, width, height, source };
 }

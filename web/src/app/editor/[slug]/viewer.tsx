@@ -1,7 +1,7 @@
 "use client";
 
 import { Bounds, OrbitControls, useBounds, useGLTF } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { Component, Suspense, useEffect, useMemo, type ReactNode } from "react";
 import * as THREE from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
@@ -16,6 +16,7 @@ type ViewerProps = {
   params: EditorParams;
   images: Record<string, LoadedImage>;
   resetViewSignal: number;
+  onCaptureReady?: (capture: () => Promise<Blob | null>) => void;
 };
 
 export default function Viewer(props: ViewerProps) {
@@ -30,6 +31,7 @@ export default function Viewer(props: ViewerProps) {
           <Bounds fit clip observe margin={1.25}>
             <Model {...props} />
             <ResetView signal={props.resetViewSignal} />
+            {props.onCaptureReady && <CaptureBridge onReady={props.onCaptureReady} />}
           </Bounds>
         </Suspense>
         <OrbitControls makeDefault enablePan={false} enableDamping />
@@ -46,6 +48,31 @@ function ResetView({ signal }: { signal: number }) {
     const { center, distance } = bounds.refresh().getSize();
     bounds.to({ position: [center.x, center.y, center.z + distance], target: [center.x, center.y, center.z] });
   }, [signal, bounds]);
+  return null;
+}
+
+const THUMBNAIL = { width: 480, height: 360 };
+
+// 今の見た目を 4:3 の JPEG にする（マイ作品のサムネイル用）
+function CaptureBridge({ onReady }: { onReady: (capture: () => Promise<Blob | null>) => void }) {
+  const { gl, scene, camera } = useThree();
+  useEffect(() => {
+    onReady(() => {
+      // preserveDrawingBuffer なしでも読めるよう、描画した直後に同じ処理の中で写し取る
+      gl.render(scene, camera);
+      const src = gl.domElement;
+      const out = document.createElement("canvas");
+      out.width = THUMBNAIL.width;
+      out.height = THUMBNAIL.height;
+      const ctx = out.getContext("2d");
+      if (!ctx) return Promise.resolve(null);
+      const scale = Math.max(out.width / src.width, out.height / src.height);
+      const w = src.width * scale;
+      const h = src.height * scale;
+      ctx.drawImage(src, (out.width - w) / 2, (out.height - h) / 2, w, h);
+      return new Promise((resolve) => out.toBlob(resolve, "image/jpeg", 0.85));
+    });
+  }, [gl, scene, camera, onReady]);
   return null;
 }
 

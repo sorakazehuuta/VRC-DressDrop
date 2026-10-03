@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { ColorSlot, PrintSlot, Slot } from "./schema";
 
 // エディタの編集内容。works.params にこの形で保存し、unitypackage 生成時もこれを元にテクスチャを作る
@@ -75,4 +76,49 @@ export function backgroundColor(slot: PrintSlot, params: EditorParams): string |
   if (slot.background === "transparent") return null;
   const bg = params.slots[slot.background.slot];
   return bg?.kind === "color" ? bg.color : null;
+}
+
+const clamp = (v: number, { min, max }: { min: number; max: number }) => Math.min(max, Math.max(min, v));
+
+const printParamsSchema = z.object({
+  kind: z.literal("print"),
+  imageId: z.uuid().nullable(),
+  scaleX: z.number(),
+  scaleY: z.number(),
+  keepAspect: z.boolean(),
+  offsetX: z.number(),
+  offsetY: z.number(),
+  rotation: z.number(),
+  brightness: z.number(),
+  saturation: z.number(),
+});
+const colorParamsSchema = z.object({ kind: z.literal("color"), color: z.string().regex(/^#[0-9a-fA-F]{6}$/) });
+
+// 保存データやクライアントから届いた値を、テンプレートのスロット定義に合わせて正規化する。
+// 範囲外の値は丸め、壊れている・種類が違うスロットは初期値に戻し、定義にないスロットは捨てる
+export function parseEditorParams(raw: unknown, slots: Slot[]): EditorParams {
+  const input = (raw as { slots?: Record<string, unknown> } | null)?.slots ?? {};
+  const result = defaultParams(slots);
+  for (const slot of slots) {
+    const value = input[slot.key];
+    if (slot.type === "print") {
+      const parsed = printParamsSchema.safeParse(value);
+      if (!parsed.success) continue;
+      const p = parsed.data;
+      result.slots[slot.key] = {
+        ...p,
+        scaleX: clamp(p.scaleX, PRINT_LIMITS.scale),
+        scaleY: clamp(p.scaleY, PRINT_LIMITS.scale),
+        offsetX: clamp(p.offsetX, PRINT_LIMITS.offset),
+        offsetY: clamp(p.offsetY, PRINT_LIMITS.offset),
+        rotation: clamp(p.rotation, PRINT_LIMITS.rotation),
+        brightness: clamp(p.brightness, PRINT_LIMITS.brightness),
+        saturation: clamp(p.saturation, PRINT_LIMITS.saturation),
+      };
+    } else {
+      const parsed = colorParamsSchema.safeParse(value);
+      if (parsed.success) result.slots[slot.key] = { kind: "color", color: parsed.data.color.toLowerCase() };
+    }
+  }
+  return result;
 }
