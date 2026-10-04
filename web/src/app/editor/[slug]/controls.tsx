@@ -82,7 +82,7 @@ export function Slider({
             }}
             className="w-16 rounded border border-zinc-300 px-1.5 py-0.5 text-right tabular-nums text-zinc-900 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
           />
-          <span className="w-3">{display.unit}</span>
+          <span className="min-w-3 whitespace-nowrap">{display.unit}</span>
         </span>
       </div>
       <input
