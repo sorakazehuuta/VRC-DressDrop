@@ -177,7 +177,8 @@ export async function deleteWork(workId: string): Promise<WorkActionResult> {
   return { ok: true };
 }
 
-export async function duplicateWork(workId: string): Promise<WorkActionResult> {
+// name を省略すると「（コピー）」を付けた名前になる
+export async function duplicateWork(workId: string, name?: string): Promise<WorkActionResult> {
   const supabase = await createClient();
   const userId = await currentUserId(supabase);
   if (!userId) return { ok: false, error: "ログインしてください。" };
@@ -225,7 +226,7 @@ export async function duplicateWork(workId: string): Promise<WorkActionResult> {
     id: newId,
     user_id: userId,
     template_id: source.template_id,
-    name: `${source.name}（コピー）`.slice(0, 100),
+    name: (name?.trim() || `${source.name}（コピー）`).slice(0, 100),
     params,
     gimmicks: source.gimmicks,
     thumbnail_path: thumbnailPath,

@@ -28,7 +28,7 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
     const supabase = await createClient();
     const { data: work } = await supabase
       .from("works")
-      .select("id, name, params, status, templates(slug), work_images(id, slot, storage_path)")
+      .select("id, name, params, status, updated_at, templates(slug), work_images(id, slot, storage_path)")
       .eq("id", workId)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -51,6 +51,7 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
         return url ? [{ id: i.id, slot: i.slot, url, ext: i.storage_path.endsWith(".png") ? ("png" as const) : ("jpg" as const) }] : [];
       }),
       suspended: work.status === "suspended",
+      updatedAt: work.updated_at,
     };
   }
 

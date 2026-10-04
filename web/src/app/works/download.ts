@@ -6,7 +6,7 @@ import { buildWorkPackage } from "@/lib/package/work-package";
 import { safeFileName } from "@/lib/package/unitypackage";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { parseEditorParams, type EditorParams } from "@/lib/templates/params";
-import { slotsSchema } from "@/lib/templates/schema";
+import { slotsSchema, type Slot } from "@/lib/templates/schema";
 import { WORK_IMAGES_BUCKET } from "@/lib/works/constants";
 
 const PACKAGES_BUCKET = "packages";
@@ -35,7 +35,7 @@ async function loadWork(workId: string) {
 
   const { data: work } = await supabase
     .from("works")
-    .select("id, name, params, status, template_id, templates(id, slug, name, slots, token_cost, package_model_path), work_images(id, storage_path)")
+    .select("id, name, params, status, template_id, thumbnail_path, templates(id, slug, name, slots, token_cost, package_model_path), work_images(id, storage_path)")
     .eq("id", workId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -82,6 +82,52 @@ async function signedDownloadUrl(supabase: Awaited<ReturnType<typeof createClien
   return data.signedUrl;
 }
 
+// ダウンロード履歴で「どんな内容を買ったか」を確認できるよう、版の控え（編集内容・画像・サムネイル）を残す。
+// 失敗してもダウンロード自体は止めない
+async function saveSnapshot(
+  admin: ReturnType<typeof createAdminClient>,
+  s: {
+    userId: string;
+    purchaseId: string;
+    template: { slug: string; name: string };
+    slots: Slot[];
+    params: EditorParams;
+    images: Map<string, Buffer>;
+    imageExt: Map<string, string>;
+    workThumbnailPath: string | null;
+  },
+) {
+  try {
+    const folder = `${s.userId}/${s.purchaseId}`;
+    const bucket = admin.storage.from(PACKAGES_BUCKET);
+    const imagePaths: Record<string, string> = {};
+    for (const [id, data] of s.images) {
+      const ext = s.imageExt.get(id) ?? "png";
+      const path = `${folder}/${id}.${ext}`;
+      const { error } = await bucket.upload(path, data, { contentType: ext === "png" ? "image/png" : "image/jpeg" });
+      if (!error) imagePaths[id] = path;
+    }
+    let thumbnailPath: string | null = null;
+    if (s.workThumbnailPath) {
+      const { data } = await admin.storage.from(WORK_IMAGES_BUCKET).download(s.workThumbnailPath);
+      if (data) {
+        const path = `${folder}/thumbnail.jpg`;
+        const { error } = await bucket.upload(path, Buffer.from(await data.arrayBuffer()), { contentType: "image/jpeg" });
+        if (!error) thumbnailPath = path;
+      }
+    }
+    await admin
+      .from("purchases")
+      .update({
+        thumbnail_path: thumbnailPath,
+        snapshot: { templateSlug: s.template.slug, templateName: s.template.name, slots: s.slots, params: s.params, images: imagePaths },
+      })
+      .eq("id", s.purchaseId);
+  } catch {
+    // 控えがなくても購入とダウンロードには影響しない
+  }
+}
+
 export async function downloadWork(workId: string, confirmed: boolean): Promise<DownloadResult> {
   const loaded = await loadWork(workId);
   if ("error" in loaded) return { ok: false, error: loaded.error as string };
@@ -100,15 +146,17 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
   const admin = createAdminClient();
   const purchaseId = crypto.randomUUID();
   const packagePath = `${userId}/${purchaseId}.unitypackage`;
+  const images = new Map<string, Buffer>();
+  const imageExt = new Map<string, string>();
 
   try {
     const { data: model, error: modelError } = await admin.storage.from("template-packages").download(template.package_model_path);
     if (modelError || !model) throw new Error("model");
-    const images = new Map<string, Buffer>();
     for (const img of work.work_images) {
       const { data, error } = await admin.storage.from(WORK_IMAGES_BUCKET).download(img.storage_path);
       if (error || !data) throw new Error("image");
       images.set(img.id, Buffer.from(await data.arrayBuffer()));
+      imageExt.set(img.id, img.storage_path.endsWith(".png") ? "png" : "jpg");
     }
     const file = await buildWorkPackage({
       purchaseId,
@@ -148,7 +196,18 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
 
   // 同時に押された場合などで既存の購入が返ってきたら、今回作ったファイルは不要
   let finalPath = packagePath;
-  if (result.purchase_id !== purchaseId) {
+  if (result.purchase_id === purchaseId) {
+    await saveSnapshot(admin, {
+      userId,
+      purchaseId,
+      template,
+      slots,
+      params,
+      images,
+      imageExt,
+      workThumbnailPath: work.thumbnail_path,
+    });
+  } else {
     await admin.storage.from(PACKAGES_BUCKET).remove([packagePath]);
     const { data: existing } = await supabase.from("purchases").select("package_path").eq("id", result.purchase_id).single();
     finalPath = existing?.package_path ?? packagePath;

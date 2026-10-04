@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { saveWork } from "@/app/works/actions";
+import { duplicateWork, saveWork } from "@/app/works/actions";
 import { Button } from "@/components/ui";
 import { defaultParams, type ColorParams, type EditorParams, type PrintParams, type SlotParams } from "@/lib/templates/params";
 import type { Slot } from "@/lib/templates/schema";
@@ -12,6 +12,7 @@ import { ColorControls, PrintControls } from "./controls";
 import { DownloadPanel } from "./download-panel";
 import { saveDraft, takeDraft } from "./draft";
 import { loadImage, type LoadedImage } from "./images";
+import { formatSavedAt, useKeepPreviousDialog } from "./keep-previous-dialog";
 import { imageExt, uploadImages, uploadThumbnail } from "./save";
 import { useHistory } from "./use-history";
 
@@ -28,6 +29,7 @@ export type InitialWork = {
   params: EditorParams;
   images: { id: string; slot: string; url: string; ext: "png" | "jpg" }[];
   suspended: boolean;
+  updatedAt: string;
 };
 
 type Status = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; at: string } | { kind: "error"; message: string; limit?: boolean };
@@ -69,6 +71,8 @@ export function Editor({
   const [loadingImages, setLoadingImages] = useState(Boolean(initialWork?.images.length) || restoreDraft);
   const [resetViewSignal, setResetViewSignal] = useState(0);
   const [saveCount, setSaveCount] = useState(0);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(initialWork?.updatedAt ?? null);
+  const { ask: askKeepPrevious, dialog: keepPreviousDialog } = useKeepPreviousDialog();
   const captureRef = useRef<(() => Promise<Blob | null>) | null>(null);
 
   const dirty = snapshot(name, params) !== savedSnapshot;
@@ -135,6 +139,25 @@ export function Editor({
       return null;
     }
 
+    // 保存済みの作品を書き換える前に、前回の内容を別の作品として残すか確認する
+    if (workId && dirty) {
+      const previousName = (JSON.parse(savedSnapshot) as { name: string }).name;
+      const choice = await askKeepPrevious(previousName, lastSavedAt);
+      if (choice === "cancel") return null;
+      if (choice === "keep") {
+        setStatus({ kind: "saving" });
+        const kept = await duplicateWork(workId, `${previousName}（${lastSavedAt ? formatSavedAt(lastSavedAt) : "前回"}の保存）`);
+        if (!kept.ok) {
+          setStatus({
+            kind: "error",
+            message: `前回の内容を残せなかったため、保存を中止しました（${kept.error}）。上書きしてよい場合は、もう一度保存して「上書き保存」を選んでください。`,
+            limit: kept.error.includes("上限"),
+          });
+          return null;
+        }
+      }
+    }
+
     setStatus({ kind: "saving" });
     const id = workId ?? crypto.randomUUID();
     try {
@@ -164,6 +187,7 @@ export function Editor({
       setSavedSnapshot(snapshot(name.trim(), params));
       setName(name.trim());
       setStatus({ kind: "saved", at: result.updatedAt });
+      setLastSavedAt(result.updatedAt);
       if (!workId) window.history.replaceState(null, "", `/editor/${template.slug}?work=${result.workId}`);
       setSaveCount((n) => n + 1);
       return result.workId;
@@ -171,7 +195,7 @@ export function Editor({
       setStatus({ kind: "error", message: e instanceof Error ? e.message : "保存に失敗しました。" });
       return null;
     }
-  }, [readOnly, status.kind, loadingImages, referencedImages, params, userId, template, name, router, workId, savedImageIds]);
+  }, [readOnly, status.kind, loadingImages, referencedImages, params, userId, template, name, router, workId, savedImageIds, dirty, savedSnapshot, lastSavedAt, askKeepPrevious]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -227,6 +251,8 @@ export function Editor({
           </Button>
         </div>
       </div>
+
+      {keepPreviousDialog}
 
       {readOnly && (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
