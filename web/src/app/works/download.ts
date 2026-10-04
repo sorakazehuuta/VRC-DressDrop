@@ -2,6 +2,8 @@
 
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { gimmickMap, listGimmicks } from "@/lib/gimmicks/queries";
+import { parseGimmickSelection, type GimmickDefinition, type GimmickSelection } from "@/lib/gimmicks/schema";
 import { buildWorkPackage } from "@/lib/package/work-package";
 import { safeFileName } from "@/lib/package/unitypackage";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
@@ -12,19 +14,28 @@ import { WORK_IMAGES_BUCKET } from "@/lib/works/constants";
 const PACKAGES_BUCKET = "packages";
 const URL_TTL_SECONDS = 5 * 60;
 
+// 内訳の1行。paid は「この土台の版で購入済み」なら true（今回は消費しない）
+export type CostLine = { label: string; cost: number; paid: boolean };
+
 export type DownloadQuote =
   | { ok: true; purchased: true }
-  | { ok: true; purchased: false; cost: number; balance: number }
+  | { ok: true; purchased: false; cost: number; balance: number; breakdown: CostLine[] }
   | { ok: false; error: string };
 
 export type DownloadResult =
   | { ok: true; kind: "ready"; url: string; filename: string; charged: number }
-  | { ok: true; kind: "confirm"; cost: number; balance: number }
+  | { ok: true; kind: "confirm"; cost: number; balance: number; breakdown: CostLine[] }
   | { ok: false; error: string; code?: "insufficient" };
 
-// 購入済みかどうかの判定に使う「版」。テンプレートと編集内容（画像 ID を含む）が同じなら同じ版とみなす
+// 「土台の版」: テンプレートと見た目の編集内容（画像 ID を含む）。ギミックは含めない
 function versionHash(templateId: string, params: EditorParams) {
   return createHash("sha256").update(JSON.stringify({ templateId, params })).digest("hex");
+}
+
+// ギミックまで含めた版。ギミックがなければ土台の版と同じ（ギミック導入前の購入と互換）
+function fullVersionHash(baseHash: string, gimmicks: GimmickSelection[]) {
+  if (gimmicks.length === 0) return baseHash;
+  return createHash("sha256").update(JSON.stringify({ baseHash, gimmicks })).digest("hex");
 }
 
 async function loadWork(workId: string) {
@@ -35,7 +46,7 @@ async function loadWork(workId: string) {
 
   const { data: work } = await supabase
     .from("works")
-    .select("id, name, params, status, template_id, thumbnail_path, templates(id, slug, name, slots, token_cost, package_model_path), work_images(id, storage_path)")
+    .select("id, name, params, gimmicks, status, template_id, thumbnail_path, templates(id, slug, name, slots, token_cost, package_model_path), work_images(id, storage_path)")
     .eq("id", workId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -52,14 +63,29 @@ async function loadWork(workId: string) {
   };
   const slots = slotsSchema.parse(template.slots);
   const params = parseEditorParams(work.params, slots);
-  const hash = versionHash(template.id, params);
-  const { data: purchase } = await supabase
+  const defs = gimmickMap(await listGimmicks());
+  const gimmicks = parseGimmickSelection(work.gimmicks, defs);
+  const baseHash = versionHash(template.id, params);
+  const hash = fullVersionHash(baseHash, gimmicks);
+
+  // 同じ土台の版の購入（ギミック導入前の購入は params_hash が土台の版と同じ）
+  const { data: related } = await supabase
     .from("purchases")
-    .select("id, package_path")
+    .select("id, params_hash, base_hash, gimmick_slugs, package_path")
     .eq("work_id", work.id)
-    .eq("params_hash", hash)
-    .maybeSingle();
-  return { supabase, userId, work, template, slots, params, hash, purchase } as const;
+    .or(`base_hash.eq.${baseHash},params_hash.eq.${baseHash}`);
+  const purchase = (related ?? []).find((p) => p.params_hash === hash) ?? null;
+  const basePaid = (related ?? []).length > 0;
+  const paidSlugs = new Set((related ?? []).flatMap((p) => p.gimmick_slugs ?? []));
+  const breakdown: CostLine[] = [
+    { label: `${template.name}（モデル）`, cost: template.token_cost, paid: basePaid },
+    ...gimmicks.map((g) => {
+      const def = defs.get(g.slug) as GimmickDefinition;
+      return { label: def.name, cost: def.tokenCost, paid: paidSlugs.has(g.slug) };
+    }),
+  ];
+  const cost = breakdown.reduce((sum, line) => sum + (line.paid ? 0 : line.cost), 0);
+  return { supabase, userId, work, template, slots, params, defs, gimmicks, baseHash, hash, purchase, breakdown, cost } as const;
 }
 
 async function balanceOf(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -71,7 +97,7 @@ export async function getDownloadQuote(workId: string): Promise<DownloadQuote> {
   const loaded = await loadWork(workId);
   if ("error" in loaded) return { ok: false, error: loaded.error as string };
   if (loaded.purchase) return { ok: true, purchased: true };
-  return { ok: true, purchased: false, cost: loaded.template.token_cost, balance: await balanceOf(loaded.supabase) };
+  return { ok: true, purchased: false, cost: loaded.cost, balance: await balanceOf(loaded.supabase), breakdown: loaded.breakdown };
 }
 
 const packageFileName = (name: string) => `${safeFileName(name, "VRPrintLab")}.unitypackage`;
@@ -95,6 +121,8 @@ async function saveSnapshot(
     images: Map<string, Buffer>;
     imageExt: Map<string, string>;
     workThumbnailPath: string | null;
+    baseHash: string;
+    gimmicks: { slug: string; name: string; params: GimmickSelection["params"] }[];
   },
 ) {
   try {
@@ -120,7 +148,16 @@ async function saveSnapshot(
       .from("purchases")
       .update({
         thumbnail_path: thumbnailPath,
-        snapshot: { templateSlug: s.template.slug, templateName: s.template.name, slots: s.slots, params: s.params, images: imagePaths },
+        base_hash: s.baseHash,
+        gimmick_slugs: s.gimmicks.map((g) => g.slug),
+        snapshot: {
+          templateSlug: s.template.slug,
+          templateName: s.template.name,
+          slots: s.slots,
+          params: s.params,
+          images: imagePaths,
+          gimmicks: s.gimmicks,
+        },
       })
       .eq("id", s.purchaseId);
   } catch {
@@ -131,16 +168,16 @@ async function saveSnapshot(
 export async function downloadWork(workId: string, confirmed: boolean): Promise<DownloadResult> {
   const loaded = await loadWork(workId);
   if ("error" in loaded) return { ok: false, error: loaded.error as string };
-  const { supabase, userId, work, template, slots, params, hash, purchase } = loaded;
+  const { supabase, userId, work, template, slots, params, defs, gimmicks, baseHash, hash, purchase, breakdown, cost } = loaded;
 
   if (purchase?.package_path) {
     const url = await signedDownloadUrl(supabase, purchase.package_path);
     return url ? { ok: true, kind: "ready", url, filename: packageFileName(work.name), charged: 0 } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
   }
 
-  const cost = template.token_cost;
   const balance = await balanceOf(supabase);
-  if (!confirmed) return { ok: true, kind: "confirm", cost, balance };
+  // ギミックの設定値だけを変えた場合などは無料なので、確認せずに作り直す
+  if (!confirmed && cost > 0) return { ok: true, kind: "confirm", cost, balance, breakdown };
   if (balance < cost) return { ok: false, error: `トークンが足りません（必要: ${cost} / 残り: ${balance}）。`, code: "insufficient" };
 
   const admin = createAdminClient();
@@ -163,6 +200,7 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
       workName: work.name,
       template: { slug: template.slug, name: template.name, slots },
       params,
+      gimmicks: gimmicks.map((g) => ({ def: defs.get(g.slug) as GimmickDefinition, params: g.params })),
       model: Buffer.from(await model.arrayBuffer()),
       images,
       createdAt: new Date(),
@@ -197,6 +235,11 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
   // 同時に押された場合などで既存の購入が返ってきたら、今回作ったファイルは不要
   let finalPath = packagePath;
   if (result.purchase_id === purchaseId) {
+    // 次回の差額計算に使うので、控えとは別に確実に記録する
+    await admin
+      .from("purchases")
+      .update({ base_hash: baseHash, gimmick_slugs: gimmicks.map((g) => g.slug) })
+      .eq("id", purchaseId);
     await saveSnapshot(admin, {
       userId,
       purchaseId,
@@ -206,6 +249,8 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
       images,
       imageExt,
       workThumbnailPath: work.thumbnail_path,
+      baseHash,
+      gimmicks: gimmicks.map((g) => ({ slug: g.slug, name: (defs.get(g.slug) as GimmickDefinition).name, params: g.params })),
     });
   } else {
     await admin.storage.from(PACKAGES_BUCKET).remove([packagePath]);

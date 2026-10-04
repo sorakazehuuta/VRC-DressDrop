@@ -1,0 +1,30 @@
+{
+  "slug": "toggle-transparency",
+  "name": "触ると半透明に切り替え",
+  "category": "表示の切り替え（触ると ON/OFF・全員に同期）",
+  "description": "本体を触るたびに、ふつうの見た目と半透明が切り替わります。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 140,
+  "script": "VRPLToggleTransparency",
+  "groups": [
+    "interact",
+    "material"
+  ],
+  "requiresAny": [],
+  "setup": [
+    "transparent-materials"
+  ],
+  "params": [
+    {
+      "key": "opacity",
+      "label": "半透明のときの濃さ",
+      "type": "number",
+      "min": 10,
+      "max": 90,
+      "step": 5,
+      "default": 40,
+      "unit": "%"
+    }
+  ]
+}

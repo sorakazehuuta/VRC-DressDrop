@@ -1,0 +1,45 @@
+{
+  "slug": "shake-sparkle",
+  "name": "持って振るとキラキラ",
+  "category": "小物",
+  "description": "手で持って振ると、キラキラした粒が飛び散ります。全員に見えます。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 520,
+  "script": "VRPLShakeSparkle",
+  "groups": [
+    "motion",
+    "interact",
+    "particles"
+  ],
+  "requiresAny": [],
+  "setup": [
+    "pickup",
+    "object-sync",
+    "particles-sparkle"
+  ],
+  "params": [
+    {
+      "key": "color",
+      "label": "粒の色",
+      "type": "color",
+      "default": "#fff4b0"
+    },
+    {
+      "key": "sensitivity",
+      "label": "反応のしやすさ",
+      "type": "number",
+      "min": 1,
+      "max": 10,
+      "step": 1,
+      "default": 5,
+      "unit": ""
+    },
+    {
+      "key": "physics",
+      "label": "物理（落とせる・投げられる）",
+      "type": "boolean",
+      "default": false
+    }
+  ]
+}

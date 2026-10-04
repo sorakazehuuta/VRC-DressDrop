@@ -1,0 +1,30 @@
+{
+  "slug": "follow",
+  "name": "触った人についてくる",
+  "category": "小物",
+  "description": "触った人の肩のあたりについてきます。もう一度触ると止まります。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 530,
+  "script": "VRPLFollowPlayer",
+  "groups": [
+    "motion",
+    "interact"
+  ],
+  "requiresAny": [],
+  "setup": [
+    "object-sync"
+  ],
+  "params": [
+    {
+      "key": "distance",
+      "label": "離れる距離",
+      "type": "number",
+      "min": 0.3,
+      "max": 3,
+      "step": 0.1,
+      "default": 1,
+      "unit": "m"
+    }
+  ]
+}

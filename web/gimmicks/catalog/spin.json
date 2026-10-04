@@ -1,0 +1,49 @@
+{
+  "slug": "spin",
+  "name": "ずっと回転する",
+  "category": "動き",
+  "description": "その場でゆっくり回り続けます。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 210,
+  "script": "VRPLSpin",
+  "groups": [
+    "motion"
+  ],
+  "requiresAny": [],
+  "setup": [
+    "pivot-center"
+  ],
+  "params": [
+    {
+      "key": "speed",
+      "label": "回る速さ",
+      "type": "number",
+      "min": 5,
+      "max": 360,
+      "step": 5,
+      "default": 45,
+      "unit": "°/秒"
+    },
+    {
+      "key": "axis",
+      "label": "回転の軸",
+      "type": "select",
+      "options": [
+        {
+          "value": "1",
+          "label": "縦（Y軸）"
+        },
+        {
+          "value": "0",
+          "label": "横（X軸）"
+        },
+        {
+          "value": "2",
+          "label": "前後（Z軸）"
+        }
+      ],
+      "default": "1"
+    }
+  ]
+}

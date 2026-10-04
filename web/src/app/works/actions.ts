@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import sharp from "sharp";
 import { z } from "zod";
+import { gimmickMap, listGimmicks } from "@/lib/gimmicks/queries";
+import { parseGimmickSelection } from "@/lib/gimmicks/schema";
 import { parseEditorParams } from "@/lib/templates/params";
 import { slotsSchema } from "@/lib/templates/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -18,6 +20,7 @@ const saveInputSchema = z.object({
   templateId: z.uuid(),
   name: z.string().trim().min(1, "作品名を入力してください。").max(100, "作品名は100文字以内で入力してください。"),
   params: z.unknown(),
+  gimmicks: z.unknown().optional(),
   images: z
     .array(
       z.object({
@@ -70,6 +73,7 @@ export async function saveWork(raw: SaveWorkInput): Promise<SaveWorkResult> {
   if (!template) return { ok: false, error: "テンプレートが見つかりません。" };
   const slots = slotsSchema.parse(template.slots);
   const params = parseEditorParams(input.params, slots);
+  const gimmicks = parseGimmickSelection(input.gimmicks, gimmickMap(await listGimmicks()));
 
   // パラメータが参照する画像と、送られてきた画像一覧を突き合わせる
   const imagesById = new Map(input.images.map((img) => [img.id, img]));
@@ -112,6 +116,7 @@ export async function saveWork(raw: SaveWorkInput): Promise<SaveWorkResult> {
   const row = {
     name: input.name,
     params,
+    gimmicks,
     ...(input.hasThumbnail ? { thumbnail_path: thumbnailPath } : {}),
   };
   const { data: saved, error: saveError } = existing

@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { PrintParams } from "@/lib/templates/params";
 import { RedownloadButton } from "../redownload-button";
 import { parseSnapshot } from "../snapshot";
+import { gimmickMap, listGimmicks } from "@/lib/gimmicks/queries";
+import type { GimmickDefinition, GimmickParamValue } from "@/lib/gimmicks/schema";
 
 export const metadata: Metadata = { title: "購入した版の内容 | VRPrintLab" };
 
@@ -25,6 +27,15 @@ function printRows(p: PrintParams) {
   ];
 }
 
+function formatGimmickParam(def: GimmickDefinition | undefined, key: string, value: GimmickParamValue) {
+  const p = def?.params.find((x) => x.key === key);
+  if (!p) return null;
+  if (p.type === "boolean") return `${p.label}: ${value ? "あり" : "なし"}`;
+  if (p.type === "select") return `${p.label}: ${p.options.find((o) => o.value === value)?.label ?? value}`;
+  if (p.type === "number") return `${p.label}: ${value}${p.unit}`;
+  return `${p.label}: ${value}`;
+}
+
 export default async function PurchaseDetailPage({ params }: PageProps<"/downloads/[id]">) {
   const { id } = await params;
   const user = await requireUser(`/downloads/${id}`);
@@ -38,6 +49,7 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
   if (!purchase) notFound();
 
   const snapshot = parseSnapshot(purchase.snapshot);
+  const defs = gimmickMap(await listGimmicks());
   const paths = [...(purchase.thumbnail_path ? [purchase.thumbnail_path] : []), ...Object.values(snapshot?.images ?? {})];
   const { data: signed } = paths.length ? await supabase.storage.from("packages").createSignedUrls(paths, 60 * 60) : { data: [] };
   const urlByPath = new Map((signed ?? []).map((s) => [s.path, s.signedUrl]));
@@ -133,6 +145,34 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
               }
               return null;
             })}
+            <Card className="flex flex-col gap-2 !p-4">
+              <p className="text-sm font-semibold">ギミック</p>
+              {snapshot.gimmicks.length === 0 ? (
+                <p className="text-xs text-zinc-500">なし</p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {snapshot.gimmicks.map((g) => {
+                    const def = defs.get(g.slug);
+                    const color = Object.entries(g.params).find(([k]) => def?.params.find((p) => p.key === k)?.type === "color");
+                    return (
+                      <li key={g.slug} className="text-sm">
+                        <span className="flex items-center gap-2 font-medium">
+                          {color && <span className="h-3 w-3 rounded-full border border-zinc-300" style={{ backgroundColor: String(color[1]) }} />}
+                          {g.name}
+                        </span>
+                        <span className="block text-xs text-zinc-500">
+                          {Object.entries(g.params)
+                            .filter(([k]) => def?.params.find((p) => p.key === k)?.type !== "color")
+                            .map(([k, v]) => formatGimmickParam(def, k, v))
+                            .filter(Boolean)
+                            .join(" / ")}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Card>
           </div>
         ) : (
           <p className="rounded-lg bg-zinc-50 p-4 text-sm text-zinc-600">

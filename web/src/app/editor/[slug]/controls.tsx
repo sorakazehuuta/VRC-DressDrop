@@ -9,16 +9,17 @@ import { IMAGE_LIMITS, type LoadedImage } from "./images";
 type Change<T> = (update: (prev: T) => T, commit?: boolean) => void;
 
 // display: 画面に出す単位への換算（例: 0.5 → 50%）。数値欄に直接入力もできる
-type Display = { scale: number; unit: string };
+export type Display = { scale: number; unit: string };
 const PERCENT: Display = { scale: 100, unit: "%" };
 const PLAIN_PERCENT: Display = { scale: 1, unit: "%" };
 const DEGREE: Display = { scale: 1, unit: "°" };
 
-function Slider({
+export function Slider({
   label,
   value,
   limits,
   display,
+  decimals = 0,
   onChange,
   onCommit,
 }: {
@@ -26,15 +27,17 @@ function Slider({
   value: number;
   limits: { min: number; max: number; step: number };
   display: Display;
+  decimals?: number;
   onChange: (v: number) => void;
   onCommit: () => void;
 }) {
   const id = useId();
   // 入力中だけ文字列を持つ（「-」や空欄などの途中の状態を許すため）
   const [text, setText] = useState<string | null>(null);
-  const shown = Math.round(value * display.scale);
-  const min = Math.round(limits.min * display.scale);
-  const max = Math.round(limits.max * display.scale);
+  const round = (v: number) => Number(v.toFixed(decimals));
+  const shown = round(value * display.scale);
+  const min = round(limits.min * display.scale);
+  const max = round(limits.max * display.scale);
 
   function applyText(raw: string) {
     const n = Number(raw);
@@ -59,7 +62,7 @@ function Slider({
             aria-label={`${label}（${display.unit}）`}
             min={min}
             max={max}
-            step={1}
+            step={10 ** -decimals}
             value={text ?? shown}
             onFocus={(e) => {
               setText(String(shown));

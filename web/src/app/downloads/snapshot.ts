@@ -9,6 +9,7 @@ export type PurchaseSnapshot = {
   slots: Slot[];
   params: EditorParams;
   images: Record<string, string>;
+  gimmicks: { slug: string; name: string; params: Record<string, number | boolean | string> }[];
 };
 
 const snapshotSchema = z.object({
@@ -17,6 +18,9 @@ const snapshotSchema = z.object({
   slots: slotsSchema,
   params: z.unknown(),
   images: z.record(z.string(), z.string()).default({}),
+  gimmicks: z
+    .array(z.object({ slug: z.string(), name: z.string(), params: z.record(z.string(), z.union([z.number(), z.boolean(), z.string()])) }))
+    .default([]),
 });
 
 // 古い購入（控えを残す前のもの）や壊れたデータは null

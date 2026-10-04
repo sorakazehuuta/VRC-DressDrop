@@ -1,0 +1,39 @@
+{
+  "slug": "glow-on-touch",
+  "name": "手で触れると光る",
+  "category": "プレイヤーに反応",
+  "description": "だれかの手が触れている間、本体がふわっと光ります。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 310,
+  "script": "VRPLProximityGlow",
+  "groups": [
+    "material"
+  ],
+  "requiresAny": [],
+  "setup": [
+    "emission-dynamic"
+  ],
+  "params": [
+    {
+      "key": "glowColor",
+      "label": "光の色",
+      "type": "color",
+      "default": "#ffffff"
+    },
+    {
+      "key": "intensity",
+      "label": "光の強さ",
+      "type": "number",
+      "min": 0.5,
+      "max": 5,
+      "step": 0.1,
+      "default": 2,
+      "unit": ""
+    }
+  ],
+  "fixed": {
+    "useHands": true,
+    "distance": 0.12
+  }
+}

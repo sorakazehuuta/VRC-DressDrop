@@ -8,8 +8,10 @@ import { duplicateWork, saveWork } from "@/app/works/actions";
 import { Button } from "@/components/ui";
 import { defaultParams, type ColorParams, type EditorParams, type PrintParams, type SlotParams } from "@/lib/templates/params";
 import type { Slot } from "@/lib/templates/schema";
+import type { GimmickDefinition, GimmickSelection } from "@/lib/gimmicks/schema";
 import { ColorControls, PrintControls } from "./controls";
 import { DownloadPanel } from "./download-panel";
+import { GimmickPanel } from "./gimmick-panel";
 import { saveDraft, takeDraft } from "./draft";
 import { loadImage, type LoadedImage } from "./images";
 import { formatSavedAt, useKeepPreviousDialog } from "./keep-previous-dialog";
@@ -27,6 +29,7 @@ export type InitialWork = {
   id: string;
   name: string;
   params: EditorParams;
+  gimmicks: GimmickSelection[];
   images: { id: string; slot: string; url: string; ext: "png" | "jpg" }[];
   suspended: boolean;
   updatedAt: string;
@@ -34,7 +37,10 @@ export type InitialWork = {
 
 type Status = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; at: string } | { kind: "error"; message: string; limit?: boolean };
 
-const snapshot = (name: string, params: EditorParams) => JSON.stringify({ name, params });
+// 「元に戻す」の履歴で扱う編集内容（見た目の設定とギミックの選択）
+type EditorState = { params: EditorParams; gimmicks: GimmickSelection[] };
+
+const snapshot = (name: string, state: EditorState) => JSON.stringify({ name, params: state.params, gimmicks: state.gimmicks });
 const timeFormat = new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" });
 
 async function fetchSavedImage(img: InitialWork["images"][number]) {
@@ -47,6 +53,7 @@ async function fetchSavedImage(img: InitialWork["images"][number]) {
 
 type EditorProps = {
   template: EditorTemplate;
+  gimmickDefs: GimmickDefinition[];
   userId: string | null;
   initialWork: InitialWork | null;
   restoreDraft: boolean;
@@ -70,18 +77,35 @@ export function EditorHost(props: EditorProps) {
   return <Editor key={generation} {...props} onWorkId={onWorkId} />;
 }
 
-function Editor({ template, userId, initialWork, restoreDraft, onWorkId }: EditorProps & { onWorkId: (id: string) => void }) {
+function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWorkId }: EditorProps & { onWorkId: (id: string) => void }) {
   const router = useRouter();
-  const initialParams = useMemo(() => initialWork?.params ?? defaultParams(template.slots), [initialWork, template.slots]);
+  const initialState = useMemo<EditorState>(
+    () => ({ params: initialWork?.params ?? defaultParams(template.slots), gimmicks: initialWork?.gimmicks ?? [] }),
+    [initialWork, template.slots],
+  );
   const initialName = initialWork?.name ?? `${template.name}の作品`;
 
-  const history = useHistory<EditorParams>(initialParams);
-  const { value: params, change, commit, undo, redo, reset } = history;
+  const history = useHistory<EditorState>(initialState);
+  const { value: state, change: changeState, commit, undo, redo, reset } = history;
+  const { params, gimmicks } = state;
+  const change = useCallback(
+    (update: (prev: EditorParams) => EditorParams, isCommit = true) =>
+      changeState((prev) => {
+        const next = update(prev.params);
+        return next === prev.params ? prev : { ...prev, params: next };
+      }, isCommit),
+    [changeState],
+  );
+  const changeGimmicks = useCallback(
+    (update: (prev: GimmickSelection[]) => GimmickSelection[], isCommit = true) =>
+      changeState((prev) => ({ ...prev, gimmicks: update(prev.gimmicks) }), isCommit),
+    [changeState],
+  );
   const [name, setName] = useState(initialName);
   const [images, setImages] = useState<Record<string, LoadedImage>>({});
   const [workId, setWorkId] = useState<string | null>(initialWork?.id ?? null);
   const [savedImageIds, setSavedImageIds] = useState<Set<string>>(() => new Set(initialWork?.images.map((i) => i.id)));
-  const [savedSnapshot, setSavedSnapshot] = useState(() => snapshot(initialName, initialParams));
+  const [savedSnapshot, setSavedSnapshot] = useState(() => snapshot(initialName, initialState));
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [loadingImages, setLoadingImages] = useState(Boolean(initialWork?.images.length) || restoreDraft);
   const [resetViewSignal, setResetViewSignal] = useState(0);
@@ -90,7 +114,7 @@ function Editor({ template, userId, initialWork, restoreDraft, onWorkId }: Edito
   const { ask: askKeepPrevious, dialog: keepPreviousDialog } = useKeepPreviousDialog();
   const captureRef = useRef<(() => Promise<Blob | null>) | null>(null);
 
-  const dirty = snapshot(name, params) !== savedSnapshot;
+  const dirty = snapshot(name, state) !== savedSnapshot;
   const readOnly = initialWork?.suspended ?? false;
 
   // 保存済みの作品の画像、またはログイン前に一時保存した編集内容を読み込む
@@ -108,7 +132,7 @@ function Editor({ template, userId, initialWork, restoreDraft, onWorkId }: Edito
             const loaded = await Promise.all(draft.images.map((i) => loadImage(i.file, i.id)));
             setImages((prev) => ({ ...prev, ...Object.fromEntries(loaded.map((i) => [i.id, i])) }));
             setName(draft.name);
-            reset(draft.params);
+            reset({ params: draft.params, gimmicks: draft.gimmicks ?? [] });
           }
           window.history.replaceState(null, "", `/editor/${template.slug}`);
         }
@@ -148,6 +172,7 @@ function Editor({ template, userId, initialWork, restoreDraft, onWorkId }: Edito
       await saveDraft(template.slug, {
         name,
         params,
+        gimmicks,
         images: used.map(({ image }) => ({ id: image.id, file: image.file })),
         savedAt: Date.now(),
       });
@@ -192,6 +217,7 @@ function Editor({ template, userId, initialWork, restoreDraft, onWorkId }: Edito
         templateId: template.id,
         name,
         params,
+        gimmicks,
         images: used.map(({ slot, image }) => ({ id: image.id, slot, ext: imageExt(image), width: image.width, height: image.height })),
         hasThumbnail,
       });
@@ -202,7 +228,7 @@ function Editor({ template, userId, initialWork, restoreDraft, onWorkId }: Edito
       }
       setWorkId(result.workId);
       setSavedImageIds(new Set(result.savedImageIds));
-      setSavedSnapshot(snapshot(name.trim(), params));
+      setSavedSnapshot(snapshot(name.trim(), state));
       setName(name.trim());
       setStatus({ kind: "saved", at: result.updatedAt });
       setLastSavedAt(result.updatedAt);
@@ -213,7 +239,7 @@ function Editor({ template, userId, initialWork, restoreDraft, onWorkId }: Edito
       setStatus({ kind: "error", message: e instanceof Error ? e.message : "保存に失敗しました。" });
       return null;
     }
-  }, [readOnly, status.kind, loadingImages, referencedImages, params, userId, template, name, router, workId, savedImageIds, dirty, savedSnapshot, lastSavedAt, askKeepPrevious, onWorkId]);
+  }, [readOnly, status.kind, loadingImages, referencedImages, params, gimmicks, state, userId, template, name, router, workId, savedImageIds, dirty, savedSnapshot, lastSavedAt, askKeepPrevious, onWorkId]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -337,6 +363,10 @@ function Editor({ template, userId, initialWork, restoreDraft, onWorkId }: Edito
             })}
           </fieldset>
 
+          <fieldset disabled={readOnly}>
+            <GimmickPanel defs={gimmickDefs} selected={gimmicks} onChange={changeGimmicks} onCommit={commit} />
+          </fieldset>
+
           {status.kind === "error" && (
             <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
               {status.message}
@@ -349,7 +379,7 @@ function Editor({ template, userId, initialWork, restoreDraft, onWorkId }: Edito
           )}
 
           <DownloadPanel
-            tokenCost={template.tokenCost}
+            tokenCost={template.tokenCost + gimmicks.reduce((sum, g) => sum + (gimmickDefs.find((d) => d.slug === g.slug)?.tokenCost ?? 0), 0)}
             workId={workId}
             loggedIn={Boolean(userId)}
             dirty={dirty}

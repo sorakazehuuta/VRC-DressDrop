@@ -1,0 +1,25 @@
+{
+  "slug": "toggle-visibility",
+  "name": "スイッチで表示・非表示",
+  "category": "表示の切り替え（触ると ON/OFF・全員に同期）",
+  "description": "横に置かれる小さなスイッチを触ると、本体が出たり消えたりします。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 110,
+  "script": "VRPLToggleObject",
+  "groups": [
+    "interact"
+  ],
+  "requiresAny": [],
+  "setup": [
+    "switch"
+  ],
+  "params": [
+    {
+      "key": "startVisible",
+      "label": "最初から表示する",
+      "type": "boolean",
+      "default": true
+    }
+  ]
+}

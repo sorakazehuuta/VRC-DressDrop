@@ -1,3 +1,4 @@
+import type { GimmickSelection } from "@/lib/gimmicks/schema";
 import type { EditorParams } from "@/lib/templates/params";
 
 // ログイン前の編集内容を、ログイン画面から戻るまでブラウザ内（IndexedDB）に一時保存する。
@@ -6,6 +7,7 @@ import type { EditorParams } from "@/lib/templates/params";
 export type Draft = {
   name: string;
   params: EditorParams;
+  gimmicks?: GimmickSelection[];
   images: { id: string; file: File }[];
   savedAt: number;
 };

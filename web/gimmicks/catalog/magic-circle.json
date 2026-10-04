@@ -1,0 +1,46 @@
+{
+  "slug": "magic-circle",
+  "name": "オーラ・魔法陣",
+  "category": "視覚効果",
+  "description": "足元に回る魔法陣が浮かび、光の粒が立ちのぼります。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 440,
+  "script": null,
+  "groups": [
+    "aura"
+  ],
+  "requiresAny": [],
+  "setup": [
+    "magic-circle",
+    "particles-aura"
+  ],
+  "params": [
+    {
+      "key": "color",
+      "label": "色",
+      "type": "color",
+      "default": "#a78bfa"
+    },
+    {
+      "key": "size",
+      "label": "魔法陣の大きさ（本体の幅に対して）",
+      "type": "number",
+      "min": 0.5,
+      "max": 4,
+      "step": 0.1,
+      "default": 1.6,
+      "unit": "倍"
+    },
+    {
+      "key": "spinSpeed",
+      "label": "魔法陣の回る速さ",
+      "type": "number",
+      "min": 0,
+      "max": 90,
+      "step": 1,
+      "default": 20,
+      "unit": "°/秒"
+    }
+  ]
+}

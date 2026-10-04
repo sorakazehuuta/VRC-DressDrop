@@ -1,0 +1,35 @@
+{
+  "slug": "particles",
+  "name": "キラキラのパーティクル",
+  "category": "視覚効果",
+  "description": "本体のまわりに、いつもキラキラした粒が舞います。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 410,
+  "script": null,
+  "groups": [
+    "particles"
+  ],
+  "requiresAny": [],
+  "setup": [
+    "particles-sparkle"
+  ],
+  "params": [
+    {
+      "key": "color",
+      "label": "粒の色",
+      "type": "color",
+      "default": "#fff4b0"
+    },
+    {
+      "key": "amount",
+      "label": "粒の量",
+      "type": "number",
+      "min": 5,
+      "max": 100,
+      "step": 1,
+      "default": 20,
+      "unit": "個/秒"
+    }
+  ]
+}

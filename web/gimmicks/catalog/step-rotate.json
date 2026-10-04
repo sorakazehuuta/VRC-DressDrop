@@ -1,0 +1,50 @@
+{
+  "slug": "step-rotate",
+  "name": "触るたびに段階的に回転",
+  "category": "動き",
+  "description": "本体を触るたびに、決めた角度ずつ回ります（例: 4段階なら90°ずつ）。",
+  "tokenCost": 2,
+  "isPublic": true,
+  "sortOrder": 220,
+  "script": "VRPLStepRotate",
+  "groups": [
+    "motion",
+    "interact"
+  ],
+  "requiresAny": [],
+  "setup": [
+    "pivot-center"
+  ],
+  "params": [
+    {
+      "key": "steps",
+      "label": "段階の数",
+      "type": "number",
+      "min": 2,
+      "max": 12,
+      "step": 1,
+      "default": 4,
+      "unit": "段階"
+    },
+    {
+      "key": "axis",
+      "label": "回転の軸",
+      "type": "select",
+      "options": [
+        {
+          "value": "1",
+          "label": "縦（Y軸）"
+        },
+        {
+          "value": "0",
+          "label": "横（X軸）"
+        },
+        {
+          "value": "2",
+          "label": "前後（Z軸）"
+        }
+      ],
+      "default": "1"
+    }
+  ]
+}

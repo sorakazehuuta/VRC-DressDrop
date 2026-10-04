@@ -1,0 +1,42 @@
+{
+  "slug": "toggle-particles",
+  "name": "触るとパーティクル ON/OFF",
+  "category": "表示の切り替え（触ると ON/OFF・全員に同期）",
+  "description": "本体を触るたびに、キラキラのパーティクルが出たり止まったりします。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 120,
+  "script": "VRPLToggleParticles",
+  "groups": [
+    "interact",
+    "particles"
+  ],
+  "requiresAny": [],
+  "setup": [
+    "particles-sparkle"
+  ],
+  "params": [
+    {
+      "key": "color",
+      "label": "粒の色",
+      "type": "color",
+      "default": "#fff4b0"
+    },
+    {
+      "key": "amount",
+      "label": "粒の量",
+      "type": "number",
+      "min": 5,
+      "max": 100,
+      "step": 1,
+      "default": 20,
+      "unit": "個/秒"
+    },
+    {
+      "key": "startOn",
+      "label": "最初から ON",
+      "type": "boolean",
+      "default": true
+    }
+  ]
+}

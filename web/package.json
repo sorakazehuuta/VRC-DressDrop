@@ -9,7 +9,9 @@
     "lint": "eslint",
     "templates:check": "tsx scripts/sync-templates.ts --dry-run",
     "templates:sync": "tsx --env-file=.env.local scripts/sync-templates.ts",
-    "templates:thumbnails": "tsx scripts/render-thumbnails.ts"
+    "templates:thumbnails": "tsx scripts/render-thumbnails.ts",
+    "gimmicks:check": "tsx scripts/sync-gimmicks.ts --dry-run",
+    "gimmicks:sync": "tsx --env-file=.env.local scripts/sync-gimmicks.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

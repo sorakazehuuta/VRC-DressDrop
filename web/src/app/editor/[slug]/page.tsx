@@ -5,6 +5,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { parseEditorParams } from "@/lib/templates/params";
 import { getTemplate } from "@/lib/templates/queries";
+import { gimmickMap, listGimmicks } from "@/lib/gimmicks/queries";
+import { parseGimmickSelection } from "@/lib/gimmicks/schema";
 import { WORK_IMAGES_BUCKET } from "@/lib/works/constants";
 import { EditorHost, type InitialWork } from "./editor";
 
@@ -20,6 +22,7 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
   if (!template) notFound();
 
   const user = await getCurrentUser();
+  const gimmickDefs = await listGimmicks();
   const workId = typeof query.work === "string" ? query.work : null;
   let initialWork: InitialWork | null = null;
 
@@ -28,7 +31,7 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
     const supabase = await createClient();
     const { data: work } = await supabase
       .from("works")
-      .select("id, name, params, status, updated_at, templates(slug), work_images(id, slot, storage_path)")
+      .select("id, name, params, gimmicks, status, updated_at, templates(slug), work_images(id, slot, storage_path)")
       .eq("id", workId)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -46,6 +49,7 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
       id: work.id,
       name: work.name,
       params: parseEditorParams(work.params, template.slots),
+      gimmicks: parseGimmickSelection(work.gimmicks, gimmickMap(gimmickDefs)),
       images: work.work_images.flatMap((i) => {
         const url = urlByPath.get(i.storage_path);
         return url ? [{ id: i.id, slot: i.slot, url, ext: i.storage_path.endsWith(".png") ? ("png" as const) : ("jpg" as const) }] : [];
@@ -76,6 +80,7 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
           previewModelUrl: template.previewModelUrl,
           slots: template.slots,
         }}
+        gimmickDefs={gimmickDefs}
         userId={user?.id ?? null}
         initialWork={initialWork}
         restoreDraft={query.draft === "1" && !initialWork}

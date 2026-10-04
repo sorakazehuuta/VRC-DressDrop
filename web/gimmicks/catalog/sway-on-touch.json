@@ -1,0 +1,29 @@
+{
+  "slug": "sway-on-touch",
+  "name": "手で触れると揺れる",
+  "category": "プレイヤーに反応",
+  "description": "手で触れると、ばねのようにゆらゆら揺れて元に戻ります。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 330,
+  "script": "VRPLTouchSway",
+  "groups": [
+    "motion"
+  ],
+  "requiresAny": [],
+  "setup": [
+    "pivot-bottom"
+  ],
+  "params": [
+    {
+      "key": "strength",
+      "label": "揺れの大きさ",
+      "type": "number",
+      "min": 5,
+      "max": 45,
+      "step": 1,
+      "default": 15,
+      "unit": "°"
+    }
+  ]
+}

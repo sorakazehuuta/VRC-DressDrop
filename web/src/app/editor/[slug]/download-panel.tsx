@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { downloadWork, getDownloadQuote, type DownloadQuote } from "@/app/works/download";
+import { downloadWork, getDownloadQuote, type CostLine, type DownloadQuote } from "@/app/works/download";
 import { Button } from "@/components/ui";
 import { saveFileFromUrl } from "@/lib/save-file";
 
-type Confirm = { workId: string; cost: number; balance: number };
+type Confirm = { workId: string; cost: number; balance: number; breakdown: CostLine[] };
 
 export function DownloadPanel({
   tokenCost,
@@ -53,7 +53,7 @@ export function DownloadPanel({
       return;
     }
     if (result.kind === "confirm") {
-      setConfirm({ workId: id, cost: result.cost, balance: result.balance });
+      setConfirm({ workId: id, cost: result.cost, balance: result.balance, breakdown: result.breakdown });
       return;
     }
     await saveFileFromUrl(result.url, result.filename);
@@ -94,7 +94,11 @@ export function DownloadPanel({
         <p className="font-medium text-accent-dark">この内容は購入済みです。何度でも無料でダウンロードできます。</p>
       ) : (
         <p>
-          ダウンロードに必要なトークン: <strong className="text-base">{tokenCost}</strong>
+          ダウンロードに必要なトークン:{" "}
+          <strong className="text-base">{!dirty && quote?.ok && !quote.purchased ? quote.cost : tokenCost}</strong>
+          {!dirty && quote?.ok && !quote.purchased && quote.cost < tokenCost && (
+            <span className="ml-1 text-xs text-accent-dark">（購入済みの分を除く）</span>
+          )}
           {quote?.ok && !quote.purchased && <span className="ml-2 text-xs text-zinc-500">（残り {quote.balance}）</span>}
         </p>
       )}
@@ -119,6 +123,14 @@ export function DownloadPanel({
             <h2 id="download-confirm-title" className="text-lg font-bold text-brand">
               トークンを使ってダウンロード
             </h2>
+            <ul className="flex flex-col gap-1 rounded-md bg-zinc-50 p-3 text-sm">
+              {confirm.breakdown.map((line) => (
+                <li key={line.label} className="flex justify-between gap-3">
+                  <span>{line.label}</span>
+                  <span className="tabular-nums">{line.paid ? <span className="text-xs text-accent-dark">購入済み 0</span> : line.cost}</span>
+                </li>
+              ))}
+            </ul>
             <dl className="grid grid-cols-[1fr_auto] gap-y-1 text-sm">
               <dt>使用するトークン</dt>
               <dd className="text-right font-semibold tabular-nums">{confirm.cost}</dd>

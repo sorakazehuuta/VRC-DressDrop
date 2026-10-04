@@ -1,0 +1,27 @@
+{
+  "slug": "pickup",
+  "name": "手で持てる",
+  "category": "小物",
+  "description": "手で持って動かせます。位置は全員に同期されます。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 510,
+  "script": null,
+  "groups": [
+    "motion",
+    "interact"
+  ],
+  "requiresAny": [],
+  "setup": [
+    "pickup",
+    "object-sync"
+  ],
+  "params": [
+    {
+      "key": "physics",
+      "label": "物理（落とせる・投げられる）",
+      "type": "boolean",
+      "default": false
+    }
+  ]
+}

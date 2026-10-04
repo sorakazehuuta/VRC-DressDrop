@@ -4,7 +4,9 @@ import { gzipSync } from "node:zlib";
 
 // .unitypackage は「<guid>/asset」「<guid>/asset.meta」「<guid>/pathname」を並べた tar.gz
 
-export type PackageAsset = { path: string; data: Buffer; meta: (guid: string) => string };
+// guidSeed: 省略時は購入 ID。全作品で共通のファイル（スクリプトなど）は固定の値にする
+// folder: フォルダ自体の項目（asset ファイルを持たない）
+export type PackageAsset = { path: string; data: Buffer; meta: (guid: string) => string; guidSeed?: string; folder?: boolean };
 
 // 同じ購入 ID からは毎回同じ GUID になるようにし、再ダウンロードしたものを入れ直しても重複せず上書きされるようにする
 export function deterministicGuid(seed: string, path: string) {
@@ -45,9 +47,9 @@ function tar(entries: { name: string; data: Buffer }[]) {
 
 export function buildUnityPackage(seed: string, assets: PackageAsset[]) {
   const entries = assets.flatMap((asset) => {
-    const guid = deterministicGuid(seed, asset.path);
+    const guid = deterministicGuid(asset.guidSeed ?? seed, asset.path);
     return [
-      { name: `${guid}/asset`, data: asset.data },
+      ...(asset.folder ? [] : [{ name: `${guid}/asset`, data: asset.data }]),
       { name: `${guid}/asset.meta`, data: Buffer.from(asset.meta(guid), "utf8") },
       { name: `${guid}/pathname`, data: Buffer.from(asset.path, "utf8") },
     ];

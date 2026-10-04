@@ -1,0 +1,48 @@
+{
+  "slug": "glow-on-approach",
+  "name": "近づくと光る",
+  "category": "プレイヤーに反応",
+  "description": "だれかが決めた距離まで近づくと、本体が光ります。",
+  "tokenCost": 2,
+  "isPublic": true,
+  "sortOrder": 320,
+  "script": "VRPLProximityGlow",
+  "groups": [
+    "material"
+  ],
+  "requiresAny": [],
+  "setup": [
+    "emission-dynamic"
+  ],
+  "params": [
+    {
+      "key": "glowColor",
+      "label": "光の色",
+      "type": "color",
+      "default": "#ffffff"
+    },
+    {
+      "key": "intensity",
+      "label": "光の強さ",
+      "type": "number",
+      "min": 0.5,
+      "max": 5,
+      "step": 0.1,
+      "default": 2,
+      "unit": ""
+    },
+    {
+      "key": "distance",
+      "label": "反応する距離",
+      "type": "number",
+      "min": 0.5,
+      "max": 10,
+      "step": 0.5,
+      "default": 2,
+      "unit": "m"
+    }
+  ],
+  "fixed": {
+    "useHands": false
+  }
+}
