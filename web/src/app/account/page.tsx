@@ -89,6 +89,9 @@ export default async function AccountPage() {
             </tbody>
           </table>
         )}
+        <Link href="/downloads" className="self-start text-sm font-semibold text-accent-dark underline">
+          ダウンロード履歴を見る
+        </Link>
       </Card>
 
       <Card className="flex flex-col gap-4">

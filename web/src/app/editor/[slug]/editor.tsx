@@ -9,6 +9,7 @@ import { Button } from "@/components/ui";
 import { defaultParams, type ColorParams, type EditorParams, type PrintParams, type SlotParams } from "@/lib/templates/params";
 import type { Slot } from "@/lib/templates/schema";
 import { ColorControls, PrintControls } from "./controls";
+import { DownloadPanel } from "./download-panel";
 import { saveDraft, takeDraft } from "./draft";
 import { loadImage, type LoadedImage } from "./images";
 import { imageExt, uploadImages, uploadThumbnail } from "./save";
@@ -67,6 +68,7 @@ export function Editor({
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [loadingImages, setLoadingImages] = useState(Boolean(initialWork?.images.length) || restoreDraft);
   const [resetViewSignal, setResetViewSignal] = useState(0);
+  const [saveCount, setSaveCount] = useState(0);
   const captureRef = useRef<(() => Promise<Blob | null>) | null>(null);
 
   const dirty = snapshot(name, params) !== savedSnapshot;
@@ -118,8 +120,8 @@ export function Editor({
     [template.slots, images],
   );
 
-  const save = useCallback(async () => {
-    if (readOnly || status.kind === "saving" || loadingImages) return;
+  const save = useCallback(async (): Promise<string | null> => {
+    if (readOnly || status.kind === "saving" || loadingImages) return null;
     const used = referencedImages(params);
 
     if (!userId) {
@@ -130,7 +132,7 @@ export function Editor({
         savedAt: Date.now(),
       });
       router.push(`/login?next=${encodeURIComponent(`/editor/${template.slug}?draft=1`)}`);
-      return;
+      return null;
     }
 
     setStatus({ kind: "saving" });
@@ -155,7 +157,7 @@ export function Editor({
       if (!result.ok) {
         if (result.code === "login_required") router.refresh();
         setStatus({ kind: "error", message: result.error, limit: result.code === "limit" });
-        return;
+        return null;
       }
       setWorkId(result.workId);
       setSavedImageIds(new Set(result.savedImageIds));
@@ -163,8 +165,11 @@ export function Editor({
       setName(name.trim());
       setStatus({ kind: "saved", at: result.updatedAt });
       if (!workId) window.history.replaceState(null, "", `/editor/${template.slug}?work=${result.workId}`);
+      setSaveCount((n) => n + 1);
+      return result.workId;
     } catch (e) {
       setStatus({ kind: "error", message: e instanceof Error ? e.message : "保存に失敗しました。" });
+      return null;
     }
   }, [readOnly, status.kind, loadingImages, referencedImages, params, userId, template, name, router, workId, savedImageIds]);
 
@@ -299,12 +304,15 @@ export function Editor({
             </p>
           )}
 
-          <div className="mt-auto flex flex-col gap-2 rounded-lg bg-zinc-100 p-4 text-sm">
-            <p>
-              ダウンロードに必要なトークン: <strong className="text-base">{template.tokenCost}</strong>
-            </p>
-            <p className="text-xs text-zinc-500">ダウンロードは準備中です。</p>
-          </div>
+          <DownloadPanel
+            tokenCost={template.tokenCost}
+            workId={workId}
+            loggedIn={Boolean(userId)}
+            dirty={dirty}
+            disabled={readOnly || loadingImages || status.kind === "saving"}
+            saveCount={saveCount}
+            onSave={save}
+          />
         </aside>
       </div>
     </div>

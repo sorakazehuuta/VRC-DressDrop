@@ -6,6 +6,7 @@ import type { FormState } from "@/app/auth/actions";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 const WORK_IMAGES_BUCKET = "work-images";
+const PACKAGES_BUCKET = "packages";
 
 export async function updateDisplayName(_prev: FormState, formData: FormData): Promise<FormState> {
   const raw = formData.get("displayName");
@@ -23,19 +24,19 @@ export async function updateDisplayName(_prev: FormState, formData: FormData): P
   return { message: "表示名を保存しました。" };
 }
 
-async function removeStorageFolder(admin: ReturnType<typeof createAdminClient>, prefix: string) {
-  const { data: entries, error } = await admin.storage.from(WORK_IMAGES_BUCKET).list(prefix, { limit: 1000 });
+async function removeStorageFolder(admin: ReturnType<typeof createAdminClient>, bucket: string, prefix: string) {
+  const { data: entries, error } = await admin.storage.from(bucket).list(prefix, { limit: 1000 });
   if (error) throw error;
 
   const files: string[] = [];
   for (const entry of entries) {
     const path = `${prefix}/${entry.name}`;
     // フォルダは id を持たない
-    if (entry.id === null) await removeStorageFolder(admin, path);
+    if (entry.id === null) await removeStorageFolder(admin, bucket, path);
     else files.push(path);
   }
   if (files.length > 0) {
-    const { error: removeError } = await admin.storage.from(WORK_IMAGES_BUCKET).remove(files);
+    const { error: removeError } = await admin.storage.from(bucket).remove(files);
     if (removeError) throw removeError;
   }
 }
@@ -52,7 +53,8 @@ export async function deleteAccount(_prev: FormState, formData: FormData): Promi
 
   const admin = createAdminClient();
   try {
-    await removeStorageFolder(admin, userId);
+    await removeStorageFolder(admin, WORK_IMAGES_BUCKET, userId);
+    await removeStorageFolder(admin, PACKAGES_BUCKET, userId);
   } catch {
     return { error: "アップロード画像を削除できませんでした。時間をおいて再度お試しください。" };
   }

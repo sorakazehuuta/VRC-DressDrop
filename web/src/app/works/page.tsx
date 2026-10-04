@@ -47,9 +47,14 @@ export default async function WorksPage() {
             {full && "（上限に達しています。新しく保存するには不要な作品を削除してください）"}
           </p>
         </div>
-        <Link href="/templates" className="rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-dark">
-          新しく作る
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/downloads" className="text-sm font-medium text-accent-dark hover:underline">
+            ダウンロード履歴
+          </Link>
+          <Link href="/templates" className="rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-dark">
+            新しく作る
+          </Link>
+        </div>
       </div>
 
       {cards.length === 0 ? (
