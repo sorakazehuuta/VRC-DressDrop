@@ -163,7 +163,16 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
 
 export async function purchaseDownloadUrl(purchaseId: string): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   const supabase = await createClient();
-  const { data } = await supabase.from("purchases").select("package_path, work_name").eq("id", purchaseId).maybeSingle();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims.sub;
+  if (!userId) return { ok: false, error: "ログインしてください。" };
+  // RLS でも本人の購入に限られるが、設定ミスに備えてここでも絞り込む
+  const { data } = await supabase
+    .from("purchases")
+    .select("package_path, work_name")
+    .eq("id", purchaseId)
+    .eq("user_id", userId)
+    .maybeSingle();
   if (!data?.package_path) return { ok: false, error: "ダウンロードできるファイルが見つかりません。" };
   const url = await signedDownloadUrl(supabase, data.package_path, data.work_name || "VRPrintLab");
   return url ? { ok: true, url } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
