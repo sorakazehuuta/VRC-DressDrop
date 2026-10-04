@@ -7,7 +7,8 @@ using VRC.Udon.Common.Interfaces;
 namespace VRPrintLab
 {
     // 持って振ると粒を飛ばす。持っている人の画面で振りを判定し、全員に「粒を出して」と送る
-    [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
+    // （SendCustomNetworkEvent は同期方式が None だと送れないので Manual にする。同期する変数はない）
+    [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
     public class VRPLShakeSparkle : UdonSharpBehaviour
     {
         public ParticleSystem particles;

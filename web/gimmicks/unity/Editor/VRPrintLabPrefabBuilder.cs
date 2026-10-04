@@ -87,8 +87,9 @@ namespace VRPrintLab.EditorTools
             foreach (string path in pending) TryBuild(path);
         }
 
-        // ギミックのスクリプトに対応する UdonSharpProgramAsset をそろえ、未コンパイル・版が古いものが1つでもあれば
-        // コンパイルが終わるまで待つ（コンパイル前のスクリプトには設定値を書き込めないため）
+        // ギミックのスクリプトに対応する UdonSharpProgramAsset をそろえ、コンパイルが終わるまで待つ。
+        // パッケージの読み込み直しでスクリプトが更新されても UdonSharp のコンパイルが走らないことがあり、
+        // そのままだと古いプログラムのまま動くため、組み立てるときは毎回コンパイルする（1〜2秒）
         private static void PrepareUdonSharp()
         {
             Type behaviourType = FindType("UdonSharp.UdonSharpBehaviour");
@@ -115,7 +116,8 @@ namespace VRPrintLab.EditorTools
                     }
                 }
             }
-            if (created || scriptTypes.Any(IsProgramOutdated)) CompileUdonSharp();
+            foreach (Type type in scriptTypes) IsProgramOutdated(type); // 版が Unknown のものを最新にそろえる
+            if (scriptTypes.Count > 0 || created) CompileUdonSharp();
         }
 
         // UdonSharp が「コンパイル済み」と記録していないプログラムがあるか（あると設定値を書き込めない）
@@ -348,7 +350,7 @@ namespace VRPrintLab.EditorTools
             sw.transform.localScale = Vector3.one * size;
             sw.transform.position = new Vector3(ctx.bounds.max.x + size * 1.5f, ctx.bounds.min.y + size * 0.5f, ctx.bounds.center.z);
             Material mat = new Material(Shader.Find("Standard")) { color = new Color(0f, 0.635f, 0.612f) };
-            sw.GetComponent<Renderer>().sharedMaterial = SaveAsset(mat, ctx.config.folder + "/Switch.mat");
+            sw.GetComponent<Renderer>().sharedMaterial = SaveAsset(mat, GeneratedPath(ctx, "Switch.mat"));
             return sw;
         }
 
@@ -432,31 +434,44 @@ namespace VRPrintLab.EditorTools
                 new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0f, 1f) });
             trail.colorGradient = gradient;
             Material mat = new Material(Shader.Find("Sprites/Default"));
-            trail.sharedMaterial = SaveAsset(mat, ctx.config.folder + "/Trail.mat");
+            trail.sharedMaterial = SaveAsset(mat, GeneratedPath(ctx, "Trail.mat"));
         }
 
-        private static List<Material> ModelMaterials(Context ctx)
-        {
-            List<Material> list = new List<Material>();
-            foreach (Renderer r in ctx.renderers)
-                foreach (Material m in r.sharedMaterials)
-                    if (m != null && !list.Contains(m)) list.Add(m);
-            return list;
-        }
-
+        // パッケージに入っているマテリアルは読み込み直すと元に戻るので、発光用の複製を Generated に作って割り当てる
         private static void SetEmission(Context ctx, Color color)
         {
-            foreach (Material m in ModelMaterials(ctx))
+            Dictionary<Material, Material> made = new Dictionary<Material, Material>();
+            foreach (Renderer r in ctx.renderers)
             {
-                // 作品フォルダのマテリアルだけを書き換える（ほかの作品と共有しない）
-                if (!AssetDatabase.GetAssetPath(m).StartsWith(ctx.config.folder)) continue;
-                m.EnableKeyword("_EMISSION");
-                m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
-                m.SetColor("_EmissionColor", color);
-                Texture main = m.HasProperty("_MainTex") ? m.GetTexture("_MainTex") : null;
-                if (main != null && m.HasProperty("_EmissionMap")) m.SetTexture("_EmissionMap", main);
-                EditorUtility.SetDirty(m);
+                Material[] mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    Material m = mats[i];
+                    if (m == null) continue;
+                    Material glow;
+                    if (!made.TryGetValue(m, out glow))
+                    {
+                        glow = new Material(m) { name = m.name + "_Glow" };
+                        glow.EnableKeyword("_EMISSION");
+                        glow.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+                        glow.SetColor("_EmissionColor", color);
+                        Texture main = glow.HasProperty("_MainTex") ? glow.GetTexture("_MainTex") : null;
+                        if (main != null && glow.HasProperty("_EmissionMap")) glow.SetTexture("_EmissionMap", main);
+                        glow = SaveAsset(glow, GeneratedPath(ctx, m.name + "_Glow.mat"));
+                        made[m] = glow;
+                    }
+                    mats[i] = glow;
+                }
+                r.sharedMaterials = mats;
             }
+        }
+
+        // 組み立てスクリプトが作るファイルの置き場所（パッケージの読み込み直しで上書きされない）
+        private static string GeneratedPath(Context ctx, string fileName)
+        {
+            string folder = ctx.config.folder + "/Generated";
+            if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder(ctx.config.folder, "Generated");
+            return folder + "/" + fileName;
         }
 
         private static void CreateTransparentMaterials(Context ctx, float opacity, Dictionary<string, object> refs)
@@ -493,7 +508,7 @@ namespace VRPrintLab.EditorTools
                         Color c = t.HasProperty("_Color") ? t.color : Color.white;
                         c.a = opacity;
                         if (t.HasProperty("_Color")) t.color = c;
-                        t = SaveAsset(t, ctx.config.folder + "/" + m.name + "_Transparent.mat");
+                        t = SaveAsset(t, GeneratedPath(ctx, m.name + "_Transparent.mat"));
                         made[m] = t;
                     }
                     transparent.Add(t);
@@ -521,7 +536,7 @@ namespace VRPrintLab.EditorTools
             Material mat = new Material(shader) { mainTexture = texture };
             if (mat.HasProperty("_TintColor")) mat.SetColor("_TintColor", color * 0.6f);
             Renderer renderer = circle.GetComponent<Renderer>();
-            renderer.sharedMaterial = SaveAsset(mat, ctx.config.folder + "/MagicCircle.mat");
+            renderer.sharedMaterial = SaveAsset(mat, GeneratedPath(ctx, "MagicCircle.mat"));
             renderer.shadowCastingMode = ShadowCastingMode.Off;
 
             // 魔法陣は回転スクリプト（VRPLSpin）で回す。UdonSharp がなければ止まったまま

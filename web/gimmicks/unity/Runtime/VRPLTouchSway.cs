@@ -69,10 +69,18 @@ namespace VRPrintLab
             {
                 VRCPlayerApi p = players[i];
                 if (!Utilities.IsValid(p)) continue;
-                if (IsNear(b, p.GetBonePosition(HumanBodyBones.LeftHand))) return true;
-                if (IsNear(b, p.GetBonePosition(HumanBodyBones.RightHand))) return true;
+                if (HandNear(b, p, true)) return true;
+                if (HandNear(b, p, false)) return true;
             }
             return false;
+        }
+
+        // 手のボーンか、手のトラッキング位置のどちらかが触れていれば触れたとみなす。
+        // デスクトップの人（ClientSim を含む）はボーンの手が下に垂れていて届かないが、トラッキング位置は顔の前にあるので、近づけば触れられる
+        private bool HandNear(Bounds b, VRCPlayerApi player, bool left)
+        {
+            if (IsNear(b, player.GetBonePosition(left ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand))) return true;
+            return IsNear(b, player.GetTrackingData(left ? VRCPlayerApi.TrackingDataType.LeftHand : VRCPlayerApi.TrackingDataType.RightHand).position);
         }
 
         private bool IsNear(Bounds b, Vector3 p)

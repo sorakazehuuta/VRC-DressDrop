@@ -34,7 +34,12 @@ namespace VRPrintLab
             {
                 if (r == null) continue;
                 // 実体化したマテリアルを使い、ほかの作品と共有しているマテリアルを書き換えない
-                foreach (Material m in r.materials) materials[i++] = m;
+                foreach (Material m in r.materials)
+                {
+                    // 発光の設定が無効だと _EmissionColor を変えても光らないので、実行時にも有効にする
+                    m.EnableKeyword("_EMISSION");
+                    materials[i++] = m;
+                }
             }
         }
 
@@ -66,18 +71,26 @@ namespace VRPrintLab
                 if (!Utilities.IsValid(p)) continue;
                 if (useHands)
                 {
-                    if (IsNear(b, p.GetBonePosition(HumanBodyBones.LeftHand))) return true;
-                    if (IsNear(b, p.GetBonePosition(HumanBodyBones.RightHand))) return true;
+                    if (HandNear(b, p, true)) return true;
+                    if (HandNear(b, p, false)) return true;
                     if (IsNear(b, p.GetBonePosition(HumanBodyBones.LeftIndexDistal))) return true;
                     if (IsNear(b, p.GetBonePosition(HumanBodyBones.RightIndexDistal))) return true;
                 }
                 else
                 {
                     if (IsNear(b, p.GetPosition())) return true;
-                    if (IsNear(b, p.GetBonePosition(HumanBodyBones.Head))) return true;
+                    if (IsNear(b, p.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position)) return true;
                 }
             }
             return false;
+        }
+
+        // 手のボーンか、手のトラッキング位置のどちらかが触れていれば触れたとみなす。
+        // デスクトップの人（ClientSim を含む）はボーンの手が下に垂れていて届かないが、トラッキング位置は顔の前にあるので、近づけば触れられる
+        private bool HandNear(Bounds b, VRCPlayerApi player, bool left)
+        {
+            if (IsNear(b, player.GetBonePosition(left ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand))) return true;
+            return IsNear(b, player.GetTrackingData(left ? VRCPlayerApi.TrackingDataType.LeftHand : VRCPlayerApi.TrackingDataType.RightHand).position);
         }
 
         private bool IsNear(Bounds b, Vector3 p)
