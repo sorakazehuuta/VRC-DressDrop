@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { purchaseDownloadUrl } from "@/app/works/download";
 import { Button } from "@/components/ui";
+import { saveFileFromUrl } from "@/lib/save-file";
 
 export function RedownloadButton({ purchaseId }: { purchaseId: string }) {
   const [pending, startTransition] = useTransition();
@@ -19,7 +20,7 @@ export function RedownloadButton({ purchaseId }: { purchaseId: string }) {
             setError(null);
             const result = await purchaseDownloadUrl(purchaseId);
             if (!result.ok) return setError(result.error);
-            window.location.href = result.url;
+            await saveFileFromUrl(result.url, result.filename);
           })
         }
       >

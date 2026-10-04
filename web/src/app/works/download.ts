@@ -18,7 +18,7 @@ export type DownloadQuote =
   | { ok: false; error: string };
 
 export type DownloadResult =
-  | { ok: true; kind: "ready"; url: string; charged: number }
+  | { ok: true; kind: "ready"; url: string; filename: string; charged: number }
   | { ok: true; kind: "confirm"; cost: number; balance: number }
   | { ok: false; error: string; code?: "insufficient" };
 
@@ -74,10 +74,10 @@ export async function getDownloadQuote(workId: string): Promise<DownloadQuote> {
   return { ok: true, purchased: false, cost: loaded.template.token_cost, balance: await balanceOf(loaded.supabase) };
 }
 
-async function signedDownloadUrl(supabase: Awaited<ReturnType<typeof createClient>>, path: string, name: string) {
-  const { data, error } = await supabase.storage
-    .from(PACKAGES_BUCKET)
-    .createSignedUrl(path, URL_TTL_SECONDS, { download: `${safeFileName(name, "VRPrintLab")}.unitypackage` });
+const packageFileName = (name: string) => `${safeFileName(name, "VRPrintLab")}.unitypackage`;
+
+async function signedDownloadUrl(supabase: Awaited<ReturnType<typeof createClient>>, path: string) {
+  const { data, error } = await supabase.storage.from(PACKAGES_BUCKET).createSignedUrl(path, URL_TTL_SECONDS, { download: true });
   if (error || !data) return null;
   return data.signedUrl;
 }
@@ -88,8 +88,8 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
   const { supabase, userId, work, template, slots, params, hash, purchase } = loaded;
 
   if (purchase?.package_path) {
-    const url = await signedDownloadUrl(supabase, purchase.package_path, work.name);
-    return url ? { ok: true, kind: "ready", url, charged: 0 } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
+    const url = await signedDownloadUrl(supabase, purchase.package_path);
+    return url ? { ok: true, kind: "ready", url, filename: packageFileName(work.name), charged: 0 } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
   }
 
   const cost = template.token_cost;
@@ -155,13 +155,13 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
   }
 
   revalidatePath("/", "layout");
-  const url = await signedDownloadUrl(supabase, finalPath, work.name);
+  const url = await signedDownloadUrl(supabase, finalPath);
   return url
-    ? { ok: true, kind: "ready", url, charged: result.charged }
+    ? { ok: true, kind: "ready", url, filename: packageFileName(work.name), charged: result.charged }
     : { ok: false, error: "購入は完了しました。ダウンロード履歴から再ダウンロードしてください。" };
 }
 
-export async function purchaseDownloadUrl(purchaseId: string): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+export async function purchaseDownloadUrl(purchaseId: string): Promise<{ ok: true; url: string; filename: string } | { ok: false; error: string }> {
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
   const userId = claims?.claims.sub;
@@ -174,6 +174,6 @@ export async function purchaseDownloadUrl(purchaseId: string): Promise<{ ok: tru
     .eq("user_id", userId)
     .maybeSingle();
   if (!data?.package_path) return { ok: false, error: "ダウンロードできるファイルが見つかりません。" };
-  const url = await signedDownloadUrl(supabase, data.package_path, data.work_name || "VRPrintLab");
-  return url ? { ok: true, url } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
+  const url = await signedDownloadUrl(supabase, data.package_path);
+  return url ? { ok: true, url, filename: packageFileName(data.work_name) } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
 }

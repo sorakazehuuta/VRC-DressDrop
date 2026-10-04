@@ -5,17 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { downloadWork, getDownloadQuote, type DownloadQuote } from "@/app/works/download";
 import { Button } from "@/components/ui";
+import { saveFileFromUrl } from "@/lib/save-file";
 
 type Confirm = { workId: string; cost: number; balance: number };
-
-function startDownload(url: string) {
-  const a = document.createElement("a");
-  a.href = url;
-  a.rel = "noopener";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
 
 export function DownloadPanel({
   tokenCost,
@@ -64,7 +56,7 @@ export function DownloadPanel({
       setConfirm({ workId: id, cost: result.cost, balance: result.balance });
       return;
     }
-    startDownload(result.url);
+    await saveFileFromUrl(result.url, result.filename);
     setQuote({ ok: true, purchased: true });
     setMessage({
       kind: "ok",
