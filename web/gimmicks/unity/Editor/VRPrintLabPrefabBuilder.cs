@@ -53,7 +53,18 @@ namespace VRPrintLab.EditorTools
 
         static VRPrintLabPrefabBuilder()
         {
-            EditorApplication.delayCall += BuildMissing;
+            // delayCall で自分自身を登録し直すと、Unity がドメイン再読み込み中に delayCall を空になるまで実行し続けて
+            // 無限ループになる。update で1フレームに1回だけ状態を確かめ、準備ができたら1回だけ実行する
+            EditorApplication.update -= WaitThenBuildMissing;
+            EditorApplication.update += WaitThenBuildMissing;
+        }
+
+        private static void WaitThenBuildMissing()
+        {
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
+            EditorApplication.update -= WaitThenBuildMissing;
+            if (EditorApplication.isPlayingOrWillChangePlaymode) return;
+            BuildMissing();
         }
 
         [MenuItem("Tools/VRPrintLab/Prefab をすべて作り直す")]
@@ -66,12 +77,6 @@ namespace VRPrintLab.EditorTools
         // まだ Prefab がない作品だけ組み立てる（インポート直後に自動で実行される）
         private static void BuildMissing()
         {
-            if (EditorApplication.isCompiling || EditorApplication.isUpdating)
-            {
-                EditorApplication.delayCall += BuildMissing;
-                return;
-            }
-            if (EditorApplication.isPlayingOrWillChangePlaymode) return;
             List<string> pending = FindConfigs().Where(path =>
             {
                 VRPLBuildConfig config = LoadConfig(path);
