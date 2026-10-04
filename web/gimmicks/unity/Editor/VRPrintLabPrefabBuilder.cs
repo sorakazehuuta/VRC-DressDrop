@@ -87,13 +87,14 @@ namespace VRPrintLab.EditorTools
             foreach (string path in pending) TryBuild(path);
         }
 
-        // ギミックのスクリプトに対応する UdonSharpProgramAsset をそろえ、新しく作ったときはコンパイルが終わるまで待つ
-        // （コンパイル前のスクリプトには設定値を書き込めないため）
+        // ギミックのスクリプトに対応する UdonSharpProgramAsset をそろえ、未コンパイル・版が古いものが1つでもあれば
+        // コンパイルが終わるまで待つ（コンパイル前のスクリプトには設定値を書き込めないため）
         private static void PrepareUdonSharp()
         {
             Type behaviourType = FindType("UdonSharp.UdonSharpBehaviour");
             if (behaviourType == null) return;
             bool created = false;
+            List<Type> scriptTypes = new List<Type>();
             foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 Type[] types;
@@ -107,10 +108,48 @@ namespace VRPrintLab.EditorTools
                 }
                 foreach (Type type in types)
                 {
-                    if (type.Namespace == "VRPrintLab" && !type.IsAbstract && behaviourType.IsAssignableFrom(type)) created |= EnsureProgramAsset(type);
+                    if (type.Namespace == "VRPrintLab" && !type.IsAbstract && behaviourType.IsAssignableFrom(type))
+                    {
+                        created |= EnsureProgramAsset(type);
+                        scriptTypes.Add(type);
+                    }
                 }
             }
-            if (!created) return;
+            if (created || scriptTypes.Any(IsProgramOutdated)) CompileUdonSharp();
+        }
+
+        // UdonSharp が「コンパイル済み」と記録していないプログラムがあるか（あると設定値を書き込めない）
+        private static bool IsProgramOutdated(Type scriptType)
+        {
+            Object program = FindProgramAsset(scriptType);
+            if (program == null) return false;
+            Type programType = program.GetType();
+            Type versionType = FindType("UdonSharp.UdonSharpProgramVersion");
+            PropertyInfo scriptVersion = programType.GetProperty("ScriptVersion");
+            PropertyInfo compiledVersion = programType.GetProperty("CompiledVersion");
+            if (versionType == null || scriptVersion == null || compiledVersion == null) return false;
+            int current = Convert.ToInt32(Enum.Parse(versionType, "CurrentVersion"));
+            if (Convert.ToInt32(scriptVersion.GetValue(program)) < current && scriptVersion.CanWrite)
+                scriptVersion.SetValue(program, Enum.Parse(versionType, "CurrentVersion"));
+            return Convert.ToInt32(compiledVersion.GetValue(program)) < current;
+        }
+
+        private static Object FindProgramAsset(Type scriptType)
+        {
+            Type programType = FindType("UdonSharp.UdonSharpProgramAsset");
+            FieldInfo sourceField = programType != null ? programType.GetField("sourceCsScript") : null;
+            if (sourceField == null) return null;
+            foreach (string guid in AssetDatabase.FindAssets("t:" + programType.Name))
+            {
+                Object asset = AssetDatabase.LoadAssetAtPath(AssetDatabase.GUIDToAssetPath(guid), programType);
+                MonoScript script = asset != null ? sourceField.GetValue(asset) as MonoScript : null;
+                if (script != null && script.GetClass() == scriptType) return asset;
+            }
+            return null;
+        }
+
+        private static void CompileUdonSharp()
+        {
             Type compiler = FindType("UdonSharp.Compiler.UdonSharpCompilerV1");
             MethodInfo compileSync = compiler != null ? compiler.GetMethod("CompileSync", BindingFlags.Public | BindingFlags.Static) : null;
             if (compileSync == null) return;
@@ -122,6 +161,7 @@ namespace VRPrintLab.EditorTools
             {
                 Debug.LogWarning(Log + "UdonSharp のコンパイルに失敗しました: " + e.Message);
             }
+            AssetDatabase.SaveAssets();
         }
 
         private static IEnumerable<string> FindConfigs()
@@ -211,6 +251,9 @@ namespace VRPrintLab.EditorTools
             }
             finally
             {
+                // 作業用のオブジェクトを「元に戻す」の履歴に残したまま消すと、UdonSharp が消えた UdonBehaviour を参照してエラーになる
+                Undo.ClearUndo(root);
+                foreach (Component c in root.GetComponentsInChildren<Component>(true)) if (c != null) Undo.ClearUndo(c);
                 Object.DestroyImmediate(root);
             }
         }
@@ -548,7 +591,16 @@ namespace VRPrintLab.EditorTools
                     if (converted != null) field.SetValue(component, converted);
                 }
             }
-            CopyProxyToUdon(component);
+            try
+            {
+                CopyProxyToUdon(component);
+            }
+            catch (TargetInvocationException e) when (e.InnerException is InvalidOperationException && e.InnerException.Message.Contains("outdated"))
+            {
+                // 何かの理由でコンパイルから漏れていたら、コンパイルしてから1回だけやり直す
+                CompileUdonSharp();
+                CopyProxyToUdon(component);
+            }
         }
 
         private static Component AddUdonSharpComponent(GameObject host, Type type)
