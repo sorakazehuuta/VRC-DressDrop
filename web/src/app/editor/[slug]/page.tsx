@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { parseEditorParams } from "@/lib/templates/params";
 import { getTemplate } from "@/lib/templates/queries";
 import { WORK_IMAGES_BUCKET } from "@/lib/works/constants";
-import { Editor, type InitialWork } from "./editor";
+import { EditorHost, type InitialWork } from "./editor";
 
 export async function generateMetadata({ params }: PageProps<"/editor/[slug]">): Promise<Metadata> {
   const template = await getTemplate((await params).slug);
@@ -67,8 +67,7 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
           </Link>
         )}
       </nav>
-      <Editor
-        key={initialWork?.id ?? "new"}
+      <EditorHost
         template={{
           id: template.id,
           slug: template.slug,

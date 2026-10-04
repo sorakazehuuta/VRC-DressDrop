@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type DragEvent } from "react";
+import { useId, useRef, useState, type DragEvent } from "react";
 import { Button } from "@/components/ui";
 import { PRINT_LIMITS, defaultPrintParams, type ColorParams, type PrintParams } from "@/lib/templates/params";
 import type { ColorSlot, PrintSlot } from "@/lib/templates/schema";
@@ -8,28 +8,82 @@ import { IMAGE_LIMITS, type LoadedImage } from "./images";
 
 type Change<T> = (update: (prev: T) => T, commit?: boolean) => void;
 
+// display: 画面に出す単位への換算（例: 0.5 → 50%）。数値欄に直接入力もできる
+type Display = { scale: number; unit: string };
+const PERCENT: Display = { scale: 100, unit: "%" };
+const PLAIN_PERCENT: Display = { scale: 1, unit: "%" };
+const DEGREE: Display = { scale: 1, unit: "°" };
+
 function Slider({
   label,
   value,
   limits,
-  format,
+  display,
   onChange,
   onCommit,
 }: {
   label: string;
   value: number;
   limits: { min: number; max: number; step: number };
-  format: (v: number) => string;
+  display: Display;
   onChange: (v: number) => void;
   onCommit: () => void;
 }) {
+  const id = useId();
+  // 入力中だけ文字列を持つ（「-」や空欄などの途中の状態を許すため）
+  const [text, setText] = useState<string | null>(null);
+  const shown = Math.round(value * display.scale);
+  const min = Math.round(limits.min * display.scale);
+  const max = Math.round(limits.max * display.scale);
+
+  function applyText(raw: string) {
+    const n = Number(raw);
+    if (raw.trim() === "" || !Number.isFinite(n)) return;
+    onChange(Math.min(max, Math.max(min, n)) / display.scale);
+  }
+
+  function finish() {
+    if (text !== null) applyText(text);
+    setText(null);
+    onCommit();
+  }
+
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="flex justify-between">
-        <span>{label}</span>
-        <span className="tabular-nums text-zinc-500">{format(value)}</span>
-      </span>
+    <div className="flex flex-col gap-1 text-sm">
+      <div className="flex items-center justify-between gap-2">
+        <label htmlFor={id}>{label}</label>
+        <span className="flex items-center gap-1 text-zinc-500">
+          <input
+            type="number"
+            inputMode="numeric"
+            aria-label={`${label}（${display.unit}）`}
+            min={min}
+            max={max}
+            step={1}
+            value={text ?? shown}
+            onFocus={(e) => {
+              setText(String(shown));
+              e.target.select();
+            }}
+            onChange={(e) => {
+              setText(e.target.value);
+              applyText(e.target.value);
+            }}
+            onBlur={finish}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+              if (e.key === "Escape") {
+                setText(null);
+                e.currentTarget.blur();
+              }
+            }}
+            className="w-16 rounded border border-zinc-300 px-1.5 py-0.5 text-right tabular-nums text-zinc-900 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+          />
+          <span className="w-3">{display.unit}</span>
+        </span>
+      </div>
       <input
+        id={id}
         type="range"
         min={limits.min}
         max={limits.max}
@@ -41,12 +95,9 @@ function Slider({
         onBlur={onCommit}
         className="w-full cursor-pointer accent-brand"
       />
-    </label>
+    </div>
   );
 }
-
-const percent = (v: number) => `${Math.round(v * 100)}%`;
-const signedPercent = (v: number) => `${v > 0 ? "+" : ""}${Math.round(v * 100)}%`;
 
 export function PrintControls({
   slot,
@@ -162,22 +213,22 @@ export function PrintControls({
               label="サイズ"
               value={params.scaleX}
               limits={PRINT_LIMITS.scale}
-              format={percent}
+              display={PERCENT}
               onChange={(v) => live({ scaleX: v, scaleY: v })}
               onCommit={onCommit}
             />
           ) : (
             <>
-              <Slider label="横幅" value={params.scaleX} limits={PRINT_LIMITS.scale} format={percent} onChange={(v) => live({ scaleX: v })} onCommit={onCommit} />
-              <Slider label="高さ" value={params.scaleY} limits={PRINT_LIMITS.scale} format={percent} onChange={(v) => live({ scaleY: v })} onCommit={onCommit} />
+              <Slider label="横幅" value={params.scaleX} limits={PRINT_LIMITS.scale} display={PERCENT} onChange={(v) => live({ scaleX: v })} onCommit={onCommit} />
+              <Slider label="高さ" value={params.scaleY} limits={PRINT_LIMITS.scale} display={PERCENT} onChange={(v) => live({ scaleY: v })} onCommit={onCommit} />
             </>
           )}
         </div>
-        <Slider label="位置（左右）" value={params.offsetX} limits={PRINT_LIMITS.offset} format={signedPercent} onChange={(v) => live({ offsetX: v })} onCommit={onCommit} />
-        <Slider label="位置（上下）" value={params.offsetY} limits={PRINT_LIMITS.offset} format={signedPercent} onChange={(v) => live({ offsetY: v })} onCommit={onCommit} />
-        <Slider label="回転" value={params.rotation} limits={PRINT_LIMITS.rotation} format={(v) => `${v}°`} onChange={(v) => live({ rotation: v })} onCommit={onCommit} />
-        <Slider label="明るさ" value={params.brightness} limits={PRINT_LIMITS.brightness} format={(v) => `${v}%`} onChange={(v) => live({ brightness: v })} onCommit={onCommit} />
-        <Slider label="彩度" value={params.saturation} limits={PRINT_LIMITS.saturation} format={(v) => `${v}%`} onChange={(v) => live({ saturation: v })} onCommit={onCommit} />
+        <Slider label="位置（左右）" value={params.offsetX} limits={PRINT_LIMITS.offset} display={PERCENT} onChange={(v) => live({ offsetX: v })} onCommit={onCommit} />
+        <Slider label="位置（上下）" value={params.offsetY} limits={PRINT_LIMITS.offset} display={PERCENT} onChange={(v) => live({ offsetY: v })} onCommit={onCommit} />
+        <Slider label="回転" value={params.rotation} limits={PRINT_LIMITS.rotation} display={DEGREE} onChange={(v) => live({ rotation: v })} onCommit={onCommit} />
+        <Slider label="明るさ" value={params.brightness} limits={PRINT_LIMITS.brightness} display={PLAIN_PERCENT} onChange={(v) => live({ brightness: v })} onCommit={onCommit} />
+        <Slider label="彩度" value={params.saturation} limits={PRINT_LIMITS.saturation} display={PLAIN_PERCENT} onChange={(v) => live({ saturation: v })} onCommit={onCommit} />
         <Button
           type="button"
           variant="secondary"
@@ -207,7 +258,8 @@ export function ColorControls({
   return (
     <section className="flex flex-col gap-3">
       <h2 className="font-semibold">{slot.label}</h2>
-      <div className="flex flex-wrap gap-2">
+      {/* 選択中の枠（ring + offset で外側に 4px）が親のスクロール領域で切れないよう余白を取る */}
+      <div className="flex flex-wrap gap-2 p-1">
         {SWATCHES.map((color) => (
           <button
             key={color}

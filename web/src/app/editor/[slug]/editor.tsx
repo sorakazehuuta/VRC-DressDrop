@@ -45,17 +45,32 @@ async function fetchSavedImage(img: InitialWork["images"][number]) {
   return loadImage(new File([blob], `${img.slot}.${img.ext}`, { type }), img.id);
 }
 
-export function Editor({
-  template,
-  userId,
-  initialWork,
-  restoreDraft,
-}: {
+type EditorProps = {
   template: EditorTemplate;
   userId: string | null;
   initialWork: InitialWork | null;
   restoreDraft: boolean;
-}) {
+};
+
+// 保存などの Server Action のあとはページが再取得されるため、初回保存で URL に作品 ID が付くと
+// initialWork が変わる。編集中の作品そのものなら作り直さず、別の作品・テンプレートに移ったときだけ作り直す
+export function EditorHost(props: EditorProps) {
+  const incoming = `${props.template.slug}|${props.initialWork?.id ?? ""}`;
+  const [prevIncoming, setPrevIncoming] = useState(incoming);
+  const [editing, setEditing] = useState(incoming);
+  const [generation, setGeneration] = useState(0);
+  if (incoming !== prevIncoming) {
+    setPrevIncoming(incoming);
+    if (incoming !== editing) {
+      setEditing(incoming);
+      setGeneration((g) => g + 1);
+    }
+  }
+  const onWorkId = useCallback((id: string) => setEditing(`${props.template.slug}|${id}`), [props.template.slug]);
+  return <Editor key={generation} {...props} onWorkId={onWorkId} />;
+}
+
+function Editor({ template, userId, initialWork, restoreDraft, onWorkId }: EditorProps & { onWorkId: (id: string) => void }) {
   const router = useRouter();
   const initialParams = useMemo(() => initialWork?.params ?? defaultParams(template.slots), [initialWork, template.slots]);
   const initialName = initialWork?.name ?? `${template.name}の作品`;
@@ -85,12 +100,13 @@ export function Editor({
       try {
         if (initialWork?.images.length) {
           const loaded = await Promise.all(initialWork.images.map(fetchSavedImage));
-          if (!cancelled) setImages(Object.fromEntries(loaded.map((i) => [i.id, i])));
+          // 未保存の画像を消さないよう、既存の一覧に足す
+          if (!cancelled) setImages((prev) => ({ ...Object.fromEntries(loaded.map((i) => [i.id, i])), ...prev }));
         } else if (restoreDraft) {
           const draft = await takeDraft(template.slug);
           if (draft && !cancelled) {
             const loaded = await Promise.all(draft.images.map((i) => loadImage(i.file, i.id)));
-            setImages(Object.fromEntries(loaded.map((i) => [i.id, i])));
+            setImages((prev) => ({ ...prev, ...Object.fromEntries(loaded.map((i) => [i.id, i])) }));
             setName(draft.name);
             reset(draft.params);
           }
@@ -160,6 +176,8 @@ export function Editor({
 
     setStatus({ kind: "saving" });
     const id = workId ?? crypto.randomUUID();
+    // ページの再取得より先に「この ID の作品を編集中」と伝えておく
+    onWorkId(id);
     try {
       await uploadImages(
         userId,
@@ -195,7 +213,7 @@ export function Editor({
       setStatus({ kind: "error", message: e instanceof Error ? e.message : "保存に失敗しました。" });
       return null;
     }
-  }, [readOnly, status.kind, loadingImages, referencedImages, params, userId, template, name, router, workId, savedImageIds, dirty, savedSnapshot, lastSavedAt, askKeepPrevious]);
+  }, [readOnly, status.kind, loadingImages, referencedImages, params, userId, template, name, router, workId, savedImageIds, dirty, savedSnapshot, lastSavedAt, askKeepPrevious, onWorkId]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -207,7 +225,7 @@ export function Editor({
         return;
       }
       const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" && (target as HTMLInputElement).type === "text") return;
+      if (target.tagName === "INPUT" && ["text", "number"].includes((target as HTMLInputElement).type)) return;
       if (key === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
