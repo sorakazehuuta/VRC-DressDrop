@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { LogoutButton } from "./logout-button";
 
 type NavItem = { href: string; label: string; match: string[] };
 
-// match: このタブをハイライトするパスの先頭（エディタはテンプレート、ダウンロード履歴はマイ作品の一部として扱う）
+// match: このタブをハイライトするパスの先頭（エディタはテンプレート、ダウンロード履歴はマイ作品の一部として扱う。
+// 保存済みの作品を開いたエディタは、currentPath で /works/edit に読み替えてマイ作品に含める）
 const TEMPLATES: NavItem = { href: "/templates", label: "テンプレート", match: ["/templates", "/editor"] };
 const WORKS: NavItem = { href: "/works", label: "マイ作品", match: ["/works", "/downloads"] };
 const ACCOUNT: NavItem = { href: "/account", label: "アカウント", match: ["/account"] };
@@ -29,8 +30,25 @@ function TabLink({ item, pathname }: { item: NavItem; pathname: string }) {
   );
 }
 
-export function HeaderNav({ loggedIn, balance }: { loggedIn: boolean; balance: number }) {
-  const pathname = usePathname();
+type HeaderNavProps = { loggedIn: boolean; balance: number };
+
+// useSearchParams は静的に書き出すページで Suspense が必要なため、読めない間は ?work= がないものとして表示する
+export function HeaderNav(props: HeaderNavProps) {
+  return (
+    <Suspense fallback={<Nav {...props} editingWork={false} />}>
+      <NavWithSearchParams {...props} />
+    </Suspense>
+  );
+}
+
+function NavWithSearchParams(props: HeaderNavProps) {
+  const editingWork = useSearchParams().has("work");
+  return <Nav {...props} editingWork={editingWork} />;
+}
+
+function Nav({ loggedIn, balance, editingWork }: HeaderNavProps & { editingWork: boolean }) {
+  const rawPath = usePathname();
+  const pathname = editingWork && rawPath.startsWith("/editor/") ? "/works/edit" : rawPath;
 
   if (!loggedIn) {
     return (
