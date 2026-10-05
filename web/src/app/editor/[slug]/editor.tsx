@@ -276,18 +276,20 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
   }, []);
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
+    <div className="flex flex-1 flex-col gap-4 lg:min-h-0">
       <div className="flex flex-wrap items-center gap-3">
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          maxLength={100}
-          aria-label="作品名"
-          disabled={readOnly}
-          className="min-w-0 flex-1 rounded-md border border-transparent px-2 py-1 text-xl font-bold text-brand hover:border-zinc-300 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 sm:max-w-md"
-        />
-        <span className="text-xs text-zinc-500">テンプレート: {template.name}</span>
+        <div className="flex min-w-0 flex-1 flex-col sm:max-w-md">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={100}
+            aria-label="作品名"
+            disabled={readOnly}
+            className="min-w-0 rounded-md border border-transparent px-2 py-0.5 text-xl font-bold text-brand hover:border-zinc-300 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+          />
+          <span className="px-2 text-xs text-zinc-500">テンプレート: {template.name}</span>
+        </div>
         <div className="ml-auto flex items-center gap-3">
           <SaveStatus status={status} dirty={dirty} saved={Boolean(workId)} />
           <Button type="button" onClick={() => void save()} disabled={readOnly || status.kind === "saving" || loadingImages} title="保存 (Ctrl+S)">
@@ -304,9 +306,9 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
         </p>
       )}
 
-      <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="flex flex-col gap-3">
-          <div className="relative h-[55vh] min-h-[320px] overflow-hidden rounded-xl border border-zinc-200 lg:h-[calc(100vh-14rem)]">
+      <div className="grid flex-1 gap-6 lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[minmax(0,1fr)]">
+        <div className="flex flex-col gap-3 lg:min-h-0">
+          <div className="relative h-[55vh] min-h-[320px] overflow-hidden rounded-xl border border-zinc-200 lg:h-auto lg:min-h-0 lg:flex-1">
             <Viewer
               modelUrl={template.previewModelUrl}
               slots={template.slots}
@@ -335,7 +337,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
           </div>
         </div>
 
-        <aside className="flex flex-col gap-6 lg:max-h-[calc(100vh-11rem)] lg:overflow-y-auto lg:pr-1">
+        <aside className="flex flex-col gap-6 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           <fieldset disabled={readOnly} className="flex flex-col gap-6">
             {template.slots.map((slot) => {
               const slotParams = params.slots[slot.key];

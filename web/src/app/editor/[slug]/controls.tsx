@@ -198,6 +198,7 @@ export function PrintControls({
         )}
       </div>
 
+      {!image && <p className="text-xs text-zinc-500">画像を選ぶと、大きさ・位置・回転・色合いを調整できます。</p>}
       <fieldset disabled={!image} className="flex flex-col gap-4 disabled:opacity-40">
         <div className="flex flex-col gap-3">
           <label className="flex items-center gap-2 text-sm">
@@ -245,7 +246,11 @@ export function PrintControls({
   );
 }
 
-const SWATCHES = ["#ffffff", "#e5e5e5", "#6b7280", "#1f2937", "#111111", "#1e3a8a", "#38bdf8", "#16a34a", "#facc15", "#f97316", "#dc2626", "#f9a8d4"];
+// 8色×2行（1行目: 無彩色と茶系、2行目: 色相の順）
+const SWATCHES = [
+  ["#ffffff", "#e5e5e5", "#6b7280", "#1f2937", "#111111", "#e8dcc4", "#8a7f5a", "#7c4a2d"],
+  ["#dc2626", "#f97316", "#facc15", "#16a34a", "#38bdf8", "#1e3a8a", "#7c3aed", "#f9a8d4"],
+].flat();
 
 export function ColorControls({
   slot,
@@ -262,7 +267,7 @@ export function ColorControls({
     <section className="flex flex-col gap-3">
       <h2 className="font-semibold">{slot.label}</h2>
       {/* 選択中の枠（ring + offset で外側に 4px）が親のスクロール領域で切れないよう余白を取る */}
-      <div className="flex flex-wrap gap-2 p-1">
+      <div className="grid w-fit grid-cols-8 gap-2 p-1">
         {SWATCHES.map((color) => (
           <button
             key={color}

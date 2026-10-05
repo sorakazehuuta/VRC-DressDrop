@@ -59,8 +59,9 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
     };
   }
 
+  // 広い画面ではエディタ全体を画面の高さ（ヘッダーの下）に収め、スクロールは右の設定欄だけにする
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-3 px-4 py-5">
+    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-3 px-4 py-5 lg:h-[calc(100dvh-4rem-1px)] lg:min-h-[640px] lg:flex-none">
       <nav className="flex gap-3 text-sm text-zinc-500">
         <Link href="/templates" className="hover:underline">
           ← テンプレート一覧

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { buttonClassName } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_WORKS_PER_USER, WORK_IMAGES_BUCKET } from "@/lib/works/constants";
@@ -38,7 +39,7 @@ export default async function WorksPage() {
   const full = cards.length >= MAX_WORKS_PER_USER;
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-10">
+    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-10">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-brand">マイ作品</h1>
@@ -47,8 +48,8 @@ export default async function WorksPage() {
             {full && "（上限に達しています。新しく保存するには不要な作品を削除してください）"}
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <Link href="/downloads" className="text-sm font-medium text-accent-dark hover:underline">
+        <div className="flex items-center gap-3">
+          <Link href="/downloads" className={buttonClassName("secondary")}>
             ダウンロード履歴
           </Link>
           <Link href="/templates" className="rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-dark">
@@ -65,7 +66,7 @@ export default async function WorksPage() {
           </Link>
         </div>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {cards.map((work) => (
             <li key={work.id}>
               <WorkCard work={work} canDuplicate={!full} />

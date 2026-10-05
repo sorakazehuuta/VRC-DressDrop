@@ -38,6 +38,8 @@ async function cleanup(uid) {
     await page.getByLabel("パスワード").fill(password);
     await page.getByRole("button", { name: "ログイン", exact: true }).click();
     await page.waitForURL(/\/editor\/tshirt/);
+    // 上書き保存の前の「前回の保存内容を残すか」の確認は versions-e2e で確かめるため、ここでは出さない
+    await page.evaluate(() => localStorage.setItem("vrprintlab:overwrite-without-asking", "1"));
     await page.waitForSelector("canvas");
     ok("ログイン直後の残高", (await balance()) === "3 トークン", await balance());
 

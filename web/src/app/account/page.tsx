@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { signOut } from "@/app/auth/actions";
-import { Button, Card } from "@/components/ui";
+import { LogoutButton } from "@/components/logout-button";
+import { Card, buttonClassName } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { DeleteAccountForm, DisplayNameForm } from "./forms";
@@ -45,14 +45,10 @@ export default async function AccountPage() {
   const hasPassword = user.identities?.some((i) => i.provider === "email") ?? false;
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10">
+    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-brand">アカウント設定</h1>
-        <form action={signOut}>
-          <Button type="submit" variant="secondary">
-            ログアウト
-          </Button>
-        </form>
+        <LogoutButton className={buttonClassName("secondary")} />
       </div>
 
       <Card className="flex flex-col gap-3">

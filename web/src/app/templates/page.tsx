@@ -9,7 +9,7 @@ export default async function TemplatesPage() {
   const templates = await listTemplates();
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-10">
+    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-10">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold">テンプレートを選ぶ</h1>
         <p className="text-zinc-600">作りたいアイテムを選ぶと、画像を貼って編集できます。</p>
@@ -20,7 +20,7 @@ export default async function TemplatesPage() {
           公開中のテンプレートはまだありません。
         </p>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {templates.map((t) => (
             <li key={t.slug}>
               <Link
@@ -29,7 +29,7 @@ export default async function TemplatesPage() {
               >
                 <div className="relative flex aspect-[4/3] items-center justify-center bg-zinc-100">
                   {t.thumbnailUrl ? (
-                    <Image src={t.thumbnailUrl} alt="" fill sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" className="object-cover" unoptimized />
+                    <Image src={t.thumbnailUrl} alt="" fill sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" className="object-cover" unoptimized />
                   ) : (
                     <span className="text-5xl font-bold text-zinc-300">{t.name.slice(0, 1)}</span>
                   )}

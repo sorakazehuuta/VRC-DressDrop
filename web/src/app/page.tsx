@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FormMessage } from "@/components/ui";
+import { createClient } from "@/lib/supabase/server";
 import icon from "../../images/common/icons/VRPrintLab_icon.png";
 
 const steps = [
@@ -11,6 +12,9 @@ const steps = [
 
 export default async function Home({ searchParams }: PageProps<"/">) {
   const { deleted } = await searchParams;
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const loggedIn = Boolean(data?.claims);
 
   return (
     <main className="flex flex-1 flex-col">
@@ -34,9 +38,15 @@ export default async function Home({ searchParams }: PageProps<"/">) {
             <Link href="/templates" className="rounded-md bg-accent px-5 py-3 font-semibold text-white hover:bg-accent-dark">
               さっそく作ってみる
             </Link>
-            <Link href="/signup" className="rounded-md border border-brand px-5 py-3 font-semibold text-brand hover:bg-zinc-50">
-              無料で登録（3トークン付き）
-            </Link>
+            {loggedIn ? (
+              <Link href="/works" className="rounded-md border border-brand px-5 py-3 font-semibold text-brand hover:bg-zinc-50">
+                マイ作品を見る
+              </Link>
+            ) : (
+              <Link href="/signup" className="rounded-md border border-brand px-5 py-3 font-semibold text-brand hover:bg-zinc-50">
+                無料で登録（3トークン付き）
+              </Link>
+            )}
           </div>
         </div>
         <Image src={icon} alt="" priority className="mx-auto hidden w-64 md:block" sizes="256px" />

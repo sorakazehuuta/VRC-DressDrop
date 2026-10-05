@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 動作確認用のスクリプト（Node から直接実行する CommonJS や、scripts/ に移して使うもの）
+    "tools/verification/**",
   ]),
 ]);
 

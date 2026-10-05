@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { buttonClassName } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { RedownloadButton } from "./redownload-button";
@@ -25,9 +26,14 @@ export default async function DownloadsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
-      <div>
-        <h1 className="text-2xl font-bold text-brand">ダウンロード履歴</h1>
-        <p className="text-sm text-zinc-500">購入した版は、作品を編集・削除したあとでも何度でも無料でダウンロードできます。</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-brand">ダウンロード履歴</h1>
+          <p className="text-sm text-zinc-500">購入した版は、作品を編集・削除したあとでも何度でも無料でダウンロードできます。</p>
+        </div>
+        <Link href="/works" className={buttonClassName("secondary")}>
+          マイ作品へ
+        </Link>
       </div>
 
       {!purchases?.length ? (

@@ -24,7 +24,7 @@ export function GimmickPanel({
   onChange: Change;
   onCommit: () => void;
 }) {
-  const [open, setOpen] = useState(selected.length > 0);
+  const [open, setOpen] = useState(true);
   const defMap = useMemo(() => new Map(defs.map((d) => [d.slug, d])), [defs]);
   const categories = useMemo(() => {
     const map = new Map<string, GimmickDefinition[]>();

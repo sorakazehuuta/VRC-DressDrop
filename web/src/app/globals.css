@@ -15,6 +15,11 @@
   color-scheme: light;
 }
 
+/* 縦に長いページだけスクロールバーが出て、中央寄せのヘッダー（ロゴ）や本文が左右にずれるのを防ぐ */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   background: #ffffff;
   color: #18181b;

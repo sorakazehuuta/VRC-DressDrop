@@ -59,8 +59,8 @@ async function cleanup(uid) {
     await page.waitForURL(/\/editor\/tshirt/);
     await page.waitForSelector("canvas");
 
-    // ---- ギミックの選択 ----
-    await page.getByRole("button", { name: /ギミック（動き・演出）/ }).click();
+    // ---- ギミックの選択（ギミック欄は最初から開いている） ----
+    ok("ギミック欄が最初から開いている", (await page.getByRole("button", { name: /ギミック（動き・演出）/ }).getAttribute("aria-expanded")) === "true");
     ok("ギミックが16種表示される", (await page.locator("aside div.rounded-lg input[type=checkbox]").count()) === 16);
     ok("軌跡は動くギミックがないと選べない", await check("動いたあとに軌跡").isDisabled());
     await check("ずっと回転する").check();
@@ -103,7 +103,6 @@ async function cleanup(uid) {
     await admin.from("token_lots").insert({ user_id: uid, amount: 5, remaining: 5, source: "admin" });
     await page.reload({ waitUntil: "networkidle" });
     await page.waitForSelector("canvas");
-    await page.getByRole("button", { name: /ギミック（動き・演出）/ }).click().catch(() => {});
     if (!(await check("キラキラのパーティクル").isVisible())) await page.getByRole("button", { name: /ギミック（動き・演出）/ }).click();
     await check("キラキラのパーティクル").check();
     await page.getByRole("button", { name: "保存してダウンロード" }).click();

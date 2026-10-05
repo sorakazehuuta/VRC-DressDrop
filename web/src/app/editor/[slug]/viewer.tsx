@@ -1,8 +1,9 @@
 "use client";
 
 import { Bounds, OrbitControls, useBounds, useGLTF } from "@react-three/drei";
-import { Canvas, useThree } from "@react-three/fiber";
-import { Component, Suspense, useEffect, useMemo, type ReactNode } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Component, Suspense, useEffect, useMemo, useRef, type ReactNode } from "react";
+import type { OrbitControls as OrbitControlsImpl } from "three/examples/jsm/controls/OrbitControls.js";
 import * as THREE from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { backgroundColor, textureDimensions, type EditorParams } from "@/lib/templates/params";
@@ -34,20 +35,87 @@ export default function Viewer(props: ViewerProps) {
             {props.onCaptureReady && <CaptureBridge onReady={props.onCaptureReady} />}
           </Bounds>
         </Suspense>
-        <OrbitControls makeDefault enablePan={false} enableDamping />
+        {/* 真下から見上げると中の空洞が見えるため、水平より少し下までに制限する */}
+        <OrbitControls makeDefault enablePan={false} enableDamping maxPolarAngle={Math.PI * 0.6} />
       </Canvas>
     </ViewerErrorBoundary>
   );
 }
 
-// 正面（+Z 方向）から全体が収まる位置にカメラを戻す
+const RESET_SECONDS = 0.6;
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+
+type ResetAnimation = {
+  elapsed: number;
+  from: { target: THREE.Vector3; spherical: THREE.Spherical };
+  to: { target: THREE.Vector3; spherical: THREE.Spherical };
+  damping: boolean;
+};
+
+// 正面（+Z 方向）から全体が収まる位置にカメラを戻す。
+// 位置を直線で動かすとモデルの横や中を通って画面外に外れるため、注視点を中心に回り込みながら
+// 距離だけを直線的に変える（常にモデルの方を向いたまま、近づく・離れる動きになる）
 function ResetView({ signal }: { signal: number }) {
   const bounds = useBounds();
+  const get = useThree((s) => s.get);
+  // OrbitControls は makeDefault で登録されるまで null なので、登録されたら操作の監視を始める
+  const hasControls = useThree((s) => Boolean(s.controls));
+  const animation = useRef<ResetAnimation | null>(null);
+
   useEffect(() => {
-    if (signal === 0) return;
+    const { camera, controls: c } = get();
+    const controls = c as OrbitControlsImpl | null;
+    if (signal === 0 || !controls) return;
     const { center, distance } = bounds.refresh().getSize();
-    bounds.to({ position: [center.x, center.y, center.z + distance], target: [center.x, center.y, center.z] });
-  }, [signal, bounds]);
+    const offset = camera.position.clone().sub(controls.target);
+    const from = new THREE.Spherical().setFromVector3(offset);
+    // 左右は近い向きから回り込む
+    const theta = from.theta - Math.PI * 2 * Math.round(from.theta / (Math.PI * 2));
+    animation.current = {
+      elapsed: 0,
+      from: { target: controls.target.clone(), spherical: new THREE.Spherical(from.radius, from.phi, theta) },
+      to: { target: center.clone(), spherical: new THREE.Spherical(distance, Math.PI / 2, 0) },
+      // 慣性が残っているとアニメーションの後にカメラが流れるため、動かしている間は切る（切ると慣性も消える）
+      damping: animation.current?.damping ?? controls.enableDamping,
+    };
+    controls.enableDamping = false;
+  }, [signal, bounds, get]);
+
+  // 動かしている途中に利用者が操作したら、そこで止めて操作を優先する
+  useEffect(() => {
+    const controls = get().controls as OrbitControlsImpl | null;
+    if (!hasControls || !controls) return;
+    const stop = () => {
+      if (!animation.current) return;
+      controls.enableDamping = animation.current.damping;
+      animation.current = null;
+    };
+    controls.addEventListener("start", stop);
+    return () => controls.removeEventListener("start", stop);
+  }, [hasControls, get]);
+
+  useFrame((state, delta) => {
+    const a = animation.current;
+    const controls = state.controls as OrbitControlsImpl | null;
+    if (!a || !controls) return;
+    a.elapsed = Math.min(a.elapsed + delta, RESET_SECONDS);
+    const t = easeInOut(a.elapsed / RESET_SECONDS);
+    const lerp = (x: number, y: number) => x + (y - x) * t;
+    const spherical = new THREE.Spherical(
+      lerp(a.from.spherical.radius, a.to.spherical.radius),
+      lerp(a.from.spherical.phi, a.to.spherical.phi),
+      lerp(a.from.spherical.theta, a.to.spherical.theta),
+    );
+    controls.target.lerpVectors(a.from.target, a.to.target, t);
+    state.camera.position.setFromSpherical(spherical).add(controls.target);
+    state.camera.lookAt(controls.target);
+    controls.update();
+    if (a.elapsed >= RESET_SECONDS) {
+      controls.enableDamping = a.damping;
+      animation.current = null;
+    }
+  });
+
   return null;
 }
 

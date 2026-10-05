@@ -61,6 +61,8 @@ async function listFolder(uid, workId) {
     await page.getByLabel("パスワード").fill(password);
     await page.getByRole("button", { name: "ログイン", exact: true }).click();
     await page.waitForURL(/\/editor\/tshirt/);
+    // 上書き保存の前の「前回の保存内容を残すか」の確認は versions-e2e で確かめるため、ここでは出さない
+    await page.evaluate(() => localStorage.setItem("vrprintlab:overwrite-without-asking", "1"));
     await page.getByText("guest-print.png").waitFor({ timeout: 15000 });
     ok("ログイン後に画像が復元される", true);
     const yellowSelected = await page.getByLabel("色 #facc15").evaluate((el) => el.className.includes("ring-2"));

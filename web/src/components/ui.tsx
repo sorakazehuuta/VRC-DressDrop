@@ -28,17 +28,16 @@ const buttonStyles = {
   danger: "bg-red-600 text-white hover:bg-red-700",
 };
 
+// ボタンと同じ見た目のリンクにも使う
+export const buttonClassName = (variant: keyof typeof buttonStyles = "primary", className = "") =>
+  `inline-flex cursor-pointer items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${buttonStyles[variant]} ${className}`;
+
 export function Button({
   variant = "primary",
   className = "",
   ...props
 }: ComponentProps<"button"> & { variant?: keyof typeof buttonStyles }) {
-  return (
-    <button
-      className={`inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${buttonStyles[variant]} ${className}`}
-      {...props}
-    />
-  );
+  return <button className={buttonClassName(variant, className)} {...props} />;
 }
 
 export function FormMessage({ state }: { state: { error?: string; message?: string } | null | undefined }) {
