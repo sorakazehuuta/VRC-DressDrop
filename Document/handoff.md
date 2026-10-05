@@ -27,6 +27,7 @@ index.html, models/  最初の試作（参考用。新しいアプリでは使�
 web/                 本体（Next.js 16 App Router + TypeScript + Tailwind v4）
   src/app/           画面と Server Actions
     editor/[slug]/   エディタ（viewer.tsx: three.js / react-three-fiber、gimmick-panel.tsx、download-panel.tsx）
+      gimmick-preview/  ギミックの動きのプレビュー（preview-3d.tsx: 3D側、spec.ts: 状態とボタン、preview-overlay.tsx: 操作欄）
     works/           マイ作品（actions.ts: 保存・複製・削除、download.ts: 課金とダウンロード）
     downloads/       ダウンロード履歴と購入した版の詳細
     account/ auth/ login/ signup/ ...

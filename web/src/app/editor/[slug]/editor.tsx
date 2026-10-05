@@ -12,6 +12,8 @@ import type { GimmickDefinition, GimmickSelection } from "@/lib/gimmicks/schema"
 import { ColorControls, PrintControls } from "./controls";
 import { DownloadPanel } from "./download-panel";
 import { GimmickPanel } from "./gimmick-panel";
+import { PreviewOverlay } from "./gimmick-preview/preview-overlay";
+import { initialPreviewState, looksBetterInDark, primaryAction, type PreviewState } from "./gimmick-preview/spec";
 import { saveDraft, takeDraft } from "./draft";
 import { loadImage, type LoadedImage } from "./images";
 import { formatSavedAt, useKeepPreviousDialog } from "./keep-previous-dialog";
@@ -109,6 +111,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [loadingImages, setLoadingImages] = useState(Boolean(initialWork?.images.length) || restoreDraft);
   const [resetViewSignal, setResetViewSignal] = useState(0);
+  const [preview, setPreview] = useState<PreviewState>(initialPreviewState);
   const [saveCount, setSaveCount] = useState(0);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(initialWork?.updatedAt ?? null);
   const { ask: askKeepPrevious, dialog: keepPreviousDialog } = useKeepPreviousDialog();
@@ -116,6 +119,26 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
 
   const dirty = snapshot(name, state) !== savedSnapshot;
   const readOnly = initialWork?.suspended ?? false;
+
+  // ギミックの組み合わせが変わったら、プレビューを最初の状態（触る前）に戻す。
+  // 光る系のギミックを新しく選んだときは、見え方が分かるよう暗い場所の表示にする
+  const gimmickKey = gimmicks.map((g) => g.slug).sort().join(",");
+  const [prevGimmickKey, setPrevGimmickKey] = useState(gimmickKey);
+  if (gimmickKey !== prevGimmickKey) {
+    const before = new Set(prevGimmickKey.split(","));
+    const addedDarkLooking = gimmicks.some((g) => !before.has(g.slug) && looksBetterInDark(g.slug));
+    setPrevGimmickKey(gimmickKey);
+    setPreview((p) => ({ ...p, touches: 0, action: null, near: false, dark: p.dark || addedDarkLooking }));
+  }
+  const previewAction = primaryAction(gimmicks, preview.touches);
+  const actionKind = previewAction?.kind ?? null;
+  const runPreviewAction = useMemo(() => {
+    if (!actionKind) return null;
+    return () =>
+      setPreview((p) =>
+        actionKind === "touch" ? { ...p, touches: p.touches + 1 } : { ...p, action: { kind: actionKind, id: (p.action?.id ?? 0) + 1 } },
+      );
+  }, [actionKind]);
 
   // 保存済みの作品の画像、またはログイン前に一時保存した編集内容を読み込む
   useEffect(() => {
@@ -316,6 +339,18 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
               images={images}
               resetViewSignal={resetViewSignal}
               onCaptureReady={onCaptureReady}
+              gimmicks={gimmicks}
+              preview={preview}
+              onPrimaryAction={runPreviewAction}
+            />
+            <PreviewOverlay
+              selected={gimmicks}
+              preview={preview}
+              action={previewAction}
+              onPrimary={() => runPreviewAction?.()}
+              onToggleNear={() => setPreview((p) => ({ ...p, near: !p.near }))}
+              onTogglePlaying={() => setPreview((p) => ({ ...p, playing: !p.playing, touches: 0, action: null, near: false }))}
+              onToggleDark={() => setPreview((p) => ({ ...p, dark: !p.dark }))}
             />
             {loadingImages && (
               <div className="absolute inset-x-0 top-3 mx-auto w-fit rounded-full bg-white/90 px-3 py-1 text-xs text-zinc-600 shadow">

@@ -2,13 +2,16 @@
 
 import { Bounds, OrbitControls, useBounds, useGLTF } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Component, Suspense, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { Component, Suspense, useEffect, useMemo, useRef, type ReactNode, type RefObject } from "react";
 import type { OrbitControls as OrbitControlsImpl } from "three/examples/jsm/controls/OrbitControls.js";
 import * as THREE from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
+import type { GimmickSelection } from "@/lib/gimmicks/schema";
 import { backgroundColor, textureDimensions, type EditorParams } from "@/lib/templates/params";
 import type { PrintSlot, Slot } from "@/lib/templates/schema";
 import type { LoadedImage } from "./images";
+import { applyMaterialFx, createPreviewRig, GimmickBody, GimmickEffects, NEUTRAL_FX, type PreviewRig } from "./gimmick-preview/preview-3d";
+import type { PreviewState } from "./gimmick-preview/spec";
 import { drawPrint } from "./print-canvas";
 
 type ViewerProps = {
@@ -18,28 +21,86 @@ type ViewerProps = {
   images: Record<string, LoadedImage>;
   resetViewSignal: number;
   onCaptureReady?: (capture: () => Promise<Blob | null>) => void;
+  // ギミックのプレビュー
+  gimmicks: GimmickSelection[];
+  preview: PreviewState;
+  onPrimaryAction: (() => void) | null;
 };
 
 export default function Viewer(props: ViewerProps) {
+  const rigRef = useRef<PreviewRig>(createPreviewRig());
   return (
     <ViewerErrorBoundary>
       <Canvas flat dpr={[1, 2]} camera={{ fov: 35, position: [0, 0.2, 2.5] }}>
-        <color attach="background" args={["#e4e4e7"]} />
-        <hemisphereLight args={["#ffffff", "#8a8a8a", 1.6]} />
-        <directionalLight position={[2, 3, 4]} intensity={1.8} />
-        <directionalLight position={[-3, 1, -3]} intensity={0.7} />
+        <Lights dark={props.preview.dark} rigRef={rigRef} />
         <Suspense fallback={null}>
           <Bounds fit clip observe margin={1.25}>
-            <Model {...props} />
+            <GimmickBody
+              rigRef={rigRef}
+              selected={props.gimmicks}
+              preview={props.preview}
+              modelKey={props.modelUrl}
+              onPrimary={props.onPrimaryAction}
+            >
+              <Model {...props} rigRef={rigRef} />
+            </GimmickBody>
             <ResetView signal={props.resetViewSignal} />
-            {props.onCaptureReady && <CaptureBridge onReady={props.onCaptureReady} />}
+            {props.onCaptureReady && <CaptureBridge onReady={props.onCaptureReady} rigRef={rigRef} />}
           </Bounds>
+          <GimmickEffects rigRef={rigRef} selected={props.gimmicks} preview={props.preview} onPrimary={props.onPrimaryAction} />
         </Suspense>
         {/* 真下から見上げると中の空洞が見えるため、水平より少し下までに制限する */}
         <OrbitControls makeDefault enablePan={false} enableDamping maxPolarAngle={Math.PI * 0.6} />
       </Canvas>
     </ViewerErrorBoundary>
   );
+}
+
+const LIGHTING = {
+  bright: { background: "#e4e4e7", hemisphere: 1.6, key: 1.8, fill: 0.7 },
+  // 暗いワールドを想定した照明（光る・照らす・粒のギミックの見え方を確かめる）
+  dark: { background: "#18181b", hemisphere: 0.18, key: 0.25, fill: 0.08 },
+};
+
+function Lights({ dark, rigRef }: { dark: boolean; rigRef: RefObject<PreviewRig> }) {
+  const get = useThree((s) => s.get);
+  const look = dark ? LIGHTING.dark : LIGHTING.bright;
+  const hemisphereRef = useRef<THREE.HemisphereLight>(null);
+  const keyRef = useRef<THREE.DirectionalLight>(null);
+  const fillRef = useRef<THREE.DirectionalLight>(null);
+
+  // サムネイルはいつも明るい照明で撮る
+  useEffect(() => {
+    const hooks = rigRef.current.captureHooks;
+    const hook = () => {
+      const lights = [hemisphereRef.current, keyRef.current, fillRef.current];
+      const saved = lights.map((l) => l?.intensity ?? 0);
+      const scene = get().scene;
+      const background = scene.background instanceof THREE.Color ? scene.background.clone() : null;
+      setLighting(lights, [LIGHTING.bright.hemisphere, LIGHTING.bright.key, LIGHTING.bright.fill], scene, new THREE.Color(LIGHTING.bright.background));
+      return () => setLighting(lights, saved, scene, background);
+    };
+    hooks.add(hook);
+    return () => {
+      hooks.delete(hook);
+    };
+  }, [get, rigRef]);
+
+  return (
+    <>
+      <color attach="background" args={[look.background]} />
+      <hemisphereLight ref={hemisphereRef} args={["#ffffff", "#8a8a8a", look.hemisphere]} intensity={look.hemisphere} />
+      <directionalLight ref={keyRef} position={[2, 3, 4]} intensity={look.key} />
+      <directionalLight ref={fillRef} position={[-3, 1, -3]} intensity={look.fill} />
+    </>
+  );
+}
+
+function setLighting(lights: (THREE.Light | null)[], intensities: number[], scene: THREE.Scene, background: THREE.Color | null) {
+  lights.forEach((l, i) => {
+    if (l) l.intensity = intensities[i];
+  });
+  if (background && scene.background instanceof THREE.Color) scene.background.copy(background);
 }
 
 const RESET_SECONDS = 0.6;
@@ -123,11 +184,14 @@ const THUMBNAIL = { width: 480, height: 360 };
 
 // マイ作品のサムネイル（4:3 の JPEG）を撮る。利用者の視点やカメラの移動中かどうかに左右されないよう、
 // 撮影の瞬間だけカメラを正面に置き、描画して写し取ったら元に戻す（同期処理なので画面には映らない）
-function CaptureBridge({ onReady }: { onReady: (capture: () => Promise<Blob | null>) => void }) {
+function CaptureBridge({ onReady, rigRef }: { onReady: (capture: () => Promise<Blob | null>) => void; rigRef: RefObject<PreviewRig> }) {
   const { gl, scene, camera } = useThree();
   const bounds = useBounds();
   useEffect(() => {
     onReady(() => {
+      // ギミックの動き・演出・暗い照明を止めた状態で撮る
+      const restores = [...rigRef.current.captureHooks].map((hook) => hook());
+      scene.updateMatrixWorld();
       const { center, distance } = bounds.refresh().getSize();
       const savedPosition = camera.position.clone();
       const savedQuaternion = camera.quaternion.clone();
@@ -155,12 +219,14 @@ function CaptureBridge({ onReady }: { onReady: (capture: () => Promise<Blob | nu
       camera.position.copy(savedPosition);
       camera.quaternion.copy(savedQuaternion);
       camera.updateMatrixWorld();
+      restores.reverse().forEach((restore) => restore());
+      scene.updateMatrixWorld();
       gl.render(scene, camera);
 
       if (!ctx) return Promise.resolve(null);
       return new Promise((resolve) => out.toBlob(resolve, "image/jpeg", 0.85));
     });
-  }, [gl, scene, camera, bounds, onReady]);
+  }, [gl, scene, camera, bounds, onReady, rigRef]);
   return null;
 }
 
@@ -227,9 +293,23 @@ function buildRig(source: THREE.Object3D, slots: Slot[]): Rig {
   return { scene, materials, prints };
 }
 
-function Model({ modelUrl, slots, params, images }: ViewerProps) {
+function Model({ modelUrl, slots, params, images, rigRef }: ViewerProps & { rigRef: RefObject<PreviewRig> }) {
   const gltf = useGLTF(modelUrl);
   const { scene, materials, prints: printTextures } = useMemo(() => buildRig(gltf.scene, slots), [gltf.scene, slots]);
+
+  // ギミックの発光・半透明を毎フレーム反映し、サムネイルの撮影中だけ元に戻す
+  useFrame(() => applyMaterialFx(materials.values(), rigRef.current.fx));
+  useEffect(() => {
+    const hooks = rigRef.current.captureHooks;
+    const hook = () => {
+      applyMaterialFx(materials.values(), NEUTRAL_FX);
+      return () => applyMaterialFx(materials.values(), rigRef.current.fx);
+    };
+    hooks.add(hook);
+    return () => {
+      hooks.delete(hook);
+    };
+  }, [materials, rigRef]);
 
   useEffect(
     () => () => {

@@ -109,5 +109,8 @@ npm run gimmicks:sync    # Supabase に登録・更新
 3. 新しい組み立て手順が必要なら、`SETUP_STEPS`（`src/lib/gimmicks/schema.ts`）と `VRPrintLabPrefabBuilder.cs` の両方に追加する
 4. `npm run gimmicks:check` → `npm run gimmicks:sync`
 5. エディタで選んでダウンロードし、Unity で Prefab が組み立てられ、動くことを確認する
+6. エディタのプレビューに動きを足す。`src/app/editor/[slug]/gimmick-preview/spec.ts` の `PREVIEW_SLUGS` に slug を追加し、
+   `preview-3d.tsx` に動き（本体の動きは `GimmickBody`、粒・ライトなどの演出は `EffectsScene`）を書く。
+   「触る」などのボタンが必要なら `primaryAction` に追加する。対応していないギミックは、プレビューで「対応していません」と表示される
 
 スクリプトは購入済みの unitypackage には含まれたままなので、配布後にスクリプトを直した場合は、再ダウンロードしたパッケージで上書きされます（`Assets/VRPrintLab/_Runtime` は全作品で共通）。

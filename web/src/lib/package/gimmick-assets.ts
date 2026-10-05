@@ -2,6 +2,7 @@ import "server-only";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
+import { magicCircleSvg } from "@/lib/gimmicks/magic-circle";
 import type { GimmickDefinition, GimmickParamValue } from "@/lib/gimmicks/schema";
 import { deterministicGuid, textAssetMeta, textureMeta, type PackageAsset } from "./unitypackage";
 
@@ -62,39 +63,9 @@ export function runtimeAssets(): PackageAsset[] {
   ];
 }
 
-// 足元の魔法陣（白で描き、Unity 側のマテリアルで色を付ける）
+// 足元の魔法陣（白で描き、Unity 側のマテリアルで色を付ける）。図形はエディタのプレビューと共通
 async function magicCircleTexture() {
-  const size = 1024;
-  const c = size / 2;
-  const star = (points: number, r: number, step: number) =>
-    Array.from({ length: points }, (_, i) => {
-      const a = ((i * step) / points) * Math.PI * 2 - Math.PI / 2;
-      return `${(c + Math.cos(a) * r).toFixed(1)},${(c + Math.sin(a) * r).toFixed(1)}`;
-    }).join(" ");
-  const ticks = Array.from({ length: 48 }, (_, i) => {
-    const a = (i / 48) * Math.PI * 2;
-    const r1 = 430;
-    const r2 = i % 4 === 0 ? 395 : 412;
-    return `<line x1="${c + Math.cos(a) * r1}" y1="${c + Math.sin(a) * r1}" x2="${c + Math.cos(a) * r2}" y2="${c + Math.sin(a) * r2}" />`;
-  }).join("");
-  const dots = Array.from({ length: 12 }, (_, i) => {
-    const a = (i / 12) * Math.PI * 2;
-    return `<circle cx="${c + Math.cos(a) * 365}" cy="${c + Math.sin(a) * 365}" r="9" fill="#fff" />`;
-  }).join("");
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
-  <g fill="none" stroke="#fff" stroke-linecap="round">
-    <circle cx="${c}" cy="${c}" r="470" stroke-width="14" />
-    <circle cx="${c}" cy="${c}" r="440" stroke-width="5" />
-    <g stroke-width="5">${ticks}</g>
-    <circle cx="${c}" cy="${c}" r="340" stroke-width="8" />
-    <polygon points="${star(6, 340, 1)}" stroke-width="6" />
-    <polygon points="${star(7, 335, 3)}" stroke-width="4" />
-    <circle cx="${c}" cy="${c}" r="150" stroke-width="7" />
-    <circle cx="${c}" cy="${c}" r="120" stroke-width="3" />
-  </g>
-  ${dots}
-</svg>`;
-  return sharp(Buffer.from(svg)).png().toBuffer();
+  return sharp(Buffer.from(magicCircleSvg(1024))).png().toBuffer();
 }
 
 export type GimmickInput = { def: GimmickDefinition; params: Record<string, GimmickParamValue> };

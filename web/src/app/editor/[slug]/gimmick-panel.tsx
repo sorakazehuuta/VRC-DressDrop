@@ -75,7 +75,7 @@ export function GimmickPanel({
         <div className="flex flex-col gap-4">
           <p className="rounded-md bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
             ギミックを使うには、ワールドの Unity プロジェクトに UdonSharp が必要です（VCC の Manage Project で追加できます）。
-            見た目のプレビューには動きは反映されません。
+            選んだギミックの動きは、左の3D表示で試せます（見え方は目安です）。
           </p>
           {categories.map(([category, items]) => (
             <div key={category} className="flex flex-col gap-2">
