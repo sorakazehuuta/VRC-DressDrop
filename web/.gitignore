@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 動作確認スクリプトのスクリーンショット
+/tools/verification/e2e/shots/

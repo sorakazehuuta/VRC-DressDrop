@@ -1,0 +1,189 @@
+using System;
+using System.Linq;
+using System.Reflection;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+
+// 検証用（スクラッチのコピーにだけ置く）: Prefab をシーンに置いて ClientSim で再生し、ギミックを操作して状態を記録する
+[InitializeOnLoad]
+public static class VRPLPlayTest
+{
+    private const string StepKey = "VRPLPlayTest.Step";
+    private const string TimeKey = "VRPLPlayTest.Time";
+    private static readonly string[] Works = { "G01", "G02", "G03", "G04", "G06" };
+
+    static VRPLPlayTest()
+    {
+        if (SessionState.GetInt(StepKey, 0) > 0) EditorApplication.update += Tick;
+    }
+
+    public static void Run()
+    {
+        Type builder = FindType("VRPrintLab.EditorTools.VRPrintLabPrefabBuilder");
+        builder.GetMethod("RebuildAll", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, null);
+
+        EditorSceneManager.OpenScene("Assets/Scenes/VRCDefaultWorldScene.unity");
+        GameObject world = GameObject.Find("VRCWorld");
+        Vector3 origin = world != null ? world.transform.position : Vector3.zero;
+        int i = 0;
+        foreach (string work in Works)
+        {
+            string guid = AssetDatabase.FindAssets("t:Prefab " + work, new[] { "Assets/VRPrintLab" }).First();
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(guid));
+            GameObject go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            go.name = work;
+            go.transform.position = origin + new Vector3(-6f + i * 3f, 0f, 4f);
+            if (work == "G03" || work == "G04")
+            {
+                Bounds b0 = Bounds(go);
+                go.transform.position += new Vector3(0f, 1.6f - b0.center.y, 0f);
+            }
+            i++;
+        }
+        SessionState.SetInt(StepKey, 1);
+        SessionState.SetFloat(TimeKey, 0f);
+        EditorApplication.update += Tick;
+        EditorApplication.EnterPlaymode();
+    }
+
+    private static float stepStart = -1f;
+
+    private static void Tick()
+    {
+        if (!EditorApplication.isPlaying) return;
+        if (stepStart < 0f) stepStart = Time.realtimeSinceStartup;
+        float t = Time.realtimeSinceStartup - stepStart;
+        int step = SessionState.GetInt(StepKey, 0);
+        try
+        {
+            if (step == 1 && t > 6f) { LogState("開始直後"); Interact("G01"); Next(); }
+            else if (step == 2 && t > 1.5f) { LogState("G01 を1回触ったあと"); Interact("G01"); Next(); }
+            else if (step == 3 && t > 2.5f) { LogState("G01 を2回触ったあと"); Teleport("G02", 1.2f); Next(); }
+            else if (step == 4 && t > 1.5f) { LogState("G02 に 1.2m まで近づいたあと"); Teleport("G03", 1.0f); Next(); }
+            else if (step == 5 && t > 0.5f) { TouchFront("G03"); Next(); }
+            else if (step == 6 && t > 1.0f) { LogState("G03 に手で触れたあと"); LogHands("G03"); Teleport("G04", 1.0f); Next(); }
+            else if (step == 7 && t > 0.5f) { TouchFront("G04"); Next(); }
+            else if (step == 8 && t > 0.3f) { LogState("G04 に手で触れた直後"); LogHands("G04"); Next(); }
+            else if (step == 9 && t > 0.1f) { SendEvent("G06", "_onPickup"); LogVar("G06", "held"); Next(); }
+            else if (step == 10)
+            {
+                // 持ったまま振る（左右に大きく動かす）
+                GameObject g = GameObject.Find("G06");
+                g.transform.position += new Vector3((Time.frameCount % 2 == 0 ? 1f : -1f) * 0.3f, 0f, 0f);
+                if (t > 0.8f) { LogVar("G06", "held"); LogVar("G06", "nextSend"); LogVar("G06", "lastPosition"); LogState("G06 を持って振ったあと"); Next(); }
+            }
+            else if (step == 11 && t > 0.5f)
+            {
+                SessionState.SetInt(StepKey, 0);
+                Debug.Log("VRPLPLAY DONE");
+                EditorApplication.update -= Tick;
+                EditorApplication.Exit(0);
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("VRPLPLAY ERROR step " + step + ": " + e);
+            SessionState.SetInt(StepKey, 0);
+            EditorApplication.Exit(1);
+        }
+    }
+
+    private static void Next()
+    {
+        SessionState.SetInt(StepKey, SessionState.GetInt(StepKey, 0) + 1);
+        stepStart = Time.realtimeSinceStartup;
+    }
+
+    private static void SendEvent(string work, string eventName)
+    {
+        GameObject g = GameObject.Find(work);
+        foreach (Component c in g.GetComponents<Component>().Where(c => c != null && c.GetType().Name == "UdonBehaviour"))
+            c.GetType().GetMethod("SendCustomEvent", new[] { typeof(string) }).Invoke(c, new object[] { eventName });
+    }
+
+    private static void Interact(string work) => SendEvent(work, "_interact");
+
+    // 手（トラッキング位置）が本体の手前の面にくるよう、前後の位置を合わせる
+    private static void TouchFront(string work)
+    {
+        object player = LocalPlayer();
+        Type trackingType = FindType("VRC.SDKBase.VRCPlayerApi+TrackingDataType");
+        object data = player.GetType().GetMethod("GetTrackingData").Invoke(player, new[] { Enum.Parse(trackingType, "RightHand") });
+        Vector3 hand = (Vector3)data.GetType().GetField("position").GetValue(data);
+        Vector3 pos = (Vector3)player.GetType().GetMethod("GetPosition").Invoke(player, null);
+        Bounds b = Bounds(GameObject.Find(work));
+        Vector3 target = pos + new Vector3(b.center.x - hand.x, 0f, b.min.z + 0.05f - hand.z);
+        player.GetType().GetMethod("TeleportTo", new[] { typeof(Vector3), typeof(Quaternion) }).Invoke(player, new object[] { target, Quaternion.identity });
+    }
+
+    private static void LogVar(string work, string name)
+    {
+        GameObject g = GameObject.Find(work);
+        foreach (Component c in g.GetComponents<Component>().Where(c => c != null && c.GetType().Name == "UdonBehaviour"))
+        {
+            MethodInfo m = c.GetType().GetMethods().First(x => x.Name == "GetProgramVariable" && !x.IsGenericMethod && x.GetParameters().Length == 1);
+            object v = null;
+            try { v = m.Invoke(c, new object[] { name }); } catch { }
+            if (v != null) Debug.Log("VRPLPLAY   " + work + "." + name + " = " + v);
+        }
+    }
+
+    private static object LocalPlayer() => FindType("VRC.SDKBase.Networking").GetProperty("LocalPlayer").GetValue(null);
+
+    private static void Teleport(string work, float distance)
+    {
+        GameObject g = GameObject.Find(work);
+        Bounds b = Bounds(g);
+        Vector3 target = new Vector3(b.center.x, b.min.y, b.min.z - distance);
+        object player = LocalPlayer();
+        player.GetType().GetMethod("TeleportTo", new[] { typeof(Vector3), typeof(Quaternion) }).Invoke(player, new object[] { target, Quaternion.identity });
+    }
+
+    private static void LogHands(string work)
+    {
+        object player = LocalPlayer();
+        Type trackingType = FindType("VRC.SDKBase.VRCPlayerApi+TrackingDataType");
+        MethodInfo getTracking = player.GetType().GetMethod("GetTrackingData");
+        Bounds b = Bounds(GameObject.Find(work));
+        foreach (string hand in new[] { "LeftHand", "RightHand", "Head" })
+        {
+            object data = getTracking.Invoke(player, new[] { Enum.Parse(trackingType, hand) });
+            Vector3 pos = (Vector3)data.GetType().GetField("position").GetValue(data);
+            Debug.Log("VRPLPLAY   " + work + " " + hand + " 位置=" + pos + " 本体までの距離=" + Mathf.Sqrt(b.SqrDistance(pos)).ToString("F2") + "m");
+        }
+        MethodInfo getBone = player.GetType().GetMethod("GetBonePosition");
+        foreach (HumanBodyBones bone in new[] { HumanBodyBones.LeftHand, HumanBodyBones.RightHand })
+            Debug.Log("VRPLPLAY   " + work + " ボーン " + bone + " 位置=" + getBone.Invoke(player, new object[] { bone }));
+        Debug.Log("VRPLPLAY   " + work + " 本体の範囲 min=" + b.min + " max=" + b.max);
+    }
+
+    private static Bounds Bounds(GameObject g)
+    {
+        Renderer[] rs = g.GetComponentsInChildren<Renderer>().Where(r => r is SkinnedMeshRenderer).ToArray();
+        Bounds b = rs[0].bounds;
+        foreach (Renderer r in rs) b.Encapsulate(r.bounds);
+        return b;
+    }
+
+    private static void LogState(string label)
+    {
+        string s = "VRPLPLAY [" + label + "]";
+        foreach (string work in Works)
+        {
+            GameObject g = GameObject.Find(work);
+            if (g == null) { s += "\n  " + work + ": 見つからない"; continue; }
+            s += "\n  " + work + ":";
+            foreach (ParticleSystem ps in g.GetComponentsInChildren<ParticleSystem>())
+                s += " " + ps.name + "(playing=" + ps.isPlaying + ", emitting=" + ps.isEmitting + ", count=" + ps.particleCount + ")";
+            Renderer body = g.GetComponentsInChildren<Renderer>().FirstOrDefault(r => r is SkinnedMeshRenderer);
+            if (body != null)
+                s += " 発光=[" + string.Join(" | ", body.sharedMaterials.Select(m => m == null ? "null" : m.name + ":" + (m.IsKeywordEnabled("_EMISSION") ? "on " : "off ") + (m.HasProperty("_EmissionColor") ? m.GetColor("_EmissionColor").maxColorComponent.ToString("F2") : "-"))) + "]";
+            Transform pivot = g.transform.Find("Pivot");
+            if (pivot != null) s += " 軸の傾き=" + Quaternion.Angle(Quaternion.identity, pivot.localRotation).ToString("F1") + "°";
+        }
+        Debug.Log(s);
+    }
+
+    private static Type FindType(string name) => AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType(name, false)).FirstOrDefault(t => t != null);
+}

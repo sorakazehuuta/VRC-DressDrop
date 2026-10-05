@@ -1,0 +1,88 @@
+using System;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using UnityEditor;
+using UnityEngine;
+
+// 検証用（スクラッチのコピーにだけ置く）: Prefab を組み立てて、中身をログに書き出す
+public static class VRPLBatchTest
+{
+    public static void Run()
+    {
+        try
+        {
+            AssetDatabase.Refresh();
+            Type builder = AppDomain.CurrentDomain.GetAssemblies()
+                .Select(a => a.GetType("VRPrintLab.EditorTools.VRPrintLabPrefabBuilder", false))
+                .FirstOrDefault(t => t != null);
+            if (builder == null)
+            {
+                Debug.LogError("VRPLTEST ERROR builder type not found");
+                EditorApplication.Exit(2);
+                return;
+            }
+            Debug.Log("VRPLTEST UDONSHARP_TYPE " + (AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType("VRPrintLab.VRPLSpin", false)).FirstOrDefault(t => t != null) != null));
+            builder.GetMethod("RebuildAll", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, null);
+            AssetDatabase.SaveAssets();
+
+            foreach (string guid in AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/VRPrintLab" }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                GameObject go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                StringBuilder sb = new StringBuilder("VRPLTEST PREFAB " + path);
+                foreach (Component c in go.GetComponentsInChildren<Component>(true))
+                {
+                    if (c == null)
+                    {
+                        sb.Append("\n  (missing script)");
+                        continue;
+                    }
+                    sb.Append("\n  ").Append(PathOf(c.transform, go.transform)).Append(" : ").Append(c.GetType().Name).Append(Describe(c));
+                }
+                Debug.Log(sb.ToString());
+            }
+            Debug.Log("VRPLTEST DONE");
+            EditorApplication.Exit(0);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("VRPLTEST ERROR " + e);
+            EditorApplication.Exit(1);
+        }
+    }
+
+    private static string PathOf(Transform t, Transform root)
+    {
+        return t == root ? root.name : PathOf(t.parent, root) + "/" + t.name;
+    }
+
+    private static string Describe(Component c)
+    {
+        Type type = c.GetType();
+        if (type.Namespace == "VRPrintLab")
+        {
+            return " {" + string.Join(", ", type.GetFields(BindingFlags.Public | BindingFlags.Instance).Select(f => f.Name + "=" + Value(f.GetValue(c)))) + "}";
+        }
+        if (type.Name == "UdonBehaviour")
+        {
+            FieldInfo field = type.GetField("programSource", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            PropertyInfo prop = type.GetProperty("programSource");
+            object source = field != null ? field.GetValue(c) : (prop != null ? prop.GetValue(c) : null);
+            return " {programSource=" + Value(source) + "}";
+        }
+        if (c is Rigidbody rb) return " {kinematic=" + rb.isKinematic + ", gravity=" + rb.useGravity + "}";
+        if (c is Light l) return " {enabled=" + l.enabled + ", color=" + l.color + ", range=" + l.range + "}";
+        if (c is ParticleSystem ps) return " {rate=" + ps.emission.rateOverTime.constant + ", playOnAwake=" + ps.main.playOnAwake + "}";
+        if (c is Renderer r) return " {materials=" + string.Join("|", r.sharedMaterials.Select(m => m == null ? "NULL" : m.name + (m.IsKeywordEnabled("_EMISSION") ? "(emission)" : ""))) + "}";
+        return "";
+    }
+
+    private static string Value(object v)
+    {
+        if (v == null) return "null";
+        if (v is UnityEngine.Object o) return o == null ? "NULL" : o.name;
+        if (v is Array a) return "[" + string.Join(",", a.Cast<object>().Select(Value)) + "]";
+        return Convert.ToString(v, System.Globalization.CultureInfo.InvariantCulture);
+    }
+}
