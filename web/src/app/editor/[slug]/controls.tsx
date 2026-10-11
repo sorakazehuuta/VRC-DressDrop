@@ -143,6 +143,17 @@ export function PrintControls({
 
   const live = (patch: Partial<PrintParams>) => onChange((p) => ({ ...p, ...patch }), false);
 
+  // 横幅・高さを変える。縦横比を固定しているときは、今の比率のままもう一方も変える（どちらも範囲内に収まるように丸める）
+  function setScale(axis: "x" | "y", value: number) {
+    onChange((p) => {
+      if (!p.keepAspect) return axis === "x" ? { ...p, scaleX: value } : { ...p, scaleY: value };
+      const { min, max } = PRINT_LIMITS.scale;
+      const ratio = p.scaleY / p.scaleX;
+      const x = Math.min(Math.min(max, max / ratio), Math.max(Math.max(min, min / ratio), axis === "x" ? value : value / ratio));
+      return { ...p, scaleX: x, scaleY: x * ratio };
+    }, false);
+  }
+
   return (
     <section className="flex flex-col gap-4">
       <h2 className="font-semibold">{slot.label}</h2>
@@ -201,32 +212,29 @@ export function PrintControls({
       {!image && <p className="text-xs text-zinc-500">画像を選ぶと、大きさ・位置・回転・色合いを調整できます。</p>}
       <fieldset disabled={!image} className="flex flex-col gap-4 disabled:opacity-40">
         <div className="flex flex-col gap-3">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={params.keepAspect}
-              onChange={(e) =>
-                onChange((p) => ({ ...p, keepAspect: e.target.checked, scaleY: e.target.checked ? p.scaleX : p.scaleY }))
-              }
-              className="accent-brand"
-            />
-            縦横比を固定
-          </label>
-          {params.keepAspect ? (
-            <Slider
-              label="サイズ"
-              value={params.scaleX}
-              limits={PRINT_LIMITS.scale}
-              display={PERCENT}
-              onChange={(v) => live({ scaleX: v, scaleY: v })}
-              onCommit={onCommit}
-            />
-          ) : (
-            <>
-              <Slider label="横幅" value={params.scaleX} limits={PRINT_LIMITS.scale} display={PERCENT} onChange={(v) => live({ scaleX: v })} onCommit={onCommit} />
-              <Slider label="高さ" value={params.scaleY} limits={PRINT_LIMITS.scale} display={PERCENT} onChange={(v) => live({ scaleY: v })} onCommit={onCommit} />
-            </>
-          )}
+          <Slider label="横幅" value={params.scaleX} limits={PRINT_LIMITS.scale} display={PERCENT} onChange={(v) => setScale("x", v)} onCommit={onCommit} />
+          <Slider label="高さ" value={params.scaleY} limits={PRINT_LIMITS.scale} display={PERCENT} onChange={(v) => setScale("y", v)} onCommit={onCommit} />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={params.keepAspect}
+                onChange={(e) => onChange((p) => ({ ...p, keepAspect: e.target.checked }))}
+                className="accent-brand"
+              />
+              縦横比を固定
+              <span className="text-xs text-zinc-500">（横幅と高さが一緒に変わります）</span>
+            </label>
+            {Math.abs(params.scaleX - params.scaleY) > 0.0001 && (
+              <button
+                type="button"
+                onClick={() => onChange((p) => ({ ...p, scaleY: p.scaleX }))}
+                className="cursor-pointer text-xs font-medium text-accent-dark hover:underline"
+              >
+                画像の縦横比に戻す
+              </button>
+            )}
+          </div>
         </div>
         <Slider label="位置（左右）" value={params.offsetX} limits={PRINT_LIMITS.offset} display={PERCENT} onChange={(v) => live({ offsetX: v })} onCommit={onCommit} />
         <Slider label="位置（上下）" value={params.offsetY} limits={PRINT_LIMITS.offset} display={PERCENT} onChange={(v) => live({ offsetY: v })} onCommit={onCommit} />

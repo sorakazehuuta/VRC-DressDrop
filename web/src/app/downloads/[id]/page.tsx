@@ -18,7 +18,7 @@ const signedPct = (v: number) => `${v > 0 ? "+" : ""}${Math.round(v * 100)}%`;
 
 function printRows(p: PrintParams) {
   return [
-    ["サイズ", p.keepAspect || p.scaleX === p.scaleY ? pct(p.scaleX) : `横 ${pct(p.scaleX)} / 縦 ${pct(p.scaleY)}`],
+    ["サイズ", p.scaleX === p.scaleY ? pct(p.scaleX) : `横 ${pct(p.scaleX)} / 縦 ${pct(p.scaleY)}`],
     ["位置（左右）", signedPct(p.offsetX)],
     ["位置（上下）", signedPct(p.offsetY)],
     ["回転", `${p.rotation}°`],

@@ -65,9 +65,10 @@ async function cleanup(uid) {
     await page.locator('input[type="file"]').setInputFiles({ name: "v.png", mimeType: "image/png", buffer: Buffer.from(png) });
     await page.getByText("v.png").waitFor();
 
-    await num("サイズ").fill("50");
-    await num("サイズ").press("Enter");
-    ok("サイズに 50 を入力するとスライダーも 0.5", (await range("サイズ").inputValue()) === "0.5");
+    await num("横幅").fill("50");
+    await num("横幅").press("Enter");
+    ok("横幅に 50 を入力するとスライダーも 0.5", (await range("横幅").inputValue()) === "0.5");
+    ok("縦横比を固定していると高さも 50", (await range("高さ").inputValue()) === "0.5");
     await num("回転").fill("-45");
     await num("回転").press("Enter");
     ok("回転に -45 を入力", (await range("回転").inputValue()) === "-45");
