@@ -1,0 +1,390 @@
+{
+  "objects": [
+    {
+      "name": "Plate",
+      "dimensions": [
+        4.522170066833496,
+        4.522170543670654,
+        0.07648512721061707
+      ],
+      "location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "materials": [
+        "Gold foil • warm satin"
+      ],
+      "triangles": 4512,
+      "uv": true
+    },
+    {
+      "name": "Fresh cream top",
+      "dimensions": [
+        4.059422492980957,
+        4.044908046722412,
+        1.8299514055252075
+      ],
+      "location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "materials": [
+        "Chantilly • ivory cream",
+        "Vanilla • silky buttercream"
+      ],
+      "triangles": 18396,
+      "uv": true
+    },
+    {
+      "name": "Chocolate",
+      "dimensions": [
+        1.8368046283721924,
+        0.3840996026992798,
+        0.8458452224731445
+      ],
+      "location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "materials": [
+        "Milk chocolate"
+      ],
+      "triangles": 128,
+      "uv": true
+    },
+    {
+      "name": "Texture",
+      "dimensions": [
+        0.8822681307792664,
+        0.06189623847603798,
+        0.8802483081817627
+      ],
+      "location": [
+        0.00021478533744812012,
+        -0.419533908367157,
+        1.7741292715072632
+      ],
+      "materials": [],
+      "triangles": 4,
+      "uv": true
+    },
+    {
+      "name": "Candle 1",
+      "dimensions": [
+        0.0859527587890625,
+        0.08595287799835205,
+        1.200014591217041
+      ],
+      "location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "materials": [
+        "Candle wax 1"
+      ],
+      "triangles": 304,
+      "uv": true
+    },
+    {
+      "name": "Candle 2",
+      "dimensions": [
+        0.08560359477996826,
+        0.08560359477996826,
+        1.3500158786773682
+      ],
+      "location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "materials": [
+        "Candle wax 2"
+      ],
+      "triangles": 304,
+      "uv": true
+    },
+    {
+      "name": "Candle 3",
+      "dimensions": [
+        0.08577825129032135,
+        0.08595281839370728,
+        1.4900078773498535
+      ],
+      "location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "materials": [
+        "Candle wax 3"
+      ],
+      "triangles": 304,
+      "uv": true
+    },
+    {
+      "name": "Candle 4",
+      "dimensions": [
+        0.08543229103088379,
+        0.08543229103088379,
+        1.360015869140625
+      ],
+      "location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "materials": [
+        "Candle wax 4"
+      ],
+      "triangles": 304,
+      "uv": true
+    },
+    {
+      "name": "Candle 5",
+      "dimensions": [
+        0.0859527587890625,
+        0.08595287799835205,
+        1.2200195789337158
+      ],
+      "location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "materials": [
+        "Candle wax 5"
+      ],
+      "triangles": 304,
+      "uv": true
+    },
+    {
+      "name": "Chocolate pearl",
+      "dimensions": [
+        1.406559705734253,
+        0.22016164660453796,
+        0.46695876121520996
+      ],
+      "location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "materials": [
+        "Piped white chocolate"
+      ],
+      "triangles": 7140,
+      "uv": true
+    },
+    {
+      "name": "Cotton wick 5",
+      "dimensions": [
+        3.014024257659912,
+        0.6640241146087646,
+        0.3450040817260742
+      ],
+      "location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "materials": [
+        "Charred cotton wick"
+      ],
+      "triangles": 1520,
+      "uv": true
+    },
+    {
+      "name": "Luminous flame heart",
+      "dimensions": [
+        3.040621757507324,
+        0.6897547245025635,
+        0.42118024826049805
+      ],
+      "location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "materials": [
+        "Flame • bright core"
+      ],
+      "triangles": 250,
+      "uv": true
+    },
+    {
+      "name": "Strawberry ",
+      "dimensions": [
+        3.319277286529541,
+        2.9596879482269287,
+        0.8299926519393921
+      ],
+      "location": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "materials": [
+        "Strawberry • ripe scarlet",
+        "Strawberry achenes • golden blush"
+      ],
+      "triangles": 33996,
+      "uv": false
+    }
+  ],
+  "unity_materials": {
+    "Piped white chocolate": {
+      "color": [
+        0.9911565,
+        0.8911432,
+        0.6499564,
+        1.0
+      ],
+      "roughness": 0.36,
+      "metallic": 0.0
+    },
+    "Texture": {
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "roughness": 1.0,
+      "metallic": 0.0
+    },
+    "Strawberry • ripe scarlet": {
+      "color": [
+        0.8322835,
+        0.12315818,
+        0.1600776,
+        1.0
+      ],
+      "roughness": 0.28,
+      "metallic": 0.0
+    },
+    "Gold foil • warm satin": {
+      "color": [
+        0.865042,
+        0.68721706,
+        0.3406434,
+        1.0
+      ],
+      "roughness": 0.862,
+      "metallic": 1.0
+    },
+    "Milk chocolate": {
+      "color": [
+        0.35749114,
+        0.19641909,
+        0.14733285,
+        1.0
+      ],
+      "roughness": 0.30000000000000004,
+      "metallic": 0.0
+    },
+    "Candle wax 1": {
+      "color": [
+        0.17184407,
+        0.865042,
+        0.5468542,
+        1.0
+      ],
+      "roughness": 0.30000000000000004,
+      "metallic": 0.0
+    },
+    "Candle wax 5": {
+      "color": [
+        0.8860039,
+        0.17184407,
+        0.31330413,
+        1.0
+      ],
+      "roughness": 0.30000000000000004,
+      "metallic": 0.0
+    },
+    "Strawberry achenes • golden blush": {
+      "color": [
+        0.8488705,
+        0.5468542,
+        0.26006746,
+        1.0
+      ],
+      "roughness": 0.921,
+      "metallic": 0.0
+    },
+    "Vanilla • silky buttercream": {
+      "color": [
+        1.0,
+        0.9843138,
+        0.9294118,
+        1.0
+      ],
+      "roughness": 0.31000000000000005,
+      "metallic": 0.0
+    },
+    "Candle wax 3": {
+      "color": [
+        0.97314817,
+        0.865042,
+        0.17184407,
+        1.0
+      ],
+      "roughness": 0.30000000000000004,
+      "metallic": 0.0
+    },
+    "Chantilly • ivory cream": {
+      "color": [
+        1.0,
+        0.98445445,
+        0.93092453,
+        1.0
+      ],
+      "roughness": 0.31999999999999995,
+      "metallic": 0.0
+    },
+    "Candle wax 4": {
+      "color": [
+        0.9063317,
+        0.293372,
+        0.7220273,
+        1.0
+      ],
+      "roughness": 0.30000000000000004,
+      "metallic": 0.0
+    },
+    "Charred cotton wick": {
+      "color": [
+        0.17184407,
+        0.12315818,
+        0.09320178,
+        1.0
+      ],
+      "roughness": 0.80000001,
+      "metallic": 0.0
+    },
+    "Candle wax 2": {
+      "color": [
+        0.17184407,
+        0.7797062,
+        0.8860039,
+        1.0
+      ],
+      "roughness": 0.30000000000000004,
+      "metallic": 0.0
+    },
+    "Flame • bright core": {
+      "color": [
+        1.0,
+        0.8962438,
+        0.5370987,
+        1.0
+      ],
+      "roughness": 0.30000000000000004,
+      "metallic": 0.0
+    }
+  }
+}

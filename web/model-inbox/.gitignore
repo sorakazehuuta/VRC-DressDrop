@@ -1,0 +1,11 @@
+# 原本と準備中データはローカル保管。完成品を ../templates で共有する。
+*.unitypackage
+*.blend
+*.blend1
+*.fbx
+*.glb
+*.png
+*.jpg
+*.jpeg
+*.webp
+*/template.json

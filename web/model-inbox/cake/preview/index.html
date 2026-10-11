@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ケーキ・ローカル確認 | VRPrintLab</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;color:#193647;background:#f5f4ef}header{padding:20px 28px;background:white;border-bottom:1px solid #dae1df;display:flex;align-items:center;justify-content:space-between}header span{font-size:12px;color:#087a72;background:#e5f4ee;padding:7px 12px;border-radius:20px}h1{font-size:23px;margin:0}main{display:grid;grid-template-columns:minmax(0,1fr) 300px;height:calc(100dvh - 74px);min-height:520px}#view{position:relative;min-width:0;background:#e9eeec}canvas{width:100%;height:100%;display:block;touch-action:none}#status{position:absolute;bottom:20px;left:20px;right:20px;font-size:13px;background:#fffffff0;padding:12px 16px;border-radius:10px;pointer-events:none}aside{padding:26px;background:white;overflow:auto}h2{font-size:18px;margin-top:0}p{font-size:14px;line-height:1.8;color:#566974}button,.upload{display:block;border:1px solid #cbd9d5;background:white;border-radius:9px;padding:12px;width:100%;margin:10px 0;font-size:14px;cursor:pointer;text-align:center;color:#193647}button:hover,.upload:hover{background:#e8f4f0}.upload{background:#087a72;color:white;border:0}.upload input{display:none}small{font-size:12px;line-height:1.7;display:block;color:#687b85}.note{margin-top:24px;padding-top:18px;border-top:1px solid #e2e8e5}@media(max-width:760px){main{display:flex;flex-direction:column;height:auto}#view{height:60dvh;min-height:360px}aside{width:100%}header{padding:15px}h1{font-size:18px}}
+</style>
+<script type="importmap">{"imports":{"three":"/local-preview/cake/assets/three/build/three.module.js","three/addons/":"/local-preview/cake/assets/three/examples/jsm/"}}</script></head>
+<body><header><h1>VRPrintLab / ケーキ</h1><span>LOCAL PREVIEW</span></header>
+<main><section id="view" aria-label="ケーキの3Dプレビュー"><div id="status" role="status">モデルを読み込み中…</div></section><aside>
+<h2>手元だけで確認</h2><p>ドラッグで回転、ホイールで拡大。右ドラッグで位置を動かせます。</p>
+<button id="reset">見やすい角度に戻す</button><button id="top">上から見る</button><button id="rotate" aria-pressed="false">自動回転：OFF</button>
+<label class="upload">見本画像を選ぶ<input id="image" type="file" accept="image/png,image/jpeg,image/webp"></label><button id="clear">画像を外す</button>
+<small>画像はブラウザ内だけで表示します。サーバーへの送信・保存・商品登録はありません。</small>
+<div class="note"><small>FBXを元にした静止プレビューです。Unityの炎のパーティクルやPrefab固有の配置変更を完全再現するものではありません。プリント面の最終調整・Unityでの配布確認は別途必要です。</small></div>
+</aside></main>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const host=document.querySelector('#view'),status=document.querySelector('#status');
+let texture, model, printMaterial, printMesh;
+try {
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;host.prepend(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#e9eeec');
+const camera=new THREE.PerspectiveCamera(38,1,.01,1000);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.minDistance=.3;controls.maxDistance=30;
+scene.add(new THREE.HemisphereLight(0xffffff,0x7b8279,2.4));
+for(const [x,y,z,intensity] of [[4,7,5,3],[-4,3,-2,1.8]]){const l=new THREE.DirectionalLight(0xffffff,intensity);l.position.set(x,y,z);scene.add(l);}
+const gltf=await new GLTFLoader().loadAsync('/local-preview/cake/assets/model.glb');model=gltf.scene;scene.add(model);
+const box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
+model.position.sub(center);const radius=Math.max(size.x,size.y,size.z);
+controls.minDistance=radius*.5;controls.maxDistance=radius*8;
+function reset(){camera.position.set(radius*1.2,radius*.85,radius*1.5);camera.up.set(0,1,0);controls.target.set(0,0,0);controls.update();}
+reset();let triangles=0;
+model.traverse(o=>{if(!o.isMesh)return;triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3;for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m.name==='Mat_Print'){m.side=THREE.DoubleSide;m.transparent=true;m.alphaTest=0.001;m.depthWrite=false;m.needsUpdate=true;printMaterial=m;printMesh=o;o.visible=false;}}});
+document.querySelector('#reset').onclick=reset;
+document.querySelector('#top').onclick=()=>{camera.position.set(0,radius*2.4,.001);controls.target.set(0,0,0);controls.update();};
+document.querySelector('#rotate').onclick=e=>{controls.autoRotate=!controls.autoRotate;e.currentTarget.textContent='自動回転：'+(controls.autoRotate?'ON':'OFF');e.currentTarget.setAttribute('aria-pressed',String(controls.autoRotate));};
+document.querySelector('#image').onchange=async e=>{
+ const file=e.target.files?.[0];if(!file||!printMaterial)return;if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>20*1024*1024){status.textContent='PNG/JPEG/WebP、20MB以下の画像を選んでください。';return;}
+ const url=URL.createObjectURL(file);try{const img=new Image();img.src=url;await img.decode();const canvas=document.createElement('canvas');canvas.width=canvas.height=1024;const c=canvas.getContext('2d');c.clearRect(0,0,1024,1024);const scale=Math.min(1024/img.width,1024/img.height);c.drawImage(img,(1024-img.width*scale)/2,(1024-img.height*scale)/2,img.width*scale,img.height*scale);const next=new THREE.CanvasTexture(canvas);next.flipY=false;next.colorSpace=THREE.SRGBColorSpace;const old=texture;texture=next;printMaterial.map=texture;printMaterial.color.set('#ffffff');printMaterial.needsUpdate=true;printMesh.visible=true;old?.dispose();status.textContent='透明部分を保持して表示中（配置調整前・未保存・未送信）';}catch{status.textContent='画像を読み込めませんでした。別の画像を選んでください。';}finally{URL.revokeObjectURL(url);}
+};
+document.querySelector('#clear').onclick=()=>{if(printMaterial){printMaterial.map=null;printMaterial.needsUpdate=true;printMesh.visible=false;}texture?.dispose();texture=null;document.querySelector('#image').value='';status.textContent='見本画像を外しました。';};
+function resize(){renderer.setSize(host.clientWidth,host.clientHeight);camera.aspect=host.clientWidth/host.clientHeight;camera.updateProjectionMatrix();}new ResizeObserver(resize).observe(host);resize();
+renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera);});
+status.textContent='ケーキを表示中 · '+Math.round(triangles).toLocaleString()+' 三角形 · 登録・公開なし';window.__cakeReady=true;
+}catch(error){console.error(error);status.textContent='表示できませんでした：'+error.message;window.__cakeError=String(error);}
+</script></body></html>

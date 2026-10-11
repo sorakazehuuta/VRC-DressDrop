@@ -3,8 +3,19 @@ import Link from "next/link";
 import logo from "../../images/common/logos/VRPrintLab_logo.png";
 import { createClient } from "@/lib/supabase/server";
 import { HeaderNav } from "./header-nav";
+import { headers } from "next/headers";
 
 export async function SiteHeader() {
+  if (process.env.NODE_ENV === "development" && (await headers()).get("x-vrpl-local-preview") === "cake") {
+    return (
+      <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-4">
+          <Image src={logo} alt="VRPrintLab" priority className="h-9 w-auto sm:h-14" sizes="(min-width: 640px) 168px, 108px" />
+          <span className="text-sm text-accent-dark">ローカル確認・未公開</span>
+        </div>
+      </header>
+    );
+  }
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const loggedIn = Boolean(data?.claims);

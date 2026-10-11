@@ -57,6 +57,7 @@ type EditorProps = {
   userId: string | null;
   initialWork: InitialWork | null;
   restoreDraft: boolean;
+  localPreview?: boolean;
 };
 
 // 保存などの Server Action のあとはページが再取得されるため、初回保存で URL に作品 ID が付くと
@@ -77,7 +78,7 @@ export function EditorHost(props: EditorProps) {
   return <Editor key={generation} {...props} onWorkId={onWorkId} />;
 }
 
-function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWorkId }: EditorProps & { onWorkId: (id: string) => void }) {
+function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, localPreview = false, onWorkId }: EditorProps & { onWorkId: (id: string) => void }) {
   const router = useRouter();
   const initialState = useMemo<EditorState>(
     () => ({ params: initialWork?.params ?? defaultParams(template.slots), gimmicks: initialWork?.gimmicks ?? [] }),
@@ -165,6 +166,8 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
   );
 
   const save = useCallback(async (): Promise<string | null> => {
+    // Includes Ctrl+S: no uploads, server actions, login redirect or draft storage.
+    if (localPreview) return null;
     if (readOnly || status.kind === "saving" || loadingImages) return null;
     const used = referencedImages(params);
 
@@ -239,7 +242,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
       setStatus({ kind: "error", message: e instanceof Error ? e.message : "保存に失敗しました。" });
       return null;
     }
-  }, [readOnly, status.kind, loadingImages, referencedImages, params, gimmicks, state, userId, template, name, router, workId, savedImageIds, dirty, savedSnapshot, lastSavedAt, askKeepPrevious, onWorkId]);
+  }, [localPreview, readOnly, status.kind, loadingImages, referencedImages, params, gimmicks, state, userId, template, name, router, workId, savedImageIds, dirty, savedSnapshot, lastSavedAt, askKeepPrevious, onWorkId]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -291,9 +294,9 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
           <span className="px-2 text-xs text-zinc-500">テンプレート: {template.name}</span>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          <SaveStatus status={status} dirty={dirty} saved={Boolean(workId)} />
-          <Button type="button" onClick={() => void save()} disabled={readOnly || status.kind === "saving" || loadingImages} title="保存 (Ctrl+S)">
-            {status.kind === "saving" ? "保存中…" : userId ? "保存" : "ログインして保存"}
+          {!localPreview && <SaveStatus status={status} dirty={dirty} saved={Boolean(workId)} />}
+          <Button type="button" onClick={() => void save()} disabled={localPreview || readOnly || status.kind === "saving" || loadingImages} title={localPreview ? "ローカル確認では保存しません" : "保存 (Ctrl+S)"}>
+            {localPreview ? "ローカル確認・保存無効" : status.kind === "saving" ? "保存中…" : userId ? "保存" : "ログインして保存"}
           </Button>
         </div>
       </div>
@@ -380,7 +383,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
             </p>
           )}
 
-          <DownloadPanel
+          {localPreview ? <p className="rounded-md bg-accent-soft px-3 py-2 text-xs leading-relaxed text-brand">画像と設定はこの画面だけで使用します。保存・購入・ダウンロード・公開はできません。再読み込みすると編集内容は消えます。ギミックは設定項目の確認用で、3D表示には動きません。</p> : <DownloadPanel
             tokenCost={template.tokenCost + gimmicks.reduce((sum, g) => sum + (gimmickDefs.find((d) => d.slug === g.slug)?.tokenCost ?? 0), 0)}
             workId={workId}
             loggedIn={Boolean(userId)}
@@ -388,7 +391,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
             disabled={readOnly || loadingImages || status.kind === "saving"}
             saveCount={saveCount}
             onSave={save}
-          />
+          />}
         </aside>
       </div>
     </div>
