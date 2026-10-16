@@ -1,8 +1,10 @@
 // テスト用: 全ギミックを含む複数の作品の unitypackage を作り、1つにまとめる
+//   引数: <出力先> [テンプレートの slug（既定: cake）]
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { gunzipSync, gzipSync } from "node:zlib";
 import sharp from "sharp";
 import { gimmickDefinitionSchema, parseGimmickSelection, defaultGimmickParams, type GimmickDefinition } from "../src/lib/gimmicks/schema.ts";
+import { readUnityPackage, resolveTemplatePrefab } from "../src/lib/package/read-unitypackage.ts";
 import { buildWorkPackage } from "../src/lib/package/work-package.ts";
 import { defaultParams, parseEditorParams } from "../src/lib/templates/params.ts";
 import { templateManifestSchema } from "../src/lib/templates/schema.ts";
@@ -14,8 +16,12 @@ const defs = new Map<string, GimmickDefinition>(
     return [d.slug, d];
   }),
 );
-const manifest = templateManifestSchema.parse(JSON.parse(readFileSync("templates/tshirt/template.json", "utf8")));
-const model = readFileSync("templates/tshirt/model.fbx");
+const SLUG = process.argv[3] ?? "cake";
+const manifest = templateManifestSchema.parse(JSON.parse(readFileSync(`templates/${SLUG}/template.json`, "utf8")));
+const templatePackage = readFileSync(`templates/${SLUG}/${manifest.files.package}`);
+const prefabPath = resolveTemplatePrefab(readUnityPackage(templatePackage), manifest.files.prefab);
+const colorKey = manifest.slots.find((s) => s.type === "color")?.key;
+const printKey = manifest.slots.find((s) => s.type === "print")?.key;
 const imageId = "11111111-1111-4111-8111-111111111111";
 const image = await sharp(readFileSync("images/common/icons/VRPrintLab_icon.png")).png().toBuffer();
 
@@ -38,16 +44,22 @@ for (const [name, color, slugs] of works) {
   const gimmicks = parseGimmickSelection(raw, defs);
   if (gimmicks.length !== slugs.length) throw new Error(`${name}: 組み合わせが不正（${gimmicks.map((g) => g.slug)}）`);
   const params = parseEditorParams(
-    { slots: { ...defaultParams(manifest.slots).slots, base: { kind: "color", color }, print: { ...defaultParams(manifest.slots).slots.print, imageId, scaleX: 0.7, scaleY: 0.7 } } },
+    {
+      slots: {
+        ...defaultParams(manifest.slots).slots,
+        ...(colorKey ? { [colorKey]: { kind: "color", color } } : {}),
+        ...(printKey ? { [printKey]: { ...defaultParams(manifest.slots).slots[printKey], imageId, scaleX: 0.7, scaleY: 0.7 } } : {}),
+      },
+    },
     manifest.slots,
   );
   const file = await buildWorkPackage({
     purchaseId: `00000000-0000-4000-8000-${String(++i).padStart(12, "0")}`,
     workName: name,
-    template: { slug: manifest.slug, name: manifest.name, slots: manifest.slots },
+    template: { slug: manifest.slug, name: manifest.name, slots: manifest.slots, prefabPath },
     params,
     gimmicks: gimmicks.map((g) => ({ def: defs.get(g.slug)!, params: g.params })),
-    model,
+    templatePackage,
     images: new Map([[imageId, image]]),
     createdAt: new Date(),
   });

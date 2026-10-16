@@ -2,6 +2,8 @@ const { chromium } = require("playwright");
 const fs = require("fs");
 const { createClient } = require("@supabase/supabase-js");
 const BASE = "http://localhost:3002";
+// 確認に使うテンプレート（別のテンプレートで確かめるときはここを書き換える）
+const TEMPLATE = { slug: "cake", colorKey: "base", colorLabel: "クリームの色", defaultColor: "#fffbed" };
 const SHOTS = process.env.SHOTS_DIR || require("path").join(__dirname, "shots");
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, { auth: { persistSession: false } });
 const email = `e2e-${Date.now()}@example.com`;
@@ -45,7 +47,7 @@ async function listFolder(uid, workId) {
   let workId;
   try {
     // 1. 未ログインで編集 → ログインして保存 → 復元
-    await page.goto(`${BASE}/editor/tshirt`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE}/editor/${TEMPLATE.slug}`, { waitUntil: "networkidle" });
     await page.waitForSelector("canvas");
     await page.locator('input[type="file"]').setInputFiles({
       name: "guest-print.png",
@@ -60,13 +62,13 @@ async function listFolder(uid, workId) {
     await page.getByLabel("メールアドレス").fill(email);
     await page.getByLabel("パスワード").fill(password);
     await page.getByRole("button", { name: "ログイン", exact: true }).click();
-    await page.waitForURL(/\/editor\/tshirt/);
+    await page.waitForURL(new RegExp(`/editor/${TEMPLATE.slug}`));
     // 上書き保存の前の「前回の保存内容を残すか」の確認は versions-e2e で確かめるため、ここでは出さない
     await page.evaluate(() => localStorage.setItem("vrprintlab:overwrite-without-asking", "1"));
     await page.getByText("guest-print.png").waitFor({ timeout: 15000 });
     ok("ログイン後に画像が復元される", true);
     const yellowSelected = await page.getByLabel("色 #facc15").evaluate((el) => el.className.includes("ring-2"));
-    ok("ログイン後に生地の色が復元される", yellowSelected);
+    ok("ログイン後に本体の色が復元される", yellowSelected);
     ok("未保存の表示", await page.getByText("未保存の変更があります").isVisible());
 
     // 2. 保存
@@ -80,7 +82,7 @@ async function listFolder(uid, workId) {
     ok("保存後に URL に作品IDが入る", Boolean(workId), workId);
     const { data: work } = await admin.from("works").select("name, params, thumbnail_path").eq("id", workId).single();
     const { data: imgs1 } = await admin.from("work_images").select("id, slot, storage_path").eq("work_id", workId);
-    ok("DB に作品が保存される", work && work.params.slots.base.color === "#facc15", `name=${work && work.name}`);
+    ok("DB に作品が保存される", work && work.params.slots[TEMPLATE.colorKey].color === "#facc15", `name=${work && work.name}`);
     ok("DB に画像が1件登録される", imgs1.length === 1 && imgs1[0].slot === "print");
     const files1 = await listFolder(uid, workId);
     { const { data: th } = await admin.storage.from("work-images").download(uid + "/" + workId + "/thumbnail.jpg"); fs.writeFileSync(SHOTS + "/thumb-first.jpg", Buffer.from(await th.arrayBuffer())); }

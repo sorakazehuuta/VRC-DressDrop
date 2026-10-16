@@ -46,7 +46,7 @@ async function loadWork(workId: string) {
 
   const { data: work } = await supabase
     .from("works")
-    .select("id, name, params, gimmicks, status, template_id, thumbnail_path, templates(id, slug, name, slots, token_cost, package_model_path), work_images(id, storage_path)")
+    .select("id, name, params, gimmicks, status, template_id, thumbnail_path, templates(id, slug, name, slots, token_cost, package_model_path, package_prefab_path), work_images(id, storage_path)")
     .eq("id", workId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -60,7 +60,9 @@ async function loadWork(workId: string) {
     slots: unknown;
     token_cost: number;
     package_model_path: string;
-  };
+    package_prefab_path: string | null;
+  } | null;
+  if (!template) return { error: "この作品のテンプレートは提供を終了したため、ダウンロードできません。" } as const;
   const slots = slotsSchema.parse(template.slots);
   const params = parseEditorParams(work.params, slots);
   const defs = gimmickMap(await listGimmicks());
@@ -186,9 +188,13 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
   const images = new Map<string, Buffer>();
   const imageExt = new Map<string, string>();
 
+  // 以前の形式（FBX）のテンプレートは新しく作れない。購入済みの版は控えから再ダウンロードできる
+  if (!template.package_prefab_path) return { ok: false, error: "このテンプレートは提供を終了したため、新しくダウンロードできません。" };
+  const prefabPath = template.package_prefab_path;
+
   try {
-    const { data: model, error: modelError } = await admin.storage.from("template-packages").download(template.package_model_path);
-    if (modelError || !model) throw new Error("model");
+    const { data: templatePackage, error: packageError } = await admin.storage.from("template-packages").download(template.package_model_path);
+    if (packageError || !templatePackage) throw new Error("template package");
     for (const img of work.work_images) {
       const { data, error } = await admin.storage.from(WORK_IMAGES_BUCKET).download(img.storage_path);
       if (error || !data) throw new Error("image");
@@ -198,10 +204,10 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
     const file = await buildWorkPackage({
       purchaseId,
       workName: work.name,
-      template: { slug: template.slug, name: template.name, slots },
+      template: { slug: template.slug, name: template.name, slots, prefabPath },
       params,
       gimmicks: gimmicks.map((g) => ({ def: defs.get(g.slug) as GimmickDefinition, params: g.params })),
-      model: Buffer.from(await model.arrayBuffer()),
+      templatePackage: Buffer.from(await templatePackage.arrayBuffer()),
       images,
       createdAt: new Date(),
     });

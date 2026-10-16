@@ -1,0 +1,4 @@
+# テンプレートのファイルは改行コードを変換しない
+*.unitypackage binary
+*.glb binary
+*.fbx binary

@@ -85,16 +85,6 @@ TextureImporter:
   assetBundleVariant:
 `;
 
-export const nativeAssetMeta = (guid: string) => `fileFormatVersion: 2
-guid: ${guid}
-NativeFormatImporter:
-  externalObjects: {}
-  mainObjectFileID: 2100000
-  userData:
-  assetBundleName:
-  assetBundleVariant:
-`;
-
 export const textAssetMeta = (guid: string) => `fileFormatVersion: 2
 guid: ${guid}
 TextScriptImporter:
@@ -103,83 +93,6 @@ TextScriptImporter:
   assetBundleName:
   assetBundleVariant:
 `;
-
-// FBX 内のマテリアルを、同梱したマテリアルに置き換える（シーンに置くだけで色とプリントが反映される）
-export const modelMeta = (remap: { materialName: string; materialGuid: string }[]) => (guid: string) => `fileFormatVersion: 2
-guid: ${guid}
-ModelImporter:
-  serializedVersion: 22200
-  internalIDToNameTable: []
-  externalObjects:
-${remap
-  .map(
-    (r) => `  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: ${r.materialName}
-    second: {fileID: 2100000, guid: ${r.materialGuid}, type: 2}`,
-  )
-  .join("\n")}
-  materials:
-    materialImportMode: 2
-    materialName: 0
-    materialSearch: 1
-    materialLocation: 1
-  importAnimation: 0
-  userData:
-  assetBundleName:
-  assetBundleVariant:
-`;
-
-const color = (hex: string) => {
-  const n = parseInt(hex.slice(1), 16);
-  const c = (v: number) => (v / 255).toFixed(4);
-  return `{r: ${c((n >> 16) & 255)}, g: ${c((n >> 8) & 255)}, b: ${c(n & 255)}, a: 1}`;
-};
-
-// Standard シェーダー（PC / Quest どちらのワールドでも使える組み込みシェーダー）のマテリアル
-export function standardMaterial(opts: { name: string; color?: string; textureGuid?: string; cutout?: boolean }) {
-  const cutout = Boolean(opts.cutout);
-  return `%YAML 1.1
-%TAG !u! tag:unity3d.com,2011:
---- !u!21 &2100000
-Material:
-  serializedVersion: 8
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: ${opts.name}
-  m_Shader: {fileID: 46, guid: 0000000000000000f000000000000000, type: 0}
-  m_ValidKeywords:${cutout ? "\n  - _ALPHATEST_ON" : " []"}
-  m_InvalidKeywords: []
-  m_LightmapFlags: 4
-  m_EnableInstancingVariants: 1
-  m_DoubleSidedGI: 0
-  m_CustomRenderQueue: ${cutout ? 2450 : -1}
-  stringTagMap:${cutout ? "\n    RenderType: TransparentCutout" : " {}"}
-  disabledShaderPasses: []
-  m_SavedProperties:
-    serializedVersion: 3
-    m_TexEnvs:
-    - _MainTex:
-        m_Texture: ${opts.textureGuid ? `{fileID: 2800000, guid: ${opts.textureGuid}, type: 3}` : "{fileID: 0}"}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    m_Ints: []
-    m_Floats:
-    - _Cutoff: 0.5
-    - _Glossiness: 0.3
-    - _Metallic: 0
-    - _Mode: ${cutout ? 1 : 0}
-    - _SrcBlend: 1
-    - _DstBlend: 0
-    - _ZWrite: 1
-    m_Colors:
-    - _Color: ${color(opts.color ?? "#ffffff")}
-  m_BuildTextureStacks: []
-`;
-}
 
 // Windows のファイル名に使えない文字を除いた、フォルダ・ファイル名用の文字列
 export function safeFileName(name: string, fallback: string) {

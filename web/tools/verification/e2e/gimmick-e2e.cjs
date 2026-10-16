@@ -3,6 +3,8 @@ const fs = require("fs");
 const zlib = require("zlib");
 const { createClient } = require("@supabase/supabase-js");
 const BASE = "http://localhost:3002";
+// 確認に使うテンプレート（別のテンプレートで確かめるときはここを書き換える）
+const TEMPLATE = { slug: "cake", colorKey: "base", colorLabel: "クリームの色", defaultColor: "#fffbed" };
 const DIR = process.env.SHOTS_DIR || require("path").join(__dirname, "shots");
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, { auth: { persistSession: false } });
 const email = `e2e-${Date.now()}@example.com`;
@@ -52,11 +54,11 @@ async function cleanup(uid) {
   const item = (name) => page.locator("aside div.rounded-lg").filter({ has: page.locator("span.text-sm.font-medium", { hasText: new RegExp("^" + esc(name) + "$") }) }).first();
   const check = (name) => item(name).getByRole("checkbox").first();
   try {
-    await page.goto(`${BASE}/login?next=/editor/tshirt`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE}/login?next=/editor/${TEMPLATE.slug}`, { waitUntil: "networkidle" });
     await page.getByLabel("メールアドレス").fill(email);
     await page.getByLabel("パスワード").fill(password);
     await page.getByRole("button", { name: "ログイン", exact: true }).click();
-    await page.waitForURL(/\/editor\/tshirt/);
+    await page.waitForURL(new RegExp(`/editor/${TEMPLATE.slug}`));
     await page.waitForSelector("canvas");
 
     // ---- ギミックの選択（ギミック欄は最初から開いている） ----

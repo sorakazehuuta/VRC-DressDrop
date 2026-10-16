@@ -2,26 +2,19 @@ import "server-only";
 import { backgroundColor, type EditorParams } from "@/lib/templates/params";
 import type { Slot } from "@/lib/templates/schema";
 import { runtimeAssets, workBuildAssets, type GimmickInput } from "./gimmick-assets";
+import { setCutout, setMainTexture, setMaterialColor, templateFiles } from "./template-package";
 import { renderPrintTexture } from "./texture";
-import {
-  buildUnityPackage,
-  deterministicGuid,
-  modelMeta,
-  nativeAssetMeta,
-  safeFileName,
-  standardMaterial,
-  textAssetMeta,
-  textureMeta,
-  type PackageAsset,
-} from "./unitypackage";
+import { buildUnityPackage, deterministicGuid, safeFileName, textAssetMeta, textureMeta, type PackageAsset } from "./unitypackage";
 
 export type WorkPackageInput = {
   purchaseId: string;
   workName: string;
-  template: { slug: string; name: string; slots: Slot[] };
+  // prefabPath: テンプレートの unitypackage の中で使う Prefab（Assets/...）
+  template: { slug: string; name: string; slots: Slot[]; prefabPath: string };
   params: EditorParams;
   gimmicks: GimmickInput[];
-  model: Buffer;
+  // テンプレートの unitypackage
+  templatePackage: Buffer;
   images: Map<string, Buffer>;
   createdAt: Date;
 };
@@ -55,13 +48,13 @@ ${needsUdon ? "   ギミックを使うため、VCC の Manage Project で UdonS
 ${gimmickLines}
 
 ■ PC / Quest について
-マテリアルは Unity 標準の Standard シェーダーを使っているため、PC 版・Quest 版のどちらのワールドでも表示できます。
-テクスチャの最大サイズは 2048px に設定しています。
+プリントのテクスチャの最大サイズは 2048px に設定しています。
+マテリアルのシェーダーはテンプレートのものをそのまま使っています。
 
 ■ 同梱ファイル
 - ${prefabName}.prefab : シーンに置くもの（読み込み時に自動で作成）
-- ${input.template.slug}.fbx : 3Dモデル
-- Mat_*.mat / Tex_*.png : マテリアルとテクスチャ
+- Template/ : テンプレートの3Dモデル・マテリアル・Prefab（色とプリントはこの作品用に設定済み）
+- Tex_*.png : プリントのテクスチャ
 - VRPrintLab.json : Prefab の組み立て設定
 - Assets/VRPrintLab/_Runtime : Prefab の組み立てとギミックのスクリプト（ほかの作品と共通）
 
@@ -77,19 +70,19 @@ export async function buildWorkPackage(input: WorkPackageInput) {
   const prefabName = safeFileName(input.workName, "Work");
   const base = `Assets/VRPrintLab/${folder}`;
   const assets: PackageAsset[] = [];
-  const remap: { materialName: string; materialGuid: string }[] = [];
   const guidOf = (path: string) => deterministicGuid(input.purchaseId, path);
+  const template = templateFiles({
+    templatePackage: input.templatePackage,
+    prefabPath: input.template.prefabPath,
+    folder: `${base}/Template`,
+    guidOf,
+  });
 
+  // テンプレートのマテリアルを書き換えて、色とプリントを反映する（つやなどの設定はテンプレートのまま）
   for (const slot of input.template.slots) {
     const slotParams = input.params.slots[slot.key];
-    const materialPath = `${base}/${slot.material}.mat`;
-
     if (slot.type === "color" && slotParams?.kind === "color") {
-      assets.push({
-        path: materialPath,
-        data: Buffer.from(standardMaterial({ name: slot.material, color: slotParams.color }), "utf8"),
-        meta: nativeAssetMeta,
-      });
+      template.editMaterial(slot.material, (yaml) => setMaterialColor(yaml, slotParams.color));
     } else if (slot.type === "print" && slotParams?.kind === "print") {
       const image = slotParams.imageId ? (input.images.get(slotParams.imageId) ?? null) : null;
       const texturePath = `${base}/Tex_${slot.key}.png`;
@@ -98,23 +91,15 @@ export async function buildWorkPackage(input: WorkPackageInput) {
         data: await renderPrintTexture(slot, slotParams, image, backgroundColor(slot, input.params)),
         meta: textureMeta,
       });
-      assets.push({
-        path: materialPath,
-        data: Buffer.from(
-          standardMaterial({ name: slot.material, textureGuid: guidOf(texturePath), cutout: slot.background === "transparent" }),
-          "utf8",
-        ),
-        meta: nativeAssetMeta,
+      template.editMaterial(slot.material, (yaml) => {
+        const textured = setMainTexture(setMaterialColor(yaml, "#ffffff"), guidOf(texturePath));
+        return slot.background === "transparent" ? setCutout(textured) : textured;
       });
-    } else {
-      continue;
     }
-    remap.push({ materialName: slot.material, materialGuid: guidOf(materialPath) });
   }
 
-  const modelPath = `${base}/${input.template.slug}.fbx`;
-  assets.push({ path: modelPath, data: input.model, meta: modelMeta(remap) });
-  assets.push(...(await workBuildAssets({ base, workName: input.workName, modelPath, prefabName, gimmicks: input.gimmicks })));
+  assets.push(...template.assets);
+  assets.push(...(await workBuildAssets({ base, workName: input.workName, modelPath: template.prefabPath, prefabName, gimmicks: input.gimmicks })));
   assets.push(...runtimeAssets());
   assets.push({ path: `${base}/README.txt`, data: Buffer.from(readme(input, folder, prefabName), "utf8"), meta: textAssetMeta });
 

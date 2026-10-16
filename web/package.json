@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "templates:prepare": "tsx scripts/prepare-templates.ts",
     "templates:check": "tsx scripts/sync-templates.ts --dry-run",
     "templates:sync": "tsx --env-file=.env.local scripts/sync-templates.ts",
     "templates:thumbnails": "tsx scripts/render-thumbnails.ts",

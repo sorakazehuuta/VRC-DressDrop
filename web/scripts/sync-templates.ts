@@ -1,56 +1,75 @@
-// templates/<slug>/template.json を検証し、モデルを Supabase Storage にアップロードして templates テーブルへ登録する。
+// templates/<slug>/template.json を検証し、unitypackage とプレビュー用モデルを Supabase Storage にアップロードして templates テーブルへ登録する。
 //   npm run templates:check            … 検証のみ（Supabase には何もしない）
 //   npm run templates:sync             … 全テンプレートを登録・更新
-//   npm run templates:sync -- tshirt   … 指定したテンプレートだけ
+//   npm run templates:sync -- cake     … 指定したテンプレートだけ
+// プレビュー用モデル（preview.glb）は先に npm run templates:prepare で作っておく
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
-import { z } from "zod";
-import { templateManifestSchema, type TemplateManifest } from "../src/lib/templates/schema";
+import { isMaterial, isScript, resolveTemplatePrefab, unityMaterialName } from "../src/lib/package/read-unitypackage";
+import type { TemplateManifest } from "../src/lib/templates/schema";
+import { readGlbJson, readTemplateFolder, sha256, templateSlugs } from "./template-bake/template-files";
 
-z.config(z.locales.ja());
-
-const TEMPLATES_DIR = path.join(import.meta.dirname, "..", "templates");
 const QUEST_TRIANGLE_LIMIT = 10_000;
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
 const only = args.filter((a) => !a.startsWith("--"));
 
-type Loaded = { dir: string; manifest: TemplateManifest; errors: string[]; warnings: string[] };
-
-function readGlbJson(file: string) {
-  const buf = readFileSync(file);
-  if (buf.toString("ascii", 0, 4) !== "glTF") throw new Error("glb ファイルではありません");
-  const jsonLength = buf.readUInt32LE(12);
-  return JSON.parse(buf.toString("utf8", 20, 20 + jsonLength)) as {
-    materials?: { name?: string }[];
-    meshes?: { primitives: { material?: number; indices?: number; attributes: Record<string, number> }[] }[];
-    accessors: { count: number }[];
-  };
-}
+type Loaded = {
+  slug: string;
+  dir: string;
+  manifest: TemplateManifest | null;
+  prefab: string;
+  packageFile: string;
+  errors: string[];
+  warnings: string[];
+};
 
 function load(slug: string): Loaded {
-  const dir = path.join(TEMPLATES_DIR, slug);
+  const folder = readTemplateFolder(slug);
+  if (!folder.ok) return { slug, dir: folder.dir, manifest: null, prefab: "", packageFile: "", errors: folder.errors, warnings: [] };
+  const { dir, manifest, entries, packageData, packageFile } = folder;
   const errors: string[] = [];
   const warnings: string[] = [];
-  const raw = JSON.parse(readFileSync(path.join(dir, "template.json"), "utf8"));
-  const parsed = templateManifestSchema.safeParse(raw);
-  if (!parsed.success) {
-    for (const issue of parsed.error.issues) errors.push(`template.json の ${issue.path.join(".") || "(全体)"}: ${issue.message}`);
-    return { dir, manifest: raw, errors, warnings };
-  }
-  const manifest = parsed.data;
-  if (manifest.slug !== slug) errors.push(`フォルダ名 "${slug}" と slug "${manifest.slug}" を一致させてください`);
+  const result = () => ({ slug, dir, manifest, prefab, packageFile, errors, warnings });
 
-  for (const [kind, file] of Object.entries(manifest.files)) {
-    if (file && !existsSync(path.join(dir, file))) errors.push(`files.${kind} のファイル "${file}" がありません`);
+  let prefab = "";
+  try {
+    prefab = resolveTemplatePrefab(entries, manifest.files.prefab);
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : String(e));
   }
-  if (errors.length) return { dir, manifest, errors, warnings };
+  const scripts = entries.filter(isScript);
+  if (scripts.length) errors.push(`unitypackage にスクリプトが含まれています。テンプレートには入れられません（${scripts.map((s) => s.path).join(", ")}）`);
 
-  const glb = readGlbJson(path.join(dir, manifest.files.preview));
-  const materialNames = (glb.materials ?? []).map((m) => m.name ?? "");
+  // 購入時の unitypackage では、スロットのマテリアル（.mat）の色・テクスチャを書き換える
+  const materials = entries.filter(isMaterial);
+  const materialNames = materials.map(unityMaterialName);
+  for (const slot of manifest.slots) {
+    const count = materialNames.filter((n) => n === slot.material).length;
+    if (count === 0) {
+      errors.push(
+        `スロット "${slot.key}" のマテリアル "${slot.material}" が unitypackage にありません（.mat: ${materialNames.join(", ") || "なし"}）。FBX に埋め込まれたマテリアルは Unity の Materials タブで Extract Materials してから書き出してください`,
+      );
+    } else if (count > 1) {
+      errors.push(`スロット "${slot.key}" のマテリアル "${slot.material}" と同じ名前の .mat が複数あります。名前を変えて区別してください`);
+    }
+  }
+
+  const previewFile = path.join(dir, manifest.files.preview);
+  if (!existsSync(previewFile)) {
+    errors.push(`プレビュー用モデル "${manifest.files.preview}" がありません。npm run templates:prepare -- ${slug} で作ってください`);
+    return result();
+  }
+  const glb = readGlbJson(previewFile);
+  const source = glb.asset.extras?.vrprintlab;
+  if (!source || source.sourceSha256 !== sha256(packageData) || source.prefab !== prefab) {
+    errors.push(`"${manifest.files.preview}" が今の unitypackage から作られたものではありません。npm run templates:prepare -- ${slug} で作り直してください`);
+  }
+
+  const glbMaterials = (glb.materials ?? []).map((m) => m.name ?? "");
   let triangles = 0;
   for (const mesh of glb.meshes ?? []) {
     for (const prim of mesh.primitives) {
@@ -59,27 +78,25 @@ function load(slug: string): Loaded {
     }
   }
   for (const slot of manifest.slots) {
-    const index = materialNames.indexOf(slot.material);
+    const index = glbMaterials.indexOf(slot.material);
     if (index < 0) {
-      errors.push(`スロット "${slot.key}" のマテリアル "${slot.material}" が glb にありません（glb 内: ${materialNames.join(", ") || "なし"}）`);
+      // .mat はあるが Prefab のどこにも使われていない
+      if (materialNames.includes(slot.material)) {
+        errors.push(`スロット "${slot.key}" のマテリアル "${slot.material}" が Prefab で表示されている面に使われていません`);
+      }
       continue;
     }
     if (slot.type === "print") {
       const prims = (glb.meshes ?? []).flatMap((m) => m.primitives).filter((p) => p.material === index);
       if (prims.some((p) => p.attributes.TEXCOORD_0 === undefined)) {
-        errors.push(`プリントスロット "${slot.key}" の面に UV がありません。Blender で UV 展開してから書き出してください`);
+        errors.push(`プリントスロット "${slot.key}" の面に UV がありません。UV 展開したモデルを使ってください`);
       }
     }
   }
   if (triangles > QUEST_TRIANGLE_LIMIT) {
     warnings.push(`ポリゴン数 ${Math.round(triangles)} が Quest の目安（${QUEST_TRIANGLE_LIMIT}）を超えています`);
   }
-
-  const fbx = readFileSync(path.join(dir, manifest.files.package)).toString("latin1");
-  for (const slot of manifest.slots) {
-    if (!fbx.includes(slot.material)) errors.push(`スロット "${slot.key}" のマテリアル "${slot.material}" が fbx にありません`);
-  }
-  return { dir, manifest, errors, warnings };
+  return result();
 }
 
 function hashedName(file: string) {
@@ -89,7 +106,7 @@ function hashedName(file: string) {
 
 const contentTypes: Record<string, string> = {
   ".glb": "model/gltf-binary",
-  ".fbx": "application/octet-stream",
+  ".unitypackage": "application/gzip",
   ".png": "image/png",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
@@ -97,17 +114,12 @@ const contentTypes: Record<string, string> = {
 };
 
 async function main() {
-  const slugs = readdirSync(TEMPLATES_DIR, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && existsSync(path.join(TEMPLATES_DIR, d.name, "template.json")))
-    .map((d) => d.name)
-    .filter((s) => only.length === 0 || only.includes(s));
-  if (slugs.length === 0) throw new Error("対象のテンプレートが見つかりません");
-
-  const loaded = slugs.map(load);
+  const loaded = templateSlugs(only).map(load);
   let failed = false;
   for (const t of loaded) {
     const status = t.errors.length ? "NG" : "OK";
-    console.log(`[${status}] ${path.basename(t.dir)}${t.manifest?.name ? ` (${t.manifest.name})` : ""}`);
+    console.log(`[${status}] ${t.slug}${t.manifest?.name ? ` (${t.manifest.name})` : ""}`);
+    if (t.prefab) console.log(`   Prefab: ${t.prefab}`);
     for (const e of t.errors) console.log(`   エラー: ${e}`);
     for (const w of t.warnings) console.log(`   注意: ${w}`);
     if (t.errors.length) failed = true;
@@ -137,9 +149,10 @@ async function main() {
     return name;
   }
 
-  for (const { dir, manifest } of loaded) {
+  for (const { dir, manifest, prefab, packageFile } of loaded) {
+    if (!manifest) continue;
     const previewPath = await upload("template-assets", manifest.slug, path.join(dir, manifest.files.preview));
-    const packagePath = await upload("template-packages", manifest.slug, path.join(dir, manifest.files.package));
+    const packagePath = await upload("template-packages", manifest.slug, packageFile);
     // template.json で指定がなければ、templates:thumbnails が自動生成した thumbnail.png を使う
     const thumbnailFile = manifest.files.thumbnail ?? (existsSync(path.join(dir, "thumbnail.png")) ? "thumbnail.png" : null);
     const thumbnailPath = thumbnailFile ? await upload("template-assets", manifest.slug, path.join(dir, thumbnailFile)) : null;
@@ -156,12 +169,16 @@ async function main() {
         sort_order: manifest.sortOrder,
         preview_model_path: previewPath,
         package_model_path: packagePath,
+        package_prefab_path: prefab,
         thumbnail_path: thumbnailPath,
         slots: manifest.slots,
       },
       { onConflict: "slug" },
     );
-    if (error) throw new Error(`${manifest.slug} の登録に失敗: ${error.message}`);
+    if (error) {
+      const hint = error.message.includes("package_prefab_path") ? "（マイグレーション 20261016000000_unitypackage_templates.sql を SQL Editor で実行してください）" : "";
+      throw new Error(`${manifest.slug} の登録に失敗: ${error.message}${hint}`);
+    }
     console.log(`登録しました: ${manifest.slug}（${manifest.isPublic ? "公開" : "非公開"}）`);
   }
 }

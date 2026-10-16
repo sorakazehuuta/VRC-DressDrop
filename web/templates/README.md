@@ -1,93 +1,229 @@
-# テンプレートの追加方法
+# テンプレートの登録手順
 
-テンプレート（Tシャツ、アクスタなど）は、このフォルダにファイルを置いてコマンドを1つ実行するだけで追加・更新できます。
+テンプレート（ケーキ、マグカップなど）は、Unity で書き出した **.unitypackage** をこのフォルダに置き、コマンドを実行して登録します。
 アプリのコードを変更する必要はありません。
 
-## 1. 3Dモデルを用意する（Blender）
+全体の流れ:
 
-- 色を変えたい面と、画像を貼りたい面に **別々のマテリアル** を割り当てる
-  - マテリアル名は英数字で付ける（例: `Mat_Base`, `Mat_Print`, `Mat_Print_Back`）
-- 画像を貼る面は **UV 展開** し、UV が 0〜1 の範囲いっぱいに収まるようにする
-  - 画像の上が UV の上側になる向きにする
-- ポリゴン数は Quest の目安（1万三角形以下）に収める
-- 次の2形式で書き出す
-  - `model.glb`（ブラウザのプレビュー用）: ファイル → エクスポート → glTF 2.0（形式: glb）
-  - `model.fbx`（unitypackage 同梱用）: ファイル → エクスポート → FBX
+1. `templates` ブランチに切り替える
+2. Unity でテンプレートの unitypackage を書き出す
+3. `templates/<slug>/` に unitypackage と template.json を置く
+4. `npm run templates:prepare` でブラウザ用のプレビューを作る
+5. `npm run templates:check` で確認し、サムネイルを作る
+6. `npm run templates:sync` で非公開のまま登録し、サイトと Unity で確認する
+7. 公開してコミットする
 
-## 2. フォルダを作る
+コマンドはすべて `web` フォルダで実行します（Windows の PowerShell で `npm` が動かないときは `npm.cmd` と打ちます）。
+
+---
+
+## 0. 最初に1回だけ用意するもの
+
+| もの | 用途 | 備考 |
+|---|---|---|
+| Node.js（LTS） | コマンドの実行 | `web` フォルダで `npm install` を1回実行する |
+| Unity 2022.3（Unity Hub から） | プレビューの作成（templates:prepare） | VRChat 用と同じ 2022.3 系。Unity Hub にログインしてライセンスを有効にしておく |
+| `web/.env.local` | Supabase への登録（templates:sync） | 管理者から受け取る。**秘密キーなのでチャットや GitHub に貼らない** |
+| Chromium | サムネイルの自動作成 | `npx playwright install chromium` を1回実行する |
+
+Unity は自動で探します（`C:\Program Files\Unity\Hub\Editor\2022.3.*`）。別の場所に入れた場合は、環境変数 `UNITY_PATH` に Unity.exe のパスを指定してください。
+
+## 1. templates ブランチに切り替える
+
+テンプレートの追加・更新は、**`templates` ブランチ** にコミットします（サイトの機能の変更とは分けて管理するため）。
+
+```bash
+git switch templates
+git pull
+```
+
+サイト側（`main`）の変更を取り込みたいときは、`templates` ブランチで `git merge main` を実行します。
+
+## 2. Unity で unitypackage を書き出す
+
+### モデルの作り方の決まり
+
+- **1つのフォルダにまとめる**: `Assets/VRPrintLab/<名前>/` の下にモデル（FBX）・マテリアル・テクスチャ・Prefab を入れる
+- **Prefab を作る**: シーンに置いたときの見た目（大きさ・位置・マテリアル・パーティクル）を Prefab にしておく。サイトのプレビューも、購入者に届くモデルも、この Prefab の見た目になる。Prefab が複数あるときは template.json の `files.prefab` で使うものを指定する
+- **色を変える部分とプリント面は、それぞれ別のマテリアル（.mat ファイル）にする**
+  - FBX に埋め込まれたマテリアルは使えません。FBX を選んで Inspector の Materials タブ →「Extract Materials...」で .mat にしてください
+  - 同じ名前のマテリアルを2つ作らない（template.json ではマテリアルの名前で指定するため）
+- **プリント面**: UV を 0〜1 いっぱいに展開する（画像の上が UV の上）。マテリアルのタイリング・オフセットは無視され、画像全体が UV の範囲に貼られる
+- **シェーダーは Standard を推奨**（PC / Quest どちらのワールドでも表示できる）
+- **スクリプト（.cs / .dll）は入れない**（入っていると登録できません）
+- ポリゴン数の目安は Quest 向けで 1万三角形以下（超えると注意が出るが登録はできる）
+- 他人が作ったモデルを使う場合は、このサービスで加工・販売してよい利用条件か確認する
+
+### 書き出し方
+
+1. Project ウィンドウで Prefab を右クリック →「Export Package...」
+2. 「Include dependencies」にチェックが入った状態で、モデル・マテリアル・テクスチャがすべて選ばれていることを確認する（スクリプトが混ざっていたら外す）
+3. 「Export...」で保存する（ファイル名は自由。例: `mug.unitypackage`）
+
+## 3. フォルダと template.json を作る
 
 ```
 templates/
-  acrylic-stand/        ← フォルダ名 = slug（英小文字・数字・-）
-    template.json
-    model.glb
-    model.fbx
-    thumbnail.png       ← 任意（一覧に表示される画像。4:3 推奨。なければ自動生成できる）
+  mug/                  ← フォルダ名 = slug（英小文字・数字・-）。サイトの URL になる（/editor/mug）
+    template.json       ← 設定（下記）
+    mug.unitypackage    ← 2 で書き出したもの
+    preview.glb         ← 4 で自動で作られる
+    thumbnail.png       ← 5 で自動で作られる（自分で用意してもよい。4:3 推奨）
 ```
 
-## 3. template.json を書く
+template.json の例:
 
 ```json
 {
-  "slug": "acrylic-stand",
-  "name": "アクリルスタンド",
+  "slug": "mug",
+  "name": "マグカップ",
   "category": "グッズ",
-  "description": "イラストを切り抜いて飾れるアクスタ。",
+  "description": "好きな画像を貼れるマグカップ。本体の色も変えられます。",
   "tokenCost": 1,
   "isPublic": false,
-  "sortOrder": 20,
-  "files": { "preview": "model.glb", "package": "model.fbx", "thumbnail": "thumbnail.png" },
+  "sortOrder": 30,
+  "files": { "package": "mug.unitypackage" },
   "slots": [
-    { "key": "base", "type": "color", "label": "台座の色", "material": "Mat_Base", "defaultColor": "#ffffff" },
-    { "key": "print", "type": "print", "label": "イラスト", "material": "Mat_Print", "background": "transparent", "aspect": 0.7 }
+    { "key": "base", "type": "color", "label": "本体の色", "material": "Mug Body", "defaultColor": "#ffffff" },
+    { "key": "print", "type": "print", "label": "プリント", "material": "Mug Print", "background": { "slot": "base" }, "aspect": 2.4 }
   ]
 }
 ```
 
 | 項目 | 説明 |
 |---|---|
+| `slug` | フォルダ名と同じにする |
+| `name` / `category` / `description` | サイトに表示する名前・分類・説明 |
 | `tokenCost` | ダウンロードに必要なトークン数 |
-| `isPublic` | `false` の間は一覧に出ない（管理者だけが確認できる） |
+| `isPublic` | `false` の間は一覧に出ない（管理者だけが確認できる）。確認が終わるまで `false` のまま |
 | `sortOrder` | 一覧の並び順（小さいほど前） |
-| `slots` | 編集できる部分。画面にはこの順番で並ぶ |
+| `files.package` | unitypackage のファイル名 |
+| `files.prefab` | 使う Prefab の Unity 上のパス（例: `Assets/VRPrintLab/Mug/Mug.prefab`）。Prefab が1つだけなら書かなくてよい |
+| `files.thumbnail` | 自分で用意したサムネイル画像のファイル名（省略すると `thumbnail.png`） |
+| `slots` | 利用者が編集できる部分。画面にはこの順番で並ぶ |
 
-### スロットの種類
+### スロット（編集できる部分）
 
-**`"type": "color"`（色を変える面）**
+**色を変える部分 `"type": "color"`**
 
 | 項目 | 説明 |
 |---|---|
-| `key` | 英小文字の識別子（テンプレート内で重複しないこと） |
-| `label` | 画面に表示する名前 |
-| `material` | Blender で付けたマテリアル名（完全一致） |
-| `defaultColor` | 初期色（`#RRGGBB`） |
+| `key` | 英小文字の識別子（テンプレート内で重複しないこと）。本体の色は `base` にそろえる |
+| `label` | 画面に表示する名前（例: 本体の色、クリームの色） |
+| `material` | Unity のマテリアル名（完全一致。`•` などの記号や空白も含めてそのまま書く） |
+| `defaultColor` | 初期色（`#RRGGBB`）。Unity のマテリアルの色に合わせると自然 |
 
-**`"type": "print"`（画像を貼る面）**
+**画像を貼る面 `"type": "print"`**
 
 | 項目 | 説明 |
 |---|---|
 | `key` / `label` / `material` | color と同じ |
-| `background` | 画像がない部分の扱い。`"transparent"` で透明（アクスタの切り抜きなど）。プリント面が本体の一部で、透明にすると穴が開く場合は `{ "slot": "base" }` のように色スロットを指定すると、その色で塗りつぶす |
-| `aspect` | プリント面の実寸の **幅÷高さ**。画像が縦や横に伸びて見えるときに調整する（既定: 1） |
+| `background` | 画像がない部分の扱い。`"transparent"` で透明（切り抜き）。面が本体の一部で、透明にすると穴が開く場合は `{ "slot": "base" }` のように色スロットを指定すると、その色で塗る |
+| `aspect` | プリント面の実寸の **幅÷高さ**。`templates:prepare` が計算した値を書く（次の手順） |
 | `textureSize` | 出力テクスチャの長辺ピクセル数（256〜2048、既定: 2048） |
 
-## 4. 検証して登録する
+マテリアル名が分からないときは、次の `templates:prepare` を実行すると一覧が表示されます。
+
+## 4. プレビューを作る（templates:prepare）
 
 ```bash
-npm run templates:check            # 検証だけ（何も登録しない）
-npm run templates:thumbnails       # サムネイル（thumbnail.png）がなければ3Dモデルから自動で作る
-npm run templates:sync             # 全テンプレートを Supabase に登録・更新
-npm run templates:sync -- acrylic-stand   # 1つだけ登録・更新
+npm run templates:prepare -- mug
 ```
 
-`templates:thumbnails` は、モデルを正面から描画し、プリント面に見本として VRPrintLab のアイコンを貼った 800×600 の画像を作ります。モデルを差し替えたときは `-- --force` を付けて作り直してください。template.json の `files.thumbnail` で自分で用意した画像を指定している場合は、そちらが使われます（初回だけ `npx playwright install chromium` が必要です）。
+Unity をバックグラウンドで起動して Prefab を読み込み、ブラウザ用のモデル `preview.glb` を作ります（初回は Unity の準備に数分かかります。Unity の画面は開きません）。
+**unitypackage を差し替えたときは、必ずもう一度実行してください**（古いままだと次の check でエラーになります）。
 
-`templates:check` は次の点を自動で確認します。問題があれば、何も登録せずにエラーを表示します。
+実行結果の例:
+
+```
+[mug]
+  Prefab: Assets/VRPrintLab/Mug/Mug.prefab（マテリアル 3 個）
+  preview.glb を作りました（メッシュ 2 個 / 三角形 4120 / 0.3 MB）
+  マテリアル: Mug Body / Mug Print / Mug Handle
+  プリント面 "print" の 幅÷高さ: 2.38（template.json: 1）  ← template.json の aspect をこの値にしてください
+```
+
+- 「マテリアル」の行が、template.json の `material` に書ける名前です
+- 「幅÷高さ」の行に「←」が出たら、template.json の `aspect` をその値に直します（直したあとの prepare のやり直しは不要）
+- 「プレビューに表示しないもの」はパーティクルなどです。ブラウザのプレビューには出ませんが、購入者に届く unitypackage には入ります
+
+プレビューに反映されるのは、マテリアルの色・つや・金属感・透明（Cutout / Fade）・発光・PNG / JPEG のテクスチャです。特殊なシェーダーの見た目は再現されないことがあります。
+
+## 5. 確認とサムネイル
+
+```bash
+npm run templates:check -- mug        # 確認だけ（Supabase には何もしない）
+npm run templates:thumbnails -- mug   # thumbnail.png を作る（作り直すときは -- mug --force）
+```
+
+`templates:check` は次の点を確認します。エラーがあれば直してから先へ進みます。
 
 - template.json の書き方
-- ファイルがそろっているか
-- `material` に書いた名前が glb と fbx の両方に実在するか
+- unitypackage が読めるか、Prefab があるか、スクリプトが入っていないか
+- `material` に書いた名前の .mat が unitypackage にあり、Prefab で表示されている面に使われているか
+- preview.glb が今の unitypackage から作られたものか
 - プリント面に UV があるか
-- ポリゴン数が Quest の目安を超えていないか（超えていたら注意を表示）
+- ポリゴン数が Quest の目安を超えていないか（超えていたら注意）
 
-登録後、`isPublic: false` のまま `/editor/<slug>` を管理者アカウントで開いて見た目を確認し、問題なければ `true` にして再度 `templates:sync` してください。
+サムネイルは、モデルを正面から描画し、プリント面に見本として VRPrintLab のアイコンを貼った画像です。`thumbnail.png` を開いて、向きと見え方を確認してください。
+
+## 6. 非公開で登録して確認する（templates:sync）
+
+**ここから Supabase（サイトのデータ）を書き換えます。** `isPublic` が `false` になっていることを確認してから実行します。
+
+```bash
+npm run templates:sync -- mug
+```
+
+- slug を付けると、そのテンプレートだけを登録・更新します（付けないと全テンプレート）
+- 同じ slug は上書き更新になります
+
+登録できたら、次を確認します。
+
+1. 開発サーバーを起動（`npm run dev`）し、**管理者アカウント** で `http://localhost:3000/editor/mug` を開く
+   - 色の変更、画像の貼り付け（向き・伸び・位置）、ギミックのプレビューを確かめる
+2. 保存してダウンロードし、Unity（VRChat のワールドプロジェクトのコピー）に読み込む
+   - 自動で作られる Prefab をシーンに置き、色・プリント・大きさがサイトと同じか確かめる
+
+問題がなければ template.json の `isPublic` を `true` にして、もう一度 `npm run templates:sync -- mug` を実行すると一覧に表示されます。
+
+## 7. コミットする
+
+`templates` ブランチに、`templates/mug/` のファイル（template.json・unitypackage・preview.glb・thumbnail.png）をコミットしてプッシュします。
+
+```bash
+git add templates/mug
+git commit -m "マグカップのテンプレートを追加"
+git push
+```
+
+GitHub へのプッシュと Supabase への登録（templates:sync）は別の操作です。どちらも行ってください。
+
+---
+
+## 更新・取り下げ
+
+- **モデルを直す**: unitypackage を差し替え → `templates:prepare` → `templates:check` → `templates:thumbnails -- mug --force` → `templates:sync -- mug` → コミット
+- **名前・説明・トークン数だけ直す**: template.json を直して `templates:sync -- mug` → コミット
+- **一覧から外す**: `isPublic` を `false` にして `templates:sync -- mug`。すでに作られた作品があるため、テンプレートのフォルダやデータは消さない
+
+## 仕組み（参考）
+
+- `templates:prepare` は `web/.template-bake/`（git 管理外）に作業用の Unity プロジェクトを作り、unitypackage の中身を展開して Prefab を読み込み、表示されているメッシュとマテリアルを書き出します。Unity の座標（左手系）は glTF の座標に変換しています
+- 購入されたときは、unitypackage の中身を作品のフォルダ（`Assets/VRPrintLab/<作品名>/Template/`）に複製し、スロットのマテリアルの色とテクスチャだけを書き換えます。作品ごとに GUID を振り直すので、同じテンプレートの作品を複数読み込んでも互いに上書きしません
+- 作品の Prefab は、テンプレートの Prefab にギミックを組み合わせて購入者の Unity で自動的に組み立てられます
+
+## よくあるエラー
+
+| 表示 | 対処 |
+|---|---|
+| Unity が見つかりません | Unity Hub で 2022.3 系をインストールする。別の場所なら `UNITY_PATH` を設定する |
+| Unity が正常に終了しませんでした | Unity Hub でログイン・ライセンスを確認する。`web/.template-bake/unity-<slug>.log` に詳細がある |
+| マテリアル "…" が unitypackage にありません | 名前の打ち間違い、または FBX に埋め込まれたまま。Extract Materials して書き出し直す |
+| Prefab が複数あります | template.json に `files.prefab` を書く |
+| スクリプトが含まれています | 書き出すときにスクリプトのチェックを外す |
+| preview.glb が今の unitypackage から作られたものではありません | `templates:prepare` をやり直す |
+| 画像が縦や横に伸びる | `aspect` を prepare が表示した値にする。UV がゆがんでいないか確認する |
+| 画像の部分に穴が開く | `background` を色スロット（`{ "slot": "base" }`）にする |
+| 登録で package_prefab_path のエラー | 管理者に `supabase/migrations/20261016000000_unitypackage_templates.sql` の実行を依頼する |
+| SUPABASE_SECRET_KEY を設定してください | `web/.env.local` がない。管理者に確認する |

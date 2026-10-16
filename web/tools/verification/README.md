@@ -34,7 +34,7 @@ Unity 2022.3.22f1 と、VCC の TestProject（`%LOCALAPPDATA%\VRChatCreatorCompa
 
    ```bash
    cp tools/verification/unity/make-test-package.mts scripts/tmp-make-test-package.mts
-   npx tsx --conditions=react-server scripts/tmp-make-test-package.mts <出力先>/gimmicks-test.unitypackage
+   npx tsx --conditions=react-server scripts/tmp-make-test-package.mts <出力先>/gimmicks-test.unitypackage cake   # 最後はテンプレートの slug
    rm scripts/tmp-make-test-package.mts
    ```
 

@@ -2,6 +2,8 @@ const { chromium } = require("playwright");
 const fs = require("fs");
 const { createClient } = require("@supabase/supabase-js");
 const BASE = "http://localhost:3002";
+// 確認に使うテンプレート（別のテンプレートで確かめるときはここを書き換える）
+const TEMPLATE = { slug: "cake", colorKey: "base", colorLabel: "クリームの色", defaultColor: "#fffbed" };
 const DIR = process.env.SHOTS_DIR || require("path").join(__dirname, "shots");
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, { auth: { persistSession: false } });
 const email = `e2e-${Date.now()}@example.com`;
@@ -33,11 +35,11 @@ async function cleanup(uid) {
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   const balance = async () => (await page.locator("header").getByText(/トークン/).first().innerText()).trim();
   try {
-    await page.goto(`${BASE}/login?next=/editor/tshirt`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE}/login?next=/editor/${TEMPLATE.slug}`, { waitUntil: "networkidle" });
     await page.getByLabel("メールアドレス").fill(email);
     await page.getByLabel("パスワード").fill(password);
     await page.getByRole("button", { name: "ログイン", exact: true }).click();
-    await page.waitForURL(/\/editor\/tshirt/);
+    await page.waitForURL(new RegExp(`/editor/${TEMPLATE.slug}`));
     // 上書き保存の前の「前回の保存内容を残すか」の確認は versions-e2e で確かめるため、ここでは出さない
     await page.evaluate(() => localStorage.setItem("vrprintlab:overwrite-without-asking", "1"));
     await page.waitForSelector("canvas");

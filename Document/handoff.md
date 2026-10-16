@@ -36,11 +36,12 @@ web/                 本体（Next.js 16 App Router + TypeScript + Tailwind v4�
     gimmicks/        ギミック定義の型・組み合わせの判定
     package/         unitypackage 生成（texture.ts: sharp でプリントを描く、unitypackage.ts、work-package.ts、gimmick-assets.ts）
     supabase/        クライアント（server.ts の createAdminClient は秘密キーで RLS を迂回）
-  templates/<slug>/  テンプレート（template.json + model.glb + model.fbx + thumbnail.png）。追加手順は templates/README.md
+  templates/<slug>/  テンプレート（template.json + .unitypackage + preview.glb + thumbnail.png）。登録手順は templates/README.md
+                     テンプレートの追加・更新は `templates` ブランチで行う（サイトの改修とは別に管理）
   gimmicks/catalog/  ギミック定義（1ファイル1ギミック）。追加・編集手順は gimmicks/README.md
   gimmicks/unity/    Unity 用スクリプト（Runtime: UdonSharp、Editor: Prefab 組み立て）
   supabase/migrations/  DB の変更履歴（SQL Editor で順に実行する運用）
-  scripts/           同期・サムネイル生成のスクリプト
+  scripts/           同期・サムネイル生成・プレビュー作成（template-bake/: Unity で Prefab を glb にする）のスクリプト
   tools/verification/   動作確認スクリプト（ブラウザ e2e、Unity）
 ```
 
@@ -49,7 +50,7 @@ web/                 本体（Next.js 16 App Router + TypeScript + Tailwind v4�
 ```bash
 npm run dev                      # 開発サーバー（http://localhost:3000）
 npm run lint && npm run build    # 確認
-npm run templates:check / templates:sync / templates:thumbnails
+npm run templates:prepare / templates:check / templates:sync / templates:thumbnails
 npm run gimmicks:check / gimmicks:sync
 ```
 
@@ -58,7 +59,7 @@ npm run gimmicks:check / gimmicks:sync
 - **Supabase**: 作成済み。URL・キーは `web/.env.local`（git 管理外）。無料プラン（1週間使わないと一時停止）
 - **マイグレーション**: `web/supabase/migrations` の 7 ファイルはすべて SQL Editor で実行済み。新しく作ったら利用者に実行を依頼する（Supabase CLI・Docker は入っていない）
 - **Storage バケット**: `work-images`（非公開・作品の画像とサムネイル）、`template-assets`（公開・glb とサムネイル）、`template-packages`（非公開・同梱用 fbx）、`packages`（非公開・生成した unitypackage と購入した版の控え）
-- **データ**: テンプレートは Tシャツ 1 件、ギミック 16 件を登録済み
+- **データ**: ギミック 16 件を登録済み。テンプレートは unitypackage 形式に移行（2026-10-16）。ケーキを `templates` ブランチに追加済み（Supabase への登録はマイグレーション 20261016000000 の実行後）。旧形式の Tシャツはファイルを削除し、DB の行は作品・購入履歴が参照しているため非公開にして残す
 - **Unity**: 2022.3.22f1（`C:\Program Files\Unity\Hub\Editor\2022.3.22f1`）。VCC の TestProject に UdonSharp・ClientSim あり。この PC には VRChat 本体が入っていない
 - **Playwright**: web の devDependencies に入っている（サムネイル生成と確認用）
 
@@ -83,8 +84,8 @@ npm run gimmicks:check / gimmicks:sync
 - **決済**: Stripe（Checkout + Webhook）に決定（2026-10-05）。カードとコンビニ払いから始め、PayPay は後で検討。返金・チャージバック・購入上限の方針は要件定義書 6.8・8章を参照
 - **不正対策**: 要件定義書 6.11 を追加（2026-10-05）。今の実装は新規登録の時点で3トークンを付与しているため、SMS で電話番号を確認した時点の付与に変える必要がある。CAPTCHA・使い捨てメールの拒否・カードのブロックも未実装
 - **トークンの有効期限切れ**: 残高計算では期限切れを除外しているが、履歴に「失効」を記録する処理は未実装（Phase 7）
-- **未決事項**: トークンの価格・各テンプレート/ギミックの消費量、ドメイン、Tシャツ以外のテンプレートのモデル
-- **Tシャツのモデル**: 背中の襟元にプリントの小さな複製が出る（背中側の一部の面に Mat_Print が割り当たっている）、プリント範囲の端に陰影の線、FBX 内に作者 PC のユーザー名を含むパス（販売物に同梱される。利用者は今回は対応しない判断）
+- **未決事項**: トークンの価格・各テンプレート/ギミックの消費量、ドメイン
+- **テンプレート（unitypackage 形式）**: 購入時はテンプレートの中身を作品フォルダの `Template/` に複製し、GUID を振り直してスロットの .mat の色・テクスチャだけを書き換える。プレビューの glb は `templates:prepare` が Unity のバッチモードで Prefab から作る（登録する PC に Unity 2022.3 が必要）。ケーキは 6.7 万三角形で Quest の目安（1万）を超えている
 - **ギミック**: VRChat 上での全員への同期は未確認。直近の修正版（光る・触れる・振る）は利用者の Unity での再確認待ち
 - **利用者の TestProject**: G01 の Prefab からオブジェクトが消えていた。修正版パッケージを読み込み、Tools > VRPrintLab > Prefab をすべて作り直す で復旧する手順を案内済み
 - **本番公開**: Vercel へのデプロイ、ドメイン、確認メールの送信サービス（Supabase 標準は 1 時間に数通まで）、Supabase の有料プラン検討

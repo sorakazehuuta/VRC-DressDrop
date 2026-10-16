@@ -57,8 +57,15 @@ export const templateManifestSchema = z.object({
   isPublic: z.boolean().default(false),
   sortOrder: z.number().int().default(0),
   files: z.object({
-    preview: z.string().regex(/\.glb$/i, "プレビュー用モデルは .glb を指定してください"),
-    package: z.string().regex(/\.fbx$/i, "同梱用モデルは .fbx を指定してください"),
+    // Unity から書き出したテンプレート本体（モデル・マテリアル・Prefab 一式）
+    package: z.string().regex(/\.unitypackage$/i, "テンプレートは .unitypackage を指定してください"),
+    // 使う Prefab の Unity 上のパス（Assets/...）。パッケージに Prefab が1つだけなら省略できる
+    prefab: z
+      .string()
+      .regex(/^Assets\/.+\.(prefab|fbx)$/i, "Assets/ から始まる .prefab のパスを指定してください")
+      .optional(),
+    // ブラウザのプレビュー用モデル。npm run templates:prepare が unitypackage から作る
+    preview: z.string().regex(/\.glb$/i, "プレビュー用モデルは .glb を指定してください").default("preview.glb"),
     thumbnail: z
       .string()
       .regex(/\.(png|jpe?g|webp)$/i)

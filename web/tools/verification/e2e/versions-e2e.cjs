@@ -1,6 +1,8 @@
 const { chromium } = require("playwright");
 const { createClient } = require("@supabase/supabase-js");
 const BASE = "http://localhost:3002";
+// 確認に使うテンプレート（別のテンプレートで確かめるときはここを書き換える）
+const TEMPLATE = { slug: "cake", colorKey: "base", colorLabel: "クリームの色", defaultColor: "#fffbed" };
 const DIR = process.env.SHOTS_DIR || require("path").join(__dirname, "shots");
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, { auth: { persistSession: false } });
 const email = `e2e-${Date.now()}@example.com`;
@@ -33,11 +35,11 @@ async function cleanup(uid) {
   const num = (label) => page.getByLabel(new RegExp(`^${label}（`));
   const range = (label) => page.getByLabel(label, { exact: true });
   try {
-    await page.goto(`${BASE}/login?next=/editor/tshirt`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE}/login?next=/editor/${TEMPLATE.slug}`, { waitUntil: "networkidle" });
     await page.getByLabel("メールアドレス").fill(email);
     await page.getByLabel("パスワード").fill(password);
     await page.getByRole("button", { name: "ログイン", exact: true }).click();
-    await page.waitForURL(/\/editor\/tshirt/);
+    await page.waitForURL(new RegExp(`/editor/${TEMPLATE.slug}`));
     await page.waitForSelector("canvas");
 
     // ---- 色の選択枠が切れていないか ----
@@ -49,7 +51,7 @@ async function cleanup(uid) {
       return p ? p.getBoundingClientRect().left : 0;
     });
     ok("白の選択枠（外側4px）がスクロール領域の内側に収まる", box.x - 4 >= clip, `丸の左端 ${box.x.toFixed(0)}px / 切り取り境界 ${clip.toFixed(0)}px`);
-    await page.locator("section", { hasText: "生地の色" }).screenshot({ path: `${DIR}/swatch-white.png` });
+    await page.locator("section", { hasText: TEMPLATE.colorLabel }).screenshot({ path: `${DIR}/swatch-white.png` });
 
     // ---- 数値入力 ----
     const png = await page.evaluate(async () => {
@@ -106,8 +108,8 @@ async function cleanup(uid) {
     const { data: works1 } = await admin.from("works").select("id, name, params").eq("user_id", uid);
     const kept = works1.find((w) => w.id !== workId);
     const current = works1.find((w) => w.id === workId);
-    ok("「残して保存」で前回の内容が別の作品として残る", works1.length === 2 && kept && kept.params.slots.base.color === "#ffffff", kept && kept.name);
-    ok("元の作品は今の内容で保存される", current.params.slots.base.color === "#1e3a8a");
+    ok("「残して保存」で前回の内容が別の作品として残る", works1.length === 2 && kept && kept.params.slots[TEMPLATE.colorKey].color === TEMPLATE.defaultColor, kept && kept.name);
+    ok("元の作品は今の内容で保存される", current.params.slots[TEMPLATE.colorKey].color === "#1e3a8a");
     const keptFiles = (await admin.storage.from("work-images").list(`${uid}/${kept.id}`)).data.map((f) => f.name);
     ok("残した作品にも画像とサムネイルがある", keptFiles.length === 2, keptFiles.join(", "));
 
@@ -145,7 +147,7 @@ async function cleanup(uid) {
     await page.waitForURL(/\/downloads\//);
     await page.waitForLoadState("networkidle");
     const detail = await page.locator("main").innerText();
-    ok("詳細画面に生地の色", detail.includes("#16a34a"));
+    ok("詳細画面に本体の色", detail.includes("#16a34a"));
     ok("詳細画面にプリントの設定値", detail.includes("50%") && detail.includes("-45°") && detail.includes("200%"));
     await page.waitForTimeout(3000);
     const info = await page.locator("main img").evaluateAll((list) => list.map((i) => ({ src: i.getAttribute("src").slice(0, 160), ok: i.complete && i.naturalWidth > 0 })));

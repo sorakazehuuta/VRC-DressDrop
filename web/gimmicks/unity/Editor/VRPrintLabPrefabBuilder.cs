@@ -237,7 +237,8 @@ namespace VRPrintLab.EditorTools
                     config = config,
                     root = root,
                     model = model,
-                    renderers = model.GetComponentsInChildren<Renderer>(true),
+                    // パーティクルなどテンプレートの演出は、ギミックの発光・半透明や大きさの計算に含めない
+                    renderers = model.GetComponentsInChildren<Renderer>(true).Where(r => r is MeshRenderer || r is SkinnedMeshRenderer).ToArray(),
                 };
                 ctx.bounds = CalculateBounds(ctx.renderers, root.transform.position);
 

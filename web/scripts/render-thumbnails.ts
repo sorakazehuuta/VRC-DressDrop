@@ -1,6 +1,6 @@
 // テンプレート一覧に表示するサムネイル（thumbnail.png）を、3Dモデルから自動で描画する。
 //   npm run templates:thumbnails            … thumbnail がないテンプレートだけ作る
-//   npm run templates:thumbnails -- tshirt  … 指定したテンプレートだけ
+//   npm run templates:thumbnails -- cake    … 指定したテンプレートだけ
 //   npm run templates:thumbnails -- --force … 自動生成したものを作り直す（template.json で指定した画像は上書きしない）
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
