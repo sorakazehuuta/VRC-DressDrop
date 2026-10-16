@@ -67,7 +67,7 @@ async function cleanup(uid) {
     const t0 = Date.now();
     const [download1] = await Promise.all([page.waitForEvent("download", { timeout: 60000 }), dialog.getByRole("button", { name: "ダウンロードする" }).click()]);
     console.log("   生成〜ダウンロード開始:", ((Date.now() - t0) / 1000).toFixed(1), "秒");
-    ok("ファイル名が日本語", download1.suggestedFilename() === "Tシャツの作品.unitypackage", download1.suggestedFilename());
+    ok("ファイル名が日本語", download1.suggestedFilename() === "ケーキの作品.unitypackage", download1.suggestedFilename());
     const file1 = `${DIR}/dl1.unitypackage`;
     await download1.saveAs(file1);
     const head = fs.readFileSync(file1).subarray(0, 2);
@@ -78,7 +78,7 @@ async function cleanup(uid) {
 
     // 2回目: 同じ内容 → 確認なしで無料
     const [download2] = await Promise.all([page.waitForEvent("download", { timeout: 30000 }), page.getByRole("button", { name: "ダウンロード", exact: true }).click()]);
-    ok("購入済みの内容は確認なしでダウンロード", download2.suggestedFilename() === "Tシャツの作品.unitypackage");
+    ok("購入済みの内容は確認なしでダウンロード", download2.suggestedFilename() === "ケーキの作品.unitypackage");
     await page.waitForTimeout(1000);
     ok("再ダウンロードでは消費しない", (await balance()) === "2 トークン", await balance());
 
@@ -101,7 +101,7 @@ async function cleanup(uid) {
     await page.goto(`${BASE}/downloads`, { waitUntil: "networkidle" });
     ok("ダウンロード履歴に2件", (await page.locator("main li").count()) === 2);
     const [download3] = await Promise.all([page.waitForEvent("download", { timeout: 30000 }), page.locator("main li").first().getByRole("button", { name: "ダウンロード" }).click()]);
-    ok("履歴から日本語のファイル名で再ダウンロード", download3.suggestedFilename() === "Tシャツの作品.unitypackage");
+    ok("履歴から日本語のファイル名で再ダウンロード", download3.suggestedFilename() === "ケーキの作品.unitypackage");
     await page.screenshot({ path: `${DIR}/downloads.png` });
 
     // 作品を削除しても履歴から落とせる

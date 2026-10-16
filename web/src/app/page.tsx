@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import icon from "../../images/common/icons/VRPrintLab_icon.png";
 
 const steps = [
-  { title: "テンプレートを選ぶ", body: "Tシャツなど、展示したいグッズの形を選びます。" },
+  { title: "テンプレートを選ぶ", body: "ケーキなど、展示したいグッズの形を選びます。" },
   { title: "画像を貼って調整", body: "画像をアップロードして、大きさ・位置・色をブラウザ上で調整します。" },
   { title: "VRChat に置く", body: "unitypackage をダウンロードして、ワールドのブースに配置します。" },
 ];

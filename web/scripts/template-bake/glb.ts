@@ -119,6 +119,24 @@ export function buildGlb(
   }
   const materialByName = new Map(bake.materials.map((m) => [m.name, m]));
 
+  // エディタのカメラは原点を少し上から見る位置にあるため、モデル全体の中心を原点に合わせる
+  // （床に置く形で作られたモデルを、そのままだと下から見上げることになる）
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  for (const mesh of bake.meshes) {
+    for (const sub of mesh.submeshes) {
+      for (let i = 0; i < sub.indexCount; i++) {
+        const p = mesh.positionOffset + ints[sub.indexOffset + i] * 3;
+        const v = [-floats[p], floats[p + 1], floats[p + 2]];
+        for (let k = 0; k < 3; k++) {
+          min[k] = Math.min(min[k], v[k]);
+          max[k] = Math.max(max[k], v[k]);
+        }
+      }
+    }
+  }
+  const center = min.map((m, k) => (Number.isFinite(m) ? (m + max[k]) / 2 : 0));
+
   const meshes: Record<string, unknown>[] = [];
   const nodes: Record<string, unknown>[] = [];
   let triangles = 0;
@@ -153,7 +171,7 @@ export function buildGlb(
         const p = mesh.positionOffset + source * 3;
         const q = mesh.normalOffset + source * 3;
         const t = mesh.uvOffset + source * 2;
-        position.set([-floats[p], floats[p + 1], floats[p + 2]], n * 3);
+        position.set([-floats[p] - center[0], floats[p + 1] - center[1], floats[p + 2] - center[2]], n * 3);
         normal.set([-floats[q], floats[q + 1], floats[q + 2]], n * 3);
         uv.set([floats[t] * scale.x + offset.x, 1 - (floats[t + 1] * scale.y + offset.y)], n * 2);
       }

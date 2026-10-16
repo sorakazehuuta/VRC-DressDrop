@@ -87,7 +87,7 @@ async function cleanup(uid) {
     const dialog = page.getByRole("dialog");
     await dialog.waitFor({ timeout: 30000 });
     const text1 = await dialog.innerText();
-    ok("内訳にモデルと各ギミック", text1.includes("Tシャツ（モデル）") && text1.includes("ずっと回転する") && text1.includes("触るとライト ON/OFF") && /使用するトークン\s*3/.test(text1));
+    ok("内訳にモデルと各ギミック", text1.includes("ケーキ（モデル）") && text1.includes("ずっと回転する") && text1.includes("触るとライト ON/OFF") && /使用するトークン\s*3/.test(text1));
     await dialog.screenshot({ path: `${DIR}/gimmick-confirm.png` });
     const [dl1] = await Promise.all([page.waitForEvent("download", { timeout: 60000 }), dialog.getByRole("button", { name: "ダウンロードする" }).click()]);
     const file1 = `${DIR}/gimmick1.unitypackage`;
