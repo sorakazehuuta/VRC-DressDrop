@@ -1,0 +1,29 @@
+{
+  "slug": "cake",
+  "name": "ケーキ",
+  "category": "フード",
+  "description": "ろうそくの灯るバースデーケーキ。チョコプレートに好きな画像をのせられます。",
+  "tokenCost": 1,
+  "isPublic": false,
+  "sortOrder": 20,
+  "files": {
+    "package": "cake.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "base",
+      "type": "color",
+      "label": "クリームの色",
+      "material": "Chantilly • ivory cream",
+      "defaultColor": "#fffbed"
+    },
+    {
+      "key": "print",
+      "type": "print",
+      "label": "プリント",
+      "material": "Texture",
+      "background": "transparent",
+      "aspect": 0.85
+    }
+  ]
+}
