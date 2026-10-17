@@ -4,7 +4,7 @@
   "category": "フード",
   "description": "ろうそくの灯るバースデーケーキ。チョコプレートに好きな画像をのせられます。",
   "tokenCost": 1,
-  "isPublic": false,
+  "isPublic": true,
   "sortOrder": 20,
   "files": {
     "package": "cake.unitypackage"
