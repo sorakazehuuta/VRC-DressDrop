@@ -118,7 +118,7 @@ function prepare(slug: string, unity: string) {
     vrprintlab: { source: manifest.files.package, sourceSha256: sha256(packageData), prefab },
   };
   const printSlots = manifest.slots.filter((s) => s.type === "print");
-  const { glb, triangles, printAspects, facing } = buildGlb(bake, readFileSync(path.join(outDir, "mesh.bin")), {
+  const { glb, triangles, printAspects, printMirrored, facing } = buildGlb(bake, readFileSync(path.join(outDir, "mesh.bin")), {
     textures,
     printMaterials: new Set(printSlots.map((s) => s.material)),
     viewMaterial: printSlots[0]?.material,
@@ -135,6 +135,9 @@ function prepare(slug: string, unity: string) {
     } else {
       const mark = Math.abs(aspect - slot.aspect) / aspect > 0.03 ? "  ← template.json の aspect をこの値にしてください" : "";
       console.log(`  プリント面 "${slot.key}" の 幅÷高さ: ${aspect.toFixed(2)}（template.json: ${slot.aspect}）${mark}`);
+    }
+    if ((printMirrored.get(slot.material) ?? 0) > 0.6) {
+      console.log(`  注意: プリント面 "${slot.key}" は UV が裏返っていて、外から見ると画像が左右反転します（Unity でも同じ）。Blender で UV を左右反転して書き出し直してください`);
     }
   }
   if (printSlots.length) {
