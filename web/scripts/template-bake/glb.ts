@@ -1,3 +1,5 @@
+import type { PreviewExtras } from "../../src/lib/templates/view";
+
 // Unity から書き出したメッシュ（VRPrintLabTemplateBaker.cs の bake.json / mesh.bin）を glb にする。
 // Unity は左手座標系なので X を反転し、面の向き（頂点の並び）も逆にする。
 // UV は Unity が下端 v=0、glTF が上端 v=0 なので上下を反転する。マテリアルのタイリング・オフセットは UV に焼き込む
@@ -40,9 +42,11 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 export function buildGlb(
   bake: BakeOutput,
   bin: Buffer,
-  opts: { textures: Map<string, Buffer>; printMaterials: Set<string>; extras: Record<string, unknown> },
+  // viewMaterial: 最初の視点を合わせるプリント面のマテリアル（その面の UV の中心の向きを記録する）
+  opts: { textures: Map<string, Buffer>; printMaterials: Set<string>; viewMaterial?: string; extras: { vrprintlab: PreviewExtras } },
 ) {
-  const { textures, printMaterials, extras } = opts;
+  const { textures, printMaterials, viewMaterial, extras } = opts;
+  let facing: [number, number, number] | undefined;
   const floats = new Float32Array(bin.buffer.slice(bin.byteOffset, bin.byteOffset + bake.floatCount * 4));
   const ints = new Int32Array(bin.buffer.slice(bin.byteOffset + bake.floatCount * 4, bin.byteOffset + bin.byteLength));
 
@@ -177,6 +181,7 @@ export function buildGlb(
       }
       triangles += sub.indexCount / 3;
       if (printMaterials.has(sub.material)) measureAspect(aspects, sub.material, position, uv, indices);
+      if (!facing && sub.material === viewMaterial) facing = normalAtUvCenter(normal, uv, indices);
       primitives.push({
         attributes: {
           POSITION: addAccessor(position, "VEC3", true),
@@ -192,7 +197,7 @@ export function buildGlb(
   }
 
   const json: Record<string, unknown> = {
-    asset: { version: "2.0", generator: "VRPrintLab templates:prepare", extras },
+    asset: { version: "2.0", generator: "VRPrintLab templates:prepare", extras: { ...extras, vrprintlab: { ...extras.vrprintlab, ...(facing ? { facing } : {}) } } },
     scene: 0,
     scenes: [{ nodes: nodes.map((_, i) => i) }],
     nodes,
@@ -225,8 +230,28 @@ export function buildGlb(
     glb: Buffer.concat([header, chunkHeader(jsonChunk.length, "JSON"), jsonChunk, chunkHeader(binChunk.length, "BIN\0"), binChunk]),
     triangles,
     // プリント面の実寸の 幅÷高さ（テクスチャ全体を貼ったときに画像が伸びない aspect の値）
+    facing,
     printAspects: new Map([...aspects].filter(([, a]) => a.v > 0).map(([name, a]) => [name, a.u / a.v])),
   };
+}
+
+// UV の中心（画像の中心が貼られる位置）を含む三角形の法線。見つからなければ undefined
+function normalAtUvCenter(normal: Float32Array, uv: Float32Array, indices: Uint32Array): [number, number, number] | undefined {
+  for (let i = 0; i < indices.length; i += 3) {
+    const [a, b, c] = [indices[i], indices[i + 1], indices[i + 2]];
+    const [ax, ay, bx, by, cx, cy] = [uv[a * 2], uv[a * 2 + 1], uv[b * 2], uv[b * 2 + 1], uv[c * 2], uv[c * 2 + 1]];
+    const det = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
+    if (Math.abs(det) < 1e-12) continue;
+    const w1 = ((by - cy) * (0.5 - cx) + (cx - bx) * (0.5 - cy)) / det;
+    const w2 = ((cy - ay) * (0.5 - cx) + (ax - cx) * (0.5 - cy)) / det;
+    const w3 = 1 - w1 - w2;
+    if (w1 < -1e-6 || w2 < -1e-6 || w3 < -1e-6) continue;
+    const n = [0, 1, 2].map((k) => normal[a * 3 + k] * w1 + normal[b * 3 + k] * w2 + normal[c * 3 + k] * w3);
+    const len = Math.hypot(n[0], n[1], n[2]);
+    if (len < 1e-6) continue;
+    return [n[0] / len, n[1] / len, n[2] / len].map((v) => Math.round(v * 1000) / 1000) as [number, number, number];
+  }
+  return undefined;
 }
 
 // UV の u・v 方向に 1 進んだときの実際の長さを、三角形の面積で重み付けして足し合わせる

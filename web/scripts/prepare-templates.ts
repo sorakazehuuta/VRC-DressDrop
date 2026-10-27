@@ -118,9 +118,10 @@ function prepare(slug: string, unity: string) {
     vrprintlab: { source: manifest.files.package, sourceSha256: sha256(packageData), prefab },
   };
   const printSlots = manifest.slots.filter((s) => s.type === "print");
-  const { glb, triangles, printAspects } = buildGlb(bake, readFileSync(path.join(outDir, "mesh.bin")), {
+  const { glb, triangles, printAspects, facing } = buildGlb(bake, readFileSync(path.join(outDir, "mesh.bin")), {
     textures,
     printMaterials: new Set(printSlots.map((s) => s.material)),
+    viewMaterial: printSlots[0]?.material,
     extras,
   });
   writeFileSync(path.join(dir, manifest.files.preview), glb);
@@ -135,6 +136,9 @@ function prepare(slug: string, unity: string) {
       const mark = Math.abs(aspect - slot.aspect) / aspect > 0.03 ? "  ← template.json の aspect をこの値にしてください" : "";
       console.log(`  プリント面 "${slot.key}" の 幅÷高さ: ${aspect.toFixed(2)}（template.json: ${slot.aspect}）${mark}`);
     }
+  }
+  if (printSlots.length) {
+    console.log(facing ? `  最初の視点: プリント面 "${printSlots[0].key}" の正面（向き ${facing.join(", ")}）` : "  最初の視点: 正面（プリント面の中心が見つからないため）");
   }
   for (const w of bake.warnings) console.log(`  注意: ${w}`);
 }

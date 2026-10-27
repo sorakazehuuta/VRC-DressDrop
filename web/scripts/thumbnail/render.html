@@ -84,14 +84,34 @@
       }
       scene.add(model);
 
-      // 正面（+Z）から全体が収まる距離に置く
+      // エディタの最初の視点（src/lib/templates/view.ts の cameraDirection と同じ計算）
+      function cameraDirection(facing) {
+        let [x, y, z] = facing && facing.length === 3 && facing.some((v) => v !== 0) ? facing : [0, 0, 1];
+        const len = Math.hypot(x, y, z);
+        [x, y, z] = [x / len, y / len, z / len];
+        if (Math.abs(y) > 0.9) z += 0.45;
+        else y += 0.3;
+        return new THREE.Vector3(x, y, z).normalize();
+      }
+
+      // その方向から、箱の8つの角がすべて画面に収まる距離に置く
       const box = new THREE.Box3().setFromObject(model);
       const center = box.getCenter(new THREE.Vector3());
-      const boxSize = box.getSize(new THREE.Vector3());
       const camera = new THREE.PerspectiveCamera(35, width / height, 0.01, 100);
-      const half = THREE.MathUtils.degToRad(35 / 2);
-      const distance = Math.max(boxSize.y / 2 / Math.tan(half), boxSize.x / 2 / (Math.tan(half) * camera.aspect)) * 1.2 + boxSize.z / 2;
-      camera.position.set(center.x, center.y, center.z + distance);
+      const dir = cameraDirection(gltf.asset?.extras?.vrprintlab?.facing);
+      camera.position.copy(center).add(dir);
+      camera.lookAt(center);
+      camera.updateMatrixWorld();
+      const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+      const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
+      const tan = Math.tan(THREE.MathUtils.degToRad(35 / 2));
+      let distance = 0;
+      for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+        const p = new THREE.Vector3(x, y, z).sub(center);
+        const depth = p.dot(dir);
+        distance = Math.max(distance, depth + Math.abs(p.dot(right)) / (tan * camera.aspect), depth + Math.abs(p.dot(up)) / tan);
+      }
+      camera.position.copy(center).addScaledVector(dir, distance * 1.15);
       camera.lookAt(center);
 
       renderer.render(scene, camera);
