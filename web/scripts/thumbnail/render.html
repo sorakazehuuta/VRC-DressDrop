@@ -85,12 +85,17 @@
       scene.add(model);
 
       // エディタの最初の視点（src/lib/templates/view.ts の cameraDirection と同じ計算）
-      function cameraDirection(facing) {
+      function cameraDirection(facing, up) {
         let [x, y, z] = facing && facing.length === 3 && facing.some((v) => v !== 0) ? facing : [0, 0, 1];
         const len = Math.hypot(x, y, z);
         [x, y, z] = [x / len, y / len, z / len];
-        if (Math.abs(y) > 0.9) z += 0.45;
-        else y += 0.3;
+        if (Math.abs(y) > 0.9) {
+          const [hx, hz] = up && up.length === 3 ? [up[0], up[2]] : [0, 0];
+          const h = Math.hypot(hx, hz);
+          const [tx, tz] = h > 1e-3 ? (y > 0 ? [-hx / h, -hz / h] : [hx / h, hz / h]) : [0, 1];
+          x += tx * 0.45;
+          z += tz * 0.45;
+        } else y += 0.3;
         return new THREE.Vector3(x, y, z).normalize();
       }
 
@@ -98,7 +103,7 @@
       const box = new THREE.Box3().setFromObject(model);
       const center = box.getCenter(new THREE.Vector3());
       const camera = new THREE.PerspectiveCamera(35, width / height, 0.01, 100);
-      const dir = cameraDirection(gltf.asset?.extras?.vrprintlab?.facing);
+      const dir = cameraDirection(gltf.asset?.extras?.vrprintlab?.facing, gltf.asset?.extras?.vrprintlab?.up);
       camera.position.copy(center).add(dir);
       camera.lookAt(center);
       camera.updateMatrixWorld();

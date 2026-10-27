@@ -46,7 +46,7 @@ export function buildGlb(
   opts: { textures: Map<string, Buffer>; printMaterials: Set<string>; viewMaterial?: string; extras: { vrprintlab: PreviewExtras } },
 ) {
   const { textures, printMaterials, viewMaterial, extras } = opts;
-  let facing: [number, number, number] | undefined;
+  let frame: { facing: [number, number, number]; up?: [number, number, number] } | undefined;
   const floats = new Float32Array(bin.buffer.slice(bin.byteOffset, bin.byteOffset + bake.floatCount * 4));
   const ints = new Int32Array(bin.buffer.slice(bin.byteOffset + bake.floatCount * 4, bin.byteOffset + bin.byteLength));
 
@@ -181,7 +181,7 @@ export function buildGlb(
       }
       triangles += sub.indexCount / 3;
       if (printMaterials.has(sub.material)) measureAspect(aspects, sub.material, position, uv, indices);
-      if (!facing && sub.material === viewMaterial) facing = normalAtUvCenter(normal, uv, indices);
+      if (!frame && sub.material === viewMaterial) frame = printCenterFrame(position, normal, uv, indices);
       primitives.push({
         attributes: {
           POSITION: addAccessor(position, "VEC3", true),
@@ -197,7 +197,7 @@ export function buildGlb(
   }
 
   const json: Record<string, unknown> = {
-    asset: { version: "2.0", generator: "VRPrintLab templates:prepare", extras: { ...extras, vrprintlab: { ...extras.vrprintlab, ...(facing ? { facing } : {}) } } },
+    asset: { version: "2.0", generator: "VRPrintLab templates:prepare", extras: { ...extras, vrprintlab: { ...extras.vrprintlab, ...frame } } },
     scene: 0,
     scenes: [{ nodes: nodes.map((_, i) => i) }],
     nodes,
@@ -230,13 +230,20 @@ export function buildGlb(
     glb: Buffer.concat([header, chunkHeader(jsonChunk.length, "JSON"), jsonChunk, chunkHeader(binChunk.length, "BIN\0"), binChunk]),
     triangles,
     // プリント面の実寸の 幅÷高さ（テクスチャ全体を貼ったときに画像が伸びない aspect の値）
-    facing,
+    facing: frame?.facing,
     printAspects: new Map([...aspects].filter(([, a]) => a.v > 0).map(([name, a]) => [name, a.u / a.v])),
   };
 }
 
-// UV の中心（画像の中心が貼られる位置）を含む三角形の法線。見つからなければ undefined
-function normalAtUvCenter(normal: Float32Array, uv: Float32Array, indices: Uint32Array): [number, number, number] | undefined {
+const round3 = (v: number[]) => v.map((x) => Math.round(x * 1000) / 1000) as [number, number, number];
+
+// UV の中心（画像の中心が貼られる位置）を含む三角形の、法線（facing）と画像の上方向（up）。見つからなければ undefined
+function printCenterFrame(
+  position: Float32Array,
+  normal: Float32Array,
+  uv: Float32Array,
+  indices: Uint32Array,
+): { facing: [number, number, number]; up?: [number, number, number] } | undefined {
   for (let i = 0; i < indices.length; i += 3) {
     const [a, b, c] = [indices[i], indices[i + 1], indices[i + 2]];
     const [ax, ay, bx, by, cx, cy] = [uv[a * 2], uv[a * 2 + 1], uv[b * 2], uv[b * 2 + 1], uv[c * 2], uv[c * 2 + 1]];
@@ -249,7 +256,19 @@ function normalAtUvCenter(normal: Float32Array, uv: Float32Array, indices: Uint3
     const n = [0, 1, 2].map((k) => normal[a * 3 + k] * w1 + normal[b * 3 + k] * w2 + normal[c * 3 + k] * w3);
     const len = Math.hypot(n[0], n[1], n[2]);
     if (len < 1e-6) continue;
-    return [n[0] / len, n[1] / len, n[2] / len].map((v) => Math.round(v * 1000) / 1000) as [number, number, number];
+    // glTF の UV は v が下向きなので、画像の上方向は「v が減る向き」（-dP/dv）
+    const p = (k: number) => [position[k * 3], position[k * 3 + 1], position[k * 3 + 2]];
+    const [pa, pb, pc] = [p(a), p(b), p(c)];
+    const e1 = [0, 1, 2].map((k) => pb[k] - pa[k]);
+    const e2 = [0, 1, 2].map((k) => pc[k] - pa[k]);
+    const [du1, dv1, du2, dv2] = [bx - ax, by - ay, cx - ax, cy - ay];
+    const uvDet = du1 * dv2 - du2 * dv1;
+    const up = [0, 1, 2].map((k) => -(e2[k] * du1 - e1[k] * du2) / uvDet);
+    const upLen = Math.hypot(up[0], up[1], up[2]);
+    return {
+      facing: round3(n.map((v) => v / len)),
+      ...(upLen > 1e-9 ? { up: round3(up.map((v) => v / upLen)) } : {}),
+    };
   }
   return undefined;
 }
