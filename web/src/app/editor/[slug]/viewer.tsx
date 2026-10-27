@@ -2,13 +2,14 @@
 
 import { Bounds, OrbitControls, useBounds, useGLTF } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Component, Suspense, useEffect, useMemo, useRef, type ReactNode, type RefObject } from "react";
+import { Component, Suspense, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode, type RefObject } from "react";
 import type { OrbitControls as OrbitControlsImpl } from "three/examples/jsm/controls/OrbitControls.js";
 import * as THREE from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import type { GimmickSelection } from "@/lib/gimmicks/schema";
 import { backgroundColor, textureDimensions, type EditorParams } from "@/lib/templates/params";
 import type { PrintSlot, Slot } from "@/lib/templates/schema";
+import { cameraDirection, type PreviewExtras } from "@/lib/templates/view";
 import type { LoadedImage } from "./images";
 import { applyMaterialFx, createPreviewRig, GimmickBody, GimmickEffects, NEUTRAL_FX, type PreviewRig } from "./gimmick-preview/preview-3d";
 import type { PreviewState } from "./gimmick-preview/spec";
@@ -27,11 +28,16 @@ type ViewerProps = {
   onPrimaryAction: (() => void) | null;
 };
 
+// モデルを読み込むまでの仮の位置（読み込んだらプリント面の正面に移す）
+const INITIAL_CAMERA = new THREE.Vector3(...cameraDirection()).multiplyScalar(2.5);
+
 export default function Viewer(props: ViewerProps) {
   const rigRef = useRef<PreviewRig>(createPreviewRig());
+  // 最初の視点・「視点をリセット」・サムネイルで使う、モデルの中心からカメラへの方向（モデルを読み込むと決まる）
+  const viewDirRef = useRef(new THREE.Vector3(...cameraDirection()));
   return (
     <ViewerErrorBoundary>
-      <Canvas flat dpr={[1, 2]} camera={{ fov: 35, position: [0, 0.2, 2.5] }}>
+      <Canvas flat dpr={[1, 2]} camera={{ fov: 35, position: INITIAL_CAMERA }}>
         <Lights dark={props.preview.dark} rigRef={rigRef} />
         <Suspense fallback={null}>
           <Bounds fit clip observe margin={1.25}>
@@ -42,15 +48,15 @@ export default function Viewer(props: ViewerProps) {
               modelKey={props.modelUrl}
               onPrimary={props.onPrimaryAction}
             >
-              <Model {...props} rigRef={rigRef} />
+              <Model {...props} rigRef={rigRef} viewDirRef={viewDirRef} />
             </GimmickBody>
-            <ResetView signal={props.resetViewSignal} />
-            {props.onCaptureReady && <CaptureBridge onReady={props.onCaptureReady} rigRef={rigRef} />}
+            <ResetView signal={props.resetViewSignal} viewDirRef={viewDirRef} />
+            {props.onCaptureReady && <CaptureBridge onReady={props.onCaptureReady} rigRef={rigRef} viewDirRef={viewDirRef} />}
           </Bounds>
           <GimmickEffects rigRef={rigRef} selected={props.gimmicks} preview={props.preview} onPrimary={props.onPrimaryAction} />
         </Suspense>
-        {/* 真下から見上げると中の空洞が見えるため、水平より少し下までに制限する */}
-        <OrbitControls makeDefault enablePan={false} enableDamping maxPolarAngle={Math.PI * 0.6} />
+        {/* スケートボードの裏のように下向きのプリント面もあるため、真下からも見られるようにする */}
+        <OrbitControls makeDefault enablePan={false} enableDamping />
       </Canvas>
     </ViewerErrorBoundary>
   );
@@ -113,10 +119,10 @@ type ResetAnimation = {
   damping: boolean;
 };
 
-// 正面（+Z 方向）から全体が収まる位置にカメラを戻す。
+// 最初の視点（プリント面の正面）から全体が収まる位置にカメラを戻す。
 // 位置を直線で動かすとモデルの横や中を通って画面外に外れるため、注視点を中心に回り込みながら
 // 距離だけを直線的に変える（常にモデルの方を向いたまま、近づく・離れる動きになる）
-function ResetView({ signal }: { signal: number }) {
+function ResetView({ signal, viewDirRef }: { signal: number; viewDirRef: RefObject<THREE.Vector3> }) {
   const bounds = useBounds();
   const get = useThree((s) => s.get);
   // OrbitControls は makeDefault で登録されるまで null なので、登録されたら操作の監視を始める
@@ -130,17 +136,18 @@ function ResetView({ signal }: { signal: number }) {
     const { center, distance } = bounds.refresh().getSize();
     const offset = camera.position.clone().sub(controls.target);
     const from = new THREE.Spherical().setFromVector3(offset);
+    const to = new THREE.Spherical().setFromVector3(viewDirRef.current.clone().multiplyScalar(distance));
     // 左右は近い向きから回り込む
-    const theta = from.theta - Math.PI * 2 * Math.round(from.theta / (Math.PI * 2));
+    const theta = from.theta - Math.PI * 2 * Math.round((from.theta - to.theta) / (Math.PI * 2));
     animation.current = {
       elapsed: 0,
       from: { target: controls.target.clone(), spherical: new THREE.Spherical(from.radius, from.phi, theta) },
-      to: { target: center.clone(), spherical: new THREE.Spherical(distance, Math.PI / 2, 0) },
+      to: { target: center.clone(), spherical: to },
       // 慣性が残っているとアニメーションの後にカメラが流れるため、動かしている間は切る（切ると慣性も消える）
       damping: animation.current?.damping ?? controls.enableDamping,
     };
     controls.enableDamping = false;
-  }, [signal, bounds, get]);
+  }, [signal, bounds, get, viewDirRef]);
 
   // 動かしている途中に利用者が操作したら、そこで止めて操作を優先する
   useEffect(() => {
@@ -183,8 +190,16 @@ function ResetView({ signal }: { signal: number }) {
 const THUMBNAIL = { width: 480, height: 360 };
 
 // マイ作品のサムネイル（4:3 の JPEG）を撮る。利用者の視点やカメラの移動中かどうかに左右されないよう、
-// 撮影の瞬間だけカメラを正面に置き、描画して写し取ったら元に戻す（同期処理なので画面には映らない）
-function CaptureBridge({ onReady, rigRef }: { onReady: (capture: () => Promise<Blob | null>) => void; rigRef: RefObject<PreviewRig> }) {
+// 撮影の瞬間だけカメラを最初の視点に置き、描画して写し取ったら元に戻す（同期処理なので画面には映らない）
+function CaptureBridge({
+  onReady,
+  rigRef,
+  viewDirRef,
+}: {
+  onReady: (capture: () => Promise<Blob | null>) => void;
+  rigRef: RefObject<PreviewRig>;
+  viewDirRef: RefObject<THREE.Vector3>;
+}) {
   const { gl, scene, camera } = useThree();
   const bounds = useBounds();
   useEffect(() => {
@@ -195,7 +210,7 @@ function CaptureBridge({ onReady, rigRef }: { onReady: (capture: () => Promise<B
       const { center, distance } = bounds.refresh().getSize();
       const savedPosition = camera.position.clone();
       const savedQuaternion = camera.quaternion.clone();
-      camera.position.set(center.x, center.y, center.z + distance);
+      camera.position.copy(center).addScaledVector(viewDirRef.current, distance);
       camera.lookAt(center);
       camera.updateMatrixWorld();
       gl.render(scene, camera);
@@ -226,7 +241,7 @@ function CaptureBridge({ onReady, rigRef }: { onReady: (capture: () => Promise<B
       if (!ctx) return Promise.resolve(null);
       return new Promise((resolve) => out.toBlob(resolve, "image/jpeg", 0.85));
     });
-  }, [gl, scene, camera, bounds, onReady, rigRef]);
+  }, [gl, scene, camera, bounds, onReady, rigRef, viewDirRef]);
   return null;
 }
 
@@ -293,8 +308,25 @@ function buildRig(source: THREE.Object3D, slots: Slot[]): Rig {
   return { scene, materials, prints };
 }
 
-function Model({ modelUrl, slots, params, images, rigRef }: ViewerProps & { rigRef: RefObject<PreviewRig> }) {
+function Model({
+  modelUrl,
+  slots,
+  params,
+  images,
+  rigRef,
+  viewDirRef,
+}: ViewerProps & { rigRef: RefObject<PreviewRig>; viewDirRef: RefObject<THREE.Vector3> }) {
   const gltf = useGLTF(modelUrl);
+  const camera = useThree((s) => s.camera);
+
+  // プリント面の正面から見る。Bounds は今のカメラの方向のまま全体が収まる距離に合わせるため、
+  // Bounds が位置を決める前（子のレイアウトエフェクトが先に動く）にカメラの方向だけを変えておく
+  useLayoutEffect(() => {
+    const extras = gltf.asset?.extras as { vrprintlab?: PreviewExtras } | undefined;
+    viewDirRef.current.set(...cameraDirection(extras?.vrprintlab?.facing));
+    camera.position.copy(viewDirRef.current).multiplyScalar(camera.position.length() || 2.5);
+    camera.lookAt(0, 0, 0);
+  }, [gltf, camera, viewDirRef]);
   const { scene, materials, prints: printTextures } = useMemo(() => buildRig(gltf.scene, slots), [gltf.scene, slots]);
 
   // ギミックの発光・半透明を毎フレーム反映し、サムネイルの撮影中だけ元に戻す

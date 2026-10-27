@@ -5,6 +5,9 @@ import path from "node:path";
 import { z } from "zod";
 import { readUnityPackage, type UnityPackageEntry } from "../../src/lib/package/read-unitypackage";
 import { templateManifestSchema, type TemplateManifest } from "../../src/lib/templates/schema";
+import type { PreviewExtras } from "../../src/lib/templates/view";
+
+export type { PreviewExtras };
 
 z.config(z.locales.ja());
 
@@ -56,8 +59,6 @@ export function readTemplateFolder(slug: string): TemplateFolder {
 
 // プレビュー用の glb がどの unitypackage から作られたかを記録・照合するためのハッシュ
 export const sha256 = (data: Buffer) => createHash("sha256").update(data).digest("hex");
-
-export type PreviewExtras = { source: string; sourceSha256: string; prefab: string };
 
 export function readGlbJson(file: string) {
   const buf = readFileSync(file);
