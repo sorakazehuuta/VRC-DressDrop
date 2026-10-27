@@ -224,6 +224,7 @@ GitHub へのプッシュと Supabase への登録（templates:sync）は別の�
 | Prefab が複数あります | template.json に `files.prefab` を書く |
 | スクリプトが含まれています | 書き出すときにスクリプトのチェックを外す |
 | preview.glb が今の unitypackage から作られたものではありません | `templates:prepare` をやり直す |
+| UV が裏返っていて、画像が左右反転します | プリント面の UV が鏡像になっている。Blender で UV を左右反転（U 方向に -1 倍）して書き出し直す |
 | 画像が縦や横に伸びる | `aspect` を prepare が表示した値にする。UV がゆがんでいないか確認する |
 | 画像の部分に穴が開く | `background` を色スロット（`{ "slot": "base" }`）にする |
 | 登録で package_prefab_path のエラー | 管理者に `supabase/migrations/20261016000000_unitypackage_templates.sql` の実行を依頼する |

@@ -144,7 +144,7 @@ export function buildGlb(
   const meshes: Record<string, unknown>[] = [];
   const nodes: Record<string, unknown>[] = [];
   let triangles = 0;
-  const aspects = new Map<string, { u: number; v: number }>();
+  const aspects = new Map<string, { u: number; v: number; area: number; mirrored: number }>();
   for (const mesh of bake.meshes) {
     const primitives: Record<string, unknown>[] = [];
     for (const sub of mesh.submeshes) {
@@ -232,6 +232,8 @@ export function buildGlb(
     // プリント面の実寸の 幅÷高さ（テクスチャ全体を貼ったときに画像が伸びない aspect の値）
     facing: frame?.facing,
     printAspects: new Map([...aspects].filter(([, a]) => a.v > 0).map(([name, a]) => [name, a.u / a.v])),
+    // プリント面のうち、表から見て画像が左右反転する部分の割合（0〜1）。両面の板は裏側が反転するので 0.5 前後になる
+    printMirrored: new Map([...aspects].filter(([, a]) => a.area > 0).map(([name, a]) => [name, a.mirrored / a.area])),
   };
 }
 
@@ -273,15 +275,16 @@ function printCenterFrame(
   return undefined;
 }
 
-// UV の u・v 方向に 1 進んだときの実際の長さを、三角形の面積で重み付けして足し合わせる
+// UV の u・v 方向に 1 進んだときの実際の長さを、三角形の面積で重み付けして足し合わせる。
+// あわせて、面の表から見て画像が左右反転する（UV が裏返っている）三角形の面積も数える
 function measureAspect(
-  aspects: Map<string, { u: number; v: number }>,
+  aspects: Map<string, { u: number; v: number; area: number; mirrored: number }>,
   material: string,
   position: Float32Array,
   uv: Float32Array,
   indices: Uint32Array,
 ) {
-  const sum = aspects.get(material) ?? { u: 0, v: 0 };
+  const sum = aspects.get(material) ?? { u: 0, v: 0, area: 0, mirrored: 0 };
   const p = (i: number) => [position[i * 3], position[i * 3 + 1], position[i * 3 + 2]];
   const len = (v: number[]) => Math.hypot(v[0], v[1], v[2]);
   for (let i = 0; i < indices.length; i += 3) {
@@ -301,6 +304,12 @@ function measureAspect(
     const area = len(cross) / 2;
     sum.u += area * len(dPdu);
     sum.v += area * len(dPdv);
+    // 画像の右（dP/du）と上（-dP/dv）の外積が面の表（頂点の並びから決まる向き）と逆なら鏡像
+    const up = dPdv.map((x) => -x);
+    const right = [dPdu[1] * up[2] - dPdu[2] * up[1], dPdu[2] * up[0] - dPdu[0] * up[2], dPdu[0] * up[1] - dPdu[1] * up[0]];
+    const mirror = right[0] * cross[0] + right[1] * cross[1] + right[2] * cross[2];
+    sum.area += area;
+    if (mirror < 0) sum.mirrored += area;
   }
   aspects.set(material, sum);
 }
