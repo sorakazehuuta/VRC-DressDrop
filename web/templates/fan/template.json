@@ -1,0 +1,37 @@
+{
+  "slug": "fan",
+  "name": "うちわ",
+  "category": "グッズ",
+  "description": "表と裏に別々の画像を貼れるうちわ。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 70,
+  "files": {
+    "package": "Fan.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "base",
+      "type": "color",
+      "label": "本体の色",
+      "material": "Mat_Base",
+      "defaultColor": "#ffffff"
+    },
+    {
+      "key": "print",
+      "type": "print",
+      "label": "表のプリント",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 1
+    },
+    {
+      "key": "print_back",
+      "type": "print",
+      "label": "裏のプリント",
+      "material": "Mat_Print_Back",
+      "background": "transparent",
+      "aspect": 1
+    }
+  ]
+}

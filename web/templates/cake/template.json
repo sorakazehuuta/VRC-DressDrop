@@ -14,14 +14,14 @@
       "key": "base",
       "type": "color",
       "label": "クリームの色",
-      "material": "Chantilly • ivory cream",
+      "material": "Mat_Base",
       "defaultColor": "#fffbed"
     },
     {
       "key": "print",
       "type": "print",
       "label": "プリント",
-      "material": "Texture",
+      "material": "Mat_Print",
       "background": "transparent",
       "aspect": 0.85
     }

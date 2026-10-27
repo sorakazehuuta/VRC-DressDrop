@@ -1,0 +1,29 @@
+{
+  "slug": "badge",
+  "name": "缶バッジ",
+  "category": "グッズ",
+  "description": "好きなイラストで作れる缶バッジ。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 30,
+  "files": {
+    "package": "Badge.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "base",
+      "type": "color",
+      "label": "本体の色",
+      "material": "Mat_Base",
+      "defaultColor": "#ffffff"
+    },
+    {
+      "key": "print",
+      "type": "print",
+      "label": "プリント",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 1
+    }
+  ]
+}

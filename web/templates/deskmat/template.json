@@ -1,0 +1,29 @@
+{
+  "slug": "deskmat",
+  "name": "デスクマット",
+  "category": "グッズ",
+  "description": "机に敷ける大判のデスクマット。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 60,
+  "files": {
+    "package": "Deskmat.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "base",
+      "type": "color",
+      "label": "本体の色",
+      "material": "Mat_Base",
+      "defaultColor": "#ffffff"
+    },
+    {
+      "key": "print",
+      "type": "print",
+      "label": "プリント",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 2.25
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "slug": "skateboard",
+  "name": "スケートボード",
+  "category": "グッズ",
+  "description": "デッキに好きな画像をプリントできるスケートボード。",
+  "tokenCost": 1,
+  "isPublic": false,
+  "sortOrder": 90,
+  "files": {
+    "package": "Skateboard.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "base",
+      "type": "color",
+      "label": "本体の色",
+      "material": "Mat_Base",
+      "defaultColor": "#d1deef"
+    },
+    {
+      "key": "print",
+      "type": "print",
+      "label": "プリント",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 0.26
+    }
+  ]
+}
