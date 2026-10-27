@@ -8,15 +8,23 @@ export type PreviewExtras = {
   prefab: string;
   // プリント面の中心の法線（glTF の座標）。記録がなければ正面（+Z）
   facing?: [number, number, number];
+  // プリント面の中心での画像の上方向（上・下向きの面を、画像が正立して見える側から見るために使う）
+  up?: [number, number, number];
 };
 
-export function cameraDirection(facing?: readonly number[] | null): [number, number, number] {
+export function cameraDirection(facing?: readonly number[] | null, up?: readonly number[] | null): [number, number, number] {
   let [x, y, z] = facing && facing.length === 3 && facing.some((v) => v !== 0) ? facing : [0, 0, 1];
   const len = Math.hypot(x, y, z);
   [x, y, z] = [x / len, y / len, z / len];
   if (Math.abs(y) > 0.9) {
-    // 真上・真下から見ると向きが決まらないので、手前（+Z）に少し傾ける
-    z += 0.45;
+    // 真上・真下から見ると向きが決まらないので少し傾ける。カメラの上は +Y なので、上から見ると傾けた側の反対、
+    // 下から見ると傾けた側が画面の上になる。画像の上方向が画面の上に来る側へ傾ける（記録がなければ手前 +Z）
+    const hx = up?.length === 3 ? up[0] : 0;
+    const hz = up?.length === 3 ? up[2] : 0;
+    const h = Math.hypot(hx, hz);
+    const [tx, tz] = h > 1e-3 ? (y > 0 ? [-hx / h, -hz / h] : [hx / h, hz / h]) : [0, 1];
+    x += tx * 0.45;
+    z += tz * 0.45;
   } else {
     // 横向きの面は、少し上から見下ろす
     y += 0.3;

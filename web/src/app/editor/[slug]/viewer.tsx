@@ -323,7 +323,7 @@ function Model({
   // Bounds が位置を決める前（子のレイアウトエフェクトが先に動く）にカメラの方向だけを変えておく
   useLayoutEffect(() => {
     const extras = gltf.asset?.extras as { vrprintlab?: PreviewExtras } | undefined;
-    viewDirRef.current.set(...cameraDirection(extras?.vrprintlab?.facing));
+    viewDirRef.current.set(...cameraDirection(extras?.vrprintlab?.facing, extras?.vrprintlab?.up));
     camera.position.copy(viewDirRef.current).multiplyScalar(camera.position.length() || 2.5);
     camera.lookAt(0, 0, 0);
   }, [gltf, camera, viewDirRef]);
