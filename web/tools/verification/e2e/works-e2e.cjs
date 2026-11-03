@@ -1,6 +1,7 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const { createClient } = require("@supabase/supabase-js");
+const { cleanupUser } = require("./cleanup.cjs");
 const BASE = "http://localhost:3002";
 // 確認に使うテンプレート（別のテンプレートで確かめるときはここを書き換える）
 const TEMPLATE = { slug: "cake", colorKey: "base", colorLabel: "クリームの色", defaultColor: "#fffbed" };
@@ -141,7 +142,8 @@ async function listFolder(uid, workId) {
     await editingCard.getByRole("button", { name: "保存" }).click();
     await page.getByText("名前変更テスト").waitFor();
     ok("名前を変更できる", true);
-    await page.locator("article", { hasText: "名前変更テスト" }).getByRole("button", { name: "削除" }).click();
+    await page.locator("article", { hasText: "名前変更テスト" }).getByRole("button", { name: "削除", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "削除する" }).click();
     await page.waitForFunction(() => document.querySelectorAll("article").length === 1, null, { timeout: 15000 });
     ok("削除で作品とストレージが消える", (await listFolder(uid, copy.id)).length === 0);
 
@@ -154,12 +156,7 @@ async function listFolder(uid, workId) {
   } finally {
     console.log("ブラウザのエラー:", errors.length ? "\n  " + errors.join("\n  ") : "なし");
     await browser.close();
-    const { data: folders } = await admin.storage.from("work-images").list(uid);
-    for (const f of folders || []) {
-      const { data: files } = await admin.storage.from("work-images").list(`${uid}/${f.name}`);
-      if (files && files.length) await admin.storage.from("work-images").remove(files.map((x) => `${uid}/${f.name}/${x.name}`));
-    }
-    const { error: de } = await admin.auth.admin.deleteUser(uid);
+    const { error: de } = await cleanupUser(admin, uid);
     console.log("テストユーザーの削除:", de ? "失敗 " + de.message : "OK");
   }
 })().catch((e) => {

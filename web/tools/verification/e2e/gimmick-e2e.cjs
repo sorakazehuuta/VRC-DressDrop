@@ -2,6 +2,7 @@ const { chromium } = require("playwright");
 const fs = require("fs");
 const zlib = require("zlib");
 const { createClient } = require("@supabase/supabase-js");
+const { cleanupUser } = require("./cleanup.cjs");
 const BASE = "http://localhost:3002";
 // 確認に使うテンプレート（別のテンプレートで確かめるときはここを書き換える）
 const TEMPLATE = { slug: "cake", colorKey: "base", colorLabel: "クリームの色", defaultColor: "#fffbed" };
@@ -26,19 +27,7 @@ function readPackage(file) {
   return files;
 }
 
-async function cleanup(uid) {
-  for (const bucket of ["work-images", "packages"]) {
-    const { data: entries } = await admin.storage.from(bucket).list(uid);
-    for (const e of entries || []) {
-      if (e.id) await admin.storage.from(bucket).remove([`${uid}/${e.name}`]);
-      else {
-        const { data: files } = await admin.storage.from(bucket).list(`${uid}/${e.name}`);
-        if (files && files.length) await admin.storage.from(bucket).remove(files.map((f) => `${uid}/${e.name}/${f.name}`));
-      }
-    }
-  }
-  return admin.auth.admin.deleteUser(uid);
-}
+const cleanup = (uid) => cleanupUser(admin, uid);
 
 (async () => {
   const { data: created, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
@@ -113,7 +102,7 @@ async function cleanup(uid) {
     const confirm2 = page.getByRole("dialog").filter({ hasText: "トークンを使ってダウンロード" });
     await confirm2.waitFor({ timeout: 30000 });
     const text2 = await confirm2.innerText();
-    ok("ギミックを足すと追加分（1）だけ", /使用するトークン\s*1/.test(text2) && (text2.match(/購入済み 0/g) || []).length === 3, text2.replace(/\s+/g, " ").slice(0, 160));
+    ok("ギミックを足すと追加分（1）だけ", /使用するトークン\s*1/.test(text2) && (text2.match(/取得済み 0/g) || []).length === 3, text2.replace(/\s+/g, " ").slice(0, 160));
     await Promise.all([page.waitForEvent("download", { timeout: 60000 }), confirm2.getByRole("button", { name: "ダウンロードする" }).click()]);
     await page.waitForFunction(() => document.querySelector("header").innerText.includes("4 トークン"), null, { timeout: 15000 });
     ok("残高 5→4", true);

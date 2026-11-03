@@ -1,7 +1,7 @@
 # 動作確認用スクリプト
 
 開発中の確認に使ったスクリプトです（自動テストとして整備するのは Phase 9 の予定）。
-いずれも **テスト用ユーザーを作って最後に削除** します。Supabase は `.env.local` の本番プロジェクトを使うので注意してください。
+いずれも **テスト用ユーザーを作って最後に削除** します（退会後も残る記録の表も `e2e/cleanup.cjs` で消す）。Supabase は `.env.local` の本番プロジェクトを使うので注意してください。
 
 ## ブラウザでの通し確認（e2e/）
 
@@ -20,6 +20,7 @@ node --env-file=.env.local tools/verification/e2e/works-e2e.cjs     # 保存・�
 node --env-file=.env.local tools/verification/e2e/download-e2e.cjs  # ダウンロード・トークン消費・再ダウンロード・履歴
 node --env-file=.env.local tools/verification/e2e/versions-e2e.cjs  # 数値入力・前回の内容を残す確認・履歴の詳細
 node --env-file=.env.local tools/verification/e2e/gimmick-e2e.cjs   # ギミックの選択・内訳・差額の課金
+node --env-file=.env.local tools/verification/e2e/data-handling-e2e.cjs  # 下書きの期限・LICENSE.txt・同じ画像の貼り直し・控えの削除・作品の削除・管理画面・退会
 ```
 
 スクリーンショットは `tools/verification/e2e/shots/`（`SHOTS_DIR` で変更可）に保存されます。

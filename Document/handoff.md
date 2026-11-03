@@ -13,12 +13,17 @@
 | 5 | unitypackage のサーバー生成、トークン消費、購入済みの版の再ダウンロード、ダウンロード履歴 | 完了 |
 | 6 | ギミック 16 種、Prefab の自動組み立て、ギミック追加分だけの課金 | 完了（VRChat 上での同期は未確認） |
 | 7 | トークン購入・有効期限切れの記録 | 完了（Stripe のテスト環境で確認済み。本番の利用開始は規約類の公開と本番公開のあと。設定は [stripe-setup.md](stripe-setup.md)） |
-| 8 | 導入ガイド・規約類・通報・管理画面 | 未着手 |
+| 8 | 導入ガイド・規約類・通報・管理画面 | 一部完了（利用規約の下書き・FAQ・データの扱いの見直し・管理画面のトークン調整。導入ガイド・通報・管理画面の残りは未着手） |
 | 9 | テストの整備 | 未着手（確認用スクリプトは `web/tools/verification` にある） |
 
 - サービス名は **VRPrintLab**（ロゴ・ファビコンは `web/images/common`）。リポジトリ名・フォルダ名は VRC-DressDrop のまま
 - `main` に Phase 1〜7 の成果をマージ済み。main（`dbca055`）と templates（`d494640`）は利用者が push 済みで、GitHub と一致している（2026-11-03）
-- **次の作業は Phase 8**（規約類・導入ガイド・通報・管理画面）。規約類は共同開発者が作成中。規約に書ける内容の確認結果を `Document/implementation-check-for-terms.txt`（git 管理外・利用者の指示でコミットしない）にまとめて渡した
+- **Phase 8 の途中**（`feature/terms-and-data-handling`、未マージ）。共同開発者の依頼で、販売・配布の条件と公開前のデータの扱いを先に整えた（2026-11-03）
+  - 利用規約は確認用の下書きを `web/content/terms.md` に作成（【要確認】は未確定。共同開発者が直す予定）。FAQ は `web/content/faq.md`。プライバシーポリシー・特商法表記は枠だけ（準備中）
+  - 規約の版は `web/src/lib/legal.ts`（`TERMS_VERSION` / `TERMS_DRAFT`）。パッケージの LICENSE.txt に書き込まれる
+  - マイグレーション `20261104000000_data_handling.sql` と `npm run images:backfill-hashes` は利用者が実行済み
+  - 残り: 導入ガイド、通報、管理画面の残り（テンプレート・ギミックの設定、作品の停止、集計など）。通報の受付方法などの質問は回答待ち
+  - 本番前に [production-check.md](production-check.md) の未確認の項目を確かめる。運営の手順は [admin-operations.md](admin-operations.md)
 - テンプレートは `templates` ブランチで管理（`main` の変更は templates 側で `git merge main` して取り込む）
 
 ## 2. 構成
@@ -59,7 +64,7 @@ npm run gimmicks:check / gimmicks:sync
 ## 3. 環境
 
 - **Supabase**: 作成済み。URL・キーは `web/.env.local`（git 管理外）。無料プラン（1週間使わないと一時停止）
-- **マイグレーション**: `web/supabase/migrations` の 9 ファイルはすべて SQL Editor で実行済み（最新は `20261103000000_stripe_payments.sql`）。新しく作ったら利用者に実行を依頼する（Supabase CLI・Docker は入っていない）
+- **マイグレーション**: `web/supabase/migrations` の 10 ファイルはすべて SQL Editor で実行済み（最新は `20261104000000_data_handling.sql`）。新しく作ったら利用者に実行を依頼する（Supabase CLI・Docker は入っていない）
 - **Storage バケット**: `work-images`（非公開・作品の画像とサムネイル）、`template-assets`（公開・glb とサムネイル）、`template-packages`（非公開・テンプレートの unitypackage）、`packages`（非公開・生成した unitypackage と購入した版の控え）
 - **データ**: ギミック 16 件。テンプレートは unitypackage 形式で 8 件を公開（ケーキ・缶バッジ・マグカップ・タペストリー・デスクマット・うちわ・抱き枕カバー・スケートボード）。旧形式の Tシャツは DB の行だけ非公開で残っている（他の利用者の作品が参照）
 - **Unity**: 2022.3.22f1（`C:\Program Files\Unity\Hub\Editor\2022.3.22f1`）。VCC の TestProject に UdonSharp・ClientSim あり。この PC には VRChat 本体が入っていない
@@ -68,8 +73,10 @@ npm run gimmicks:check / gimmicks:sync
 
 ## 4. 主な設計（変えるときの注意）
 
-- **課金の単位は「版」**: 見た目の編集内容（画像 ID を含む）のハッシュ＝土台の版（`purchases.base_hash`）、ギミックまで含めたハッシュ＝`params_hash`。同じ版の再ダウンロードは無料、土台が購入済みならギミックは未購入の分だけ課金、設定値の変更だけなら無料（`web/src/app/works/download.ts`）
+- **課金の単位は「版」**: 見た目の編集内容のハッシュ＝土台の版（`purchases.base_hash`）。画像は ID ではなく中身のハッシュ（`work_images.content_hash`）で計算し、以前の方式（画像 ID）のハッシュとも照合する、ギミックまで含めたハッシュ＝`params_hash`。同じ版の再ダウンロードは無料、土台が購入済みならギミックは未購入の分だけ課金、設定値の変更だけなら無料（`web/src/app/works/download.ts`）
 - **トークン消費は DB 関数 `purchase_work_version`** で行う（古い順に消費、二重消費防止、service_role だけが実行可）
+- **退会しても取引の記録は残す**: `payments` / `token_lots` / `token_transactions` / `purchases` は auth.users への外部キーを外してある。退会の前処理は DB 関数 `prepare_account_deletion`、退会日は `deleted_accounts`。退会後に入金された支払いは付与せず返金する
+- **管理画面** `/admin` は `profiles.is_admin` の人だけ（ほかは 404）。トークンの手動調整は DB 関数 `admin_adjust_tokens`（理由必須・操作した管理者を記録）
 - **トークンの有効期限は発行から 180 日**（資金決済法の前払式支払手段の届出を不要にするため。6か月未満が条件）
 - **購入した版の控え**: ダウンロード時に unitypackage・編集内容・画像・サムネイルを `packages` バケットに保存。作品を編集・削除しても履歴から確認・再ダウンロードできる
 - **プリントの描画**: ブラウザ（canvas）とサーバー（sharp）で同じ見た目になるよう、配置計算を `printPlacement` で共有し、明るさ・彩度は CSS フィルターと同じ式
@@ -93,7 +100,7 @@ npm run gimmicks:check / gimmicks:sync
 - **利用者の TestProject**: G01 の Prefab からオブジェクトが消えていた。修正版パッケージを読み込み、Tools > VRPrintLab > Prefab をすべて作り直す で復旧する手順を案内済み
 - **本番公開**: Vercel へのデプロイ、ドメイン、確認メールの送信サービス（Supabase 標準は 1 時間に数通まで）、Supabase の有料プラン検討
 - **共同開発者のブランチ**: `add-cake-model` は不要（利用者が判断）。ローカルのブランチは削除済み、GitHub 上のブランチは利用者の指示で残している
-- **画像の保存・削除（規約の確認で分かったこと）**: ログイン前の下書き（IndexedDB）は自動では削除されない。作品の削除で画像の削除に失敗しても再試行しない。購入した版の控え（元画像のコピーを含む）は退会まで残り、版ごとに削除する機能や管理画面からの削除はない。表示用の署名付き URL は有効期限内（画像1時間・ダウンロード5分）なら誰でも取得できる
+- **画像の保存・削除**（2026-11-03 に見直し）: ログイン前の下書きは引き継ぎ期限 24 時間で、期限切れはエディタを開いたときに消す。Storage の削除は `storage_deletions` に記録してから行い、失敗分は Vercel Cron（`vercel.json`、要 `CRON_SECRET`）か `/admin` から再試行する。控えはダウンロード履歴から版ごとに削除できる。表示用の署名付き URL は有効期限内（画像1時間・ダウンロード5分）なら誰でも取得できる
 - **git 履歴**: 公開リポジトリの過去の履歴に `.vs/` フォルダ（PC のユーザー名を含むパス）とコミットのメールアドレスが残っている。利用者は今回は対応しない判断
 
 ## 6. 作業ルール（利用者の指示）
