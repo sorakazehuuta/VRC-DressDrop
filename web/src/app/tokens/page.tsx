@@ -18,6 +18,7 @@ const checkoutMessages: Record<SyncResult, { kind: "ok" | "info" | "error"; text
   awaiting_payment: { kind: "info", text: "コンビニでのお支払いをお待ちしています。入金が確認できしだいトークンを追加します（下の「お支払い待ち」から払込票を確認できます）。" },
   pending: { kind: "info", text: "お支払いを確認しています。反映まで少し時間がかかることがあります。しばらくしてからページを再読み込みしてください。" },
   blocked: { kind: "error", text: "このカードはご利用いただけません。お支払いは全額返金しました。" },
+  account_deleted: { kind: "error", text: "退会済みのアカウントのため、お支払いは全額返金しました。" },
   expired: { kind: "error", text: "決済画面の有効期限が切れました。もう一度お試しください。" },
   failed: { kind: "error", text: "お支払いを完了できませんでした。もう一度お試しください。" },
   unknown: { kind: "error", text: "お支払いの情報を確認できませんでした。" },

@@ -14,7 +14,7 @@ export default async function DownloadsPage() {
   const supabase = await createClient();
   const { data: purchases } = await supabase
     .from("purchases")
-    .select("id, work_id, work_name, template_name, token_spent, created_at, package_path, thumbnail_path")
+    .select("id, work_id, work_name, template_name, token_spent, created_at, package_path, thumbnail_path, snapshot_deleted_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -29,7 +29,9 @@ export default async function DownloadsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-brand">ダウンロード履歴</h1>
-          <p className="text-sm text-zinc-500">購入した版は、作品を編集・削除したあとでも何度でも無料でダウンロードできます。</p>
+          <p className="text-sm text-zinc-500">
+            購入した版は、作品を編集・削除したあとでも何度でも無料でダウンロードできます（控えを削除した版を除く）。
+          </p>
         </div>
         <Link href="/works" className={buttonClassName("secondary")}>
           マイ作品へ
@@ -70,7 +72,11 @@ export default async function DownloadsPage() {
                     編集内容を見る
                   </Link>
                 </div>
-                {p.package_path && <RedownloadButton purchaseId={p.id} />}
+                {p.package_path ? (
+                  <RedownloadButton purchaseId={p.id} />
+                ) : (
+                  p.snapshot_deleted_at && <span className="text-xs text-zinc-400">控えは削除済み</span>
+                )}
               </li>
             );
           })}

@@ -2,7 +2,8 @@ import type { GimmickSelection } from "@/lib/gimmicks/schema";
 import type { EditorParams } from "@/lib/templates/params";
 
 // ログイン前の編集内容を、ログイン画面から戻るまでブラウザ内（IndexedDB）に一時保存する。
-// 画像は数MBになるため sessionStorage ではなく IndexedDB に Blob のまま入れる
+// 画像は数MBになるため sessionStorage ではなく IndexedDB に Blob のまま入れる。
+// 引き継ぎ期限は保存から24時間。期限切れのものはエディタを開いたときに消す
 
 export type Draft = {
   name: string;
@@ -48,5 +49,31 @@ export async function takeDraft(slug: string): Promise<Draft | null> {
     return draft;
   } catch {
     return null;
+  }
+}
+
+// 引き継ぎ期限を過ぎた下書きを消す（ログインせずに離れた場合に画像が残り続けないように）
+export async function removeExpiredDrafts() {
+  try {
+    const db = await open();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE, "readwrite");
+        const req = tx.objectStore(STORE).openCursor();
+        req.onsuccess = () => {
+          const cursor = req.result;
+          if (!cursor) return;
+          const draft = cursor.value as Draft | undefined;
+          if (!draft || Date.now() - draft.savedAt > MAX_AGE_MS) cursor.delete();
+          cursor.continue();
+        };
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } finally {
+      db.close();
+    }
+  } catch {
+    // 消せなくても編集には影響しない
   }
 }

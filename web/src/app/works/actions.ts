@@ -1,12 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createHash } from "node:crypto";
 import sharp from "sharp";
 import { z } from "zod";
 import { gimmickMap, listGimmicks } from "@/lib/gimmicks/queries";
 import { parseGimmickSelection } from "@/lib/gimmicks/schema";
 import { parseEditorParams } from "@/lib/templates/params";
 import { slotsSchema } from "@/lib/templates/schema";
+import { cancelDeletions, enqueueDeletions, processDeletions } from "@/lib/storage-deletions";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_WORKS_PER_USER, WORK_IMAGES_BUCKET, workFolder, workImagePath, workThumbnailPath } from "@/lib/works/constants";
 
@@ -45,19 +47,21 @@ async function currentUserId(supabase: Supabase) {
   return data?.claims.sub ?? null;
 }
 
-// アップロードされたファイルが本当に PNG / JPEG で、サイズ制限内かを中身で確認する
-async function verifyImage(supabase: Supabase, path: string) {
+// アップロードされたファイルが本当に PNG / JPEG で、サイズ制限内かを中身で確認する。
+// 問題がなければ中身のハッシュ（版の判定に使う）を返す
+async function verifyImage(supabase: Supabase, path: string): Promise<{ error: string } | { hash: string }> {
   const { data, error } = await supabase.storage.from(WORK_IMAGES_BUCKET).download(path);
-  if (error || !data) return "画像のアップロードが完了していません。もう一度保存してください。";
-  if (data.size > MAX_IMAGE_BYTES) return "画像のサイズは 10MB までです。";
+  if (error || !data) return { error: "画像のアップロードが完了していません。もう一度保存してください。" };
+  if (data.size > MAX_IMAGE_BYTES) return { error: "画像のサイズは 10MB までです。" };
+  const buffer = Buffer.from(await data.arrayBuffer());
   try {
-    const meta = await sharp(Buffer.from(await data.arrayBuffer())).metadata();
-    if (meta.format !== "png" && meta.format !== "jpeg") return "PNG または JPEG の画像だけを使えます。";
-    if (Math.max(meta.width ?? 0, meta.height ?? 0) > MAX_IMAGE_SIDE) return `画像の長辺は ${MAX_IMAGE_SIDE}px までです。`;
+    const meta = await sharp(buffer).metadata();
+    if (meta.format !== "png" && meta.format !== "jpeg") return { error: "PNG または JPEG の画像だけを使えます。" };
+    if (Math.max(meta.width ?? 0, meta.height ?? 0) > MAX_IMAGE_SIDE) return { error: `画像の長辺は ${MAX_IMAGE_SIDE}px までです。` };
   } catch {
-    return "画像を読み込めませんでした。別の画像をお試しください。";
+    return { error: "画像を読み込めませんでした。別の画像をお試しください。" };
   }
-  return null;
+  return { hash: createHash("sha256").update(buffer).digest("hex") };
 }
 
 export async function saveWork(raw: SaveWorkInput): Promise<SaveWorkResult> {
@@ -106,10 +110,12 @@ export async function saveWork(raw: SaveWorkInput): Promise<SaveWorkResult> {
     : { data: [] as { id: string; storage_path: string }[] };
   const storedIds = new Set((storedImages ?? []).map((i) => i.id));
 
+  const contentHashes = new Map<string, string>();
   for (const image of referenced.values()) {
     if (storedIds.has(image.id)) continue;
-    const problem = await verifyImage(supabase, workImagePath(userId, input.workId, image.id, image.ext));
-    if (problem) return { ok: false, error: problem };
+    const verified = await verifyImage(supabase, workImagePath(userId, input.workId, image.id, image.ext));
+    if ("error" in verified) return { ok: false, error: verified.error };
+    contentHashes.set(image.id, verified.hash);
   }
 
   const thumbnailPath = workThumbnailPath(userId, input.workId);
@@ -131,8 +137,16 @@ export async function saveWork(raw: SaveWorkInput): Promise<SaveWorkResult> {
   // 使われなくなった画像を消し、新しい画像を登録する
   const stale = (storedImages ?? []).filter((i) => !referenced.has(i.id));
   if (stale.length > 0) {
-    await supabase.from("work_images").delete().in("id", stale.map((i) => i.id));
-    await supabase.storage.from(WORK_IMAGES_BUCKET).remove(stale.map((i) => i.storage_path));
+    // キューに記録できなければ行も残し、次の保存で消し直す
+    const deletionIds = await enqueueDeletions(
+      stale.map((i) => ({ bucket: WORK_IMAGES_BUCKET, path: i.storage_path })),
+      userId,
+      "image_replaced",
+    ).catch(() => null);
+    if (deletionIds) {
+      await supabase.from("work_images").delete().in("id", stale.map((i) => i.id));
+      await processDeletions(deletionIds);
+    }
   }
   const fresh = [...referenced.values()].filter((i) => !storedIds.has(i.id));
   if (fresh.length > 0) {
@@ -144,6 +158,7 @@ export async function saveWork(raw: SaveWorkInput): Promise<SaveWorkResult> {
         storage_path: workImagePath(userId, input.workId, i.id, i.ext),
         width: i.width,
         height: i.height,
+        content_hash: contentHashes.get(i.id) ?? null,
       })),
     );
     if (error) return { ok: false, error: "画像の登録に失敗しました。もう一度保存してください。" };
@@ -175,9 +190,21 @@ export async function deleteWork(workId: string): Promise<WorkActionResult> {
   const supabase = await createClient();
   const userId = await currentUserId(supabase);
   if (!userId) return { ok: false, error: "ログインしてください。" };
+  const { data: work } = await supabase.from("works").select("id").eq("id", workId).eq("user_id", userId).maybeSingle();
+  if (!work) return { ok: false, error: "削除できませんでした。" };
+  // 作品の行を消したあとでも消すべき画像を追跡できるよう、先にキューに記録する
+  let deletionIds: string[];
+  try {
+    deletionIds = await enqueueDeletions([{ bucket: WORK_IMAGES_BUCKET, path: workFolder(userId, workId), prefix: true }], userId, "work_deleted");
+  } catch {
+    return { ok: false, error: "削除できませんでした。時間をおいて再度お試しください。" };
+  }
   const { data, error } = await supabase.from("works").delete().eq("id", workId).select("id");
-  if (error || !data?.length) return { ok: false, error: "削除できませんでした。" };
-  await removeFolder(supabase, workFolder(userId, workId));
+  if (error || !data?.length) {
+    await cancelDeletions(deletionIds);
+    return { ok: false, error: "削除できませんでした。" };
+  }
+  await processDeletions(deletionIds);
   revalidatePath("/works");
   return { ok: true };
 }
@@ -195,7 +222,7 @@ export async function duplicateWork(workId: string, name?: string): Promise<Work
 
   const { data: source } = await supabase
     .from("works")
-    .select("template_id, name, params, gimmicks, thumbnail_path, work_images(id, slot, storage_path, width, height)")
+    .select("template_id, name, params, gimmicks, thumbnail_path, work_images(id, slot, storage_path, width, height, content_hash)")
     .eq("id", workId)
     .maybeSingle();
   if (!source) return { ok: false, error: "作品が見つかりません。" };
@@ -214,7 +241,15 @@ export async function duplicateWork(workId: string, name?: string): Promise<Work
       return { ok: false, error: "画像を複製できませんでした。" };
     }
     idMap.set(img.id, newImageId);
-    newImages.push({ id: newImageId, work_id: newId, slot: img.slot, storage_path: path, width: img.width, height: img.height });
+    newImages.push({
+      id: newImageId,
+      work_id: newId,
+      slot: img.slot,
+      storage_path: path,
+      width: img.width,
+      height: img.height,
+      content_hash: img.content_hash,
+    });
   }
   let thumbnailPath: string | null = null;
   if (source.thumbnail_path) {

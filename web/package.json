@@ -13,7 +13,8 @@
     "templates:thumbnails": "tsx scripts/render-thumbnails.ts",
     "stripe:forward": "tsx --env-file=.env.local scripts/stripe-forward.ts",
     "gimmicks:check": "tsx scripts/sync-gimmicks.ts --dry-run",
-    "gimmicks:sync": "tsx --env-file=.env.local scripts/sync-gimmicks.ts"
+    "gimmicks:sync": "tsx --env-file=.env.local scripts/sync-gimmicks.ts",
+    "images:backfill-hashes": "tsx --env-file=.env.local scripts/backfill-image-hashes.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
