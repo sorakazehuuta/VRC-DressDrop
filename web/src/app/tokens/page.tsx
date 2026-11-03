@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Card } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
-import { stripe, stripeConfigured, syncCheckoutSession, type SyncResult } from "@/lib/payments/stripe";
+import { stripeConfigured, type SyncResult } from "@/lib/payments/stripe";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { tokenReasonLabels } from "@/lib/tokens/labels";
 import { BuyButton } from "./buy-button";
@@ -23,23 +23,11 @@ const checkoutMessages: Record<SyncResult, { kind: "ok" | "info" | "error"; text
   unknown: { kind: "error", text: "お支払いの情報を確認できませんでした。" },
 };
 
-// 決済画面から戻ってきたとき、Webhook を待たずに状態を反映する（Webhook と同じ処理なので二重に付与されない）
-async function checkoutResult(sessionId: string, userId: string): Promise<SyncResult> {
-  if (!stripeConfigured() || !sessionId.startsWith("cs_")) return "unknown";
-  try {
-    const session = await stripe().checkout.sessions.retrieve(sessionId);
-    if (session.metadata?.user_id !== userId) return "unknown";
-    return await syncCheckoutSession(session);
-  } catch (e) {
-    console.error("[tokens] checkout result", e);
-    return "pending";
-  }
-}
-
-export default async function TokensPage({ searchParams }: { searchParams: Promise<{ checkout?: string; canceled?: string }> }) {
+export default async function TokensPage({ searchParams }: { searchParams: Promise<{ result?: string; canceled?: string }> }) {
   const user = await requireUser("/tokens");
-  const { checkout, canceled } = await searchParams;
-  const result = checkout ? await checkoutResult(checkout, user.id) : null;
+  // 決済画面から戻ったときは /tokens/return で状態を反映してから、結果だけを受け取る
+  const { result: rawResult, canceled } = await searchParams;
+  const result = rawResult && rawResult in checkoutMessages ? (rawResult as SyncResult) : null;
 
   // 期限が切れたトークンを履歴に「有効期限切れ」として記録してから表示する
   await createAdminClient().rpc("expire_token_lots", { p_user_id: user.id });

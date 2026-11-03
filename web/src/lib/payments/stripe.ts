@@ -95,8 +95,14 @@ async function completePayment(paymentId: string, intentId: string | null): Prom
   });
   if (error) throw new Error(`トークンの付与に失敗: ${error.message}`);
   if (data === "blocked" && intentId) {
-    // チャージバックが起きたカードでの支払いは受け付けず、全額を返金する
-    await stripe().refunds.create({ payment_intent: intentId, reason: "fraudulent" }, { idempotencyKey: `blocked-${paymentId}` });
+    // チャージバックが起きたカードでの支払いは受け付けず、全額を返金する。
+    // すでにチャージバック・返金されていてお金が戻っている支払いは、返金できなくてもそのままでよい
+    try {
+      await stripe().refunds.create({ payment_intent: intentId, reason: "fraudulent" }, { idempotencyKey: `blocked-${paymentId}` });
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (code !== "charge_disputed" && code !== "charge_already_refunded") throw e;
+    }
     return "blocked";
   }
   return data === "completed" ? "completed" : (data as SyncResult);

@@ -59,7 +59,7 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
         },
         metadata,
         payment_intent_data: { metadata },
-        success_url: `${origin}/tokens?checkout={CHECKOUT_SESSION_ID}`,
+        success_url: `${origin}/tokens/return?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${origin}/tokens?canceled=1`,
       },
       { idempotencyKey: `checkout-${payment.id}` },
