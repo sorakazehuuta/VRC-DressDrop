@@ -14,7 +14,7 @@
 | 6 | ギミック 16 種、Prefab の自動組み立て、ギミック追加分だけの課金 | 完了（VRChat 上での同期は未確認） |
 | 7 | トークン購入・有効期限切れの記録 | 完了（Stripe のテスト環境で確認済み。本番の利用開始は規約類の公開と本番公開のあと。設定は [stripe-setup.md](stripe-setup.md)） |
 | 8 | 導入ガイド・規約類・通報・管理画面 | 完了（`feature/phase8-legal-guide-admin`、未マージ。2026-11-03 に確認スクリプトで確認済み）。規約類の文面は確認用の下書き、導入ガイドの画像は未作成 |
-| 9 | テストの整備 | 未着手（確認用スクリプトは `web/tools/verification` にある） |
+| 9 | テストの整備 | 完了（`feature/phase9-tests`、未マージ）。単体テスト 60 件・DB 関数のテスト 34 件・Unity の手動確認の手順書・GitHub Actions |
 
 - サービス名は **VRPrintLab**（ロゴ・ファビコンは `web/images/common`）。リポジトリ名・フォルダ名は VRC-DressDrop のまま
 - `main` に Phase 1〜7 の成果をマージ済み。main（`dbca055`）と templates（`d494640`）は利用者が push 済みで、GitHub と一致している（2026-11-03）
@@ -59,7 +59,14 @@ npm run dev                      # 開発サーバー（http://localhost:3000）
 npm run lint && npm run build    # 確認
 npm run templates:prepare / templates:check / templates:sync / templates:thumbnails
 npm run gimmicks:check / gimmicks:sync
+npm test                         # 単体テスト（tests/unit。ネットにつながない。数秒）
+npm run test:db                  # DB 関数のテスト（tests/db。.env.local の Supabase にテスト用のユーザーを作って確かめ、最後に消す）
+npm run typecheck                # ルートの型を作ってから型チェック
 ```
+
+- テストの対象: 版の判定と必要なトークン数（`src/lib/works/versions.ts`）、編集内容の正規化、ギミックの組み合わせ、パッケージの中身（`tests/unit`）。トークンの消費・失効・決済・返金・チャージバック・管理者の調整・退会・RLS と関数の権限（`tests/db`）
+- 画面を通した確認は `web/tools/verification/e2e`（本番モードのサーバーを 3002 番で起動してから実行）。Unity での確認は [unity-import-check.md](unity-import-check.md)
+- GitHub Actions（`.github/workflows/web-checks.yml`）が push のたびに lint・型チェック・単体テストを実行する（DB のテストは実行しない）
 
 ## 3. 環境
 

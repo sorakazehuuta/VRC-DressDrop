@@ -1,6 +1,5 @@
 "use server";
 
-import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { gimmickMap, listGimmicks } from "@/lib/gimmicks/queries";
 import { parseGimmickSelection, type GimmickDefinition, type GimmickSelection } from "@/lib/gimmicks/schema";
@@ -10,16 +9,12 @@ import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { parseEditorParams, type EditorParams } from "@/lib/templates/params";
 import { slotsSchema, type Slot } from "@/lib/templates/schema";
 import { WORK_IMAGES_BUCKET } from "@/lib/works/constants";
+import { priceVersion, versionKindOf, workVersions, type CostLine, type VersionKind } from "@/lib/works/versions";
 
 const PACKAGES_BUCKET = "packages";
 const URL_TTL_SECONDS = 5 * 60;
 
-// 内訳の1行。paid は「この土台の版で購入済み」なら true（今回は消費しない）
-export type CostLine = { label: string; cost: number; paid: boolean };
-
-// 未取得の版の種類。first: この作品をまだ取得していない / changed: 取得済みの版から見た目が変わった /
-// gimmicks: 見た目は取得済みで、ギミックだけが増えた
-export type VersionKind = "first" | "changed" | "gimmicks";
+export type { CostLine, VersionKind };
 
 export type DownloadQuote =
   | { ok: true; purchased: true }
@@ -30,29 +25,6 @@ export type DownloadResult =
   | { ok: true; kind: "ready"; url: string; filename: string; charged: number }
   | { ok: true; kind: "confirm"; cost: number; balance: number; breakdown: CostLine[]; versionKind: VersionKind }
   | { ok: false; error: string; code?: "insufficient" };
-
-// 「土台の版」: テンプレートと見た目の編集内容。ギミックは含めない
-function versionHash(templateId: string, params: EditorParams) {
-  return createHash("sha256").update(JSON.stringify({ templateId, params })).digest("hex");
-}
-
-// 画像 ID を画像の中身のハッシュに置き換えた編集内容。同じ画像を貼り直しても同じ版になる。
-// ハッシュが未登録の画像は ID のまま（すべて未登録なら以前の方式の版と同じになる）
-function withContentKeys(params: EditorParams, contentHashes: Map<string, string>): EditorParams {
-  const slots = Object.fromEntries(
-    Object.entries(params.slots).map(([key, slot]) => [
-      key,
-      slot.kind === "print" && slot.imageId ? { ...slot, imageId: contentHashes.get(slot.imageId) ?? slot.imageId } : slot,
-    ]),
-  );
-  return { ...params, slots };
-}
-
-// ギミックまで含めた版。ギミックがなければ土台の版と同じ（ギミック導入前の購入と互換）
-function fullVersionHash(baseHash: string, gimmicks: GimmickSelection[]) {
-  if (gimmicks.length === 0) return baseHash;
-  return createHash("sha256").update(JSON.stringify({ baseHash, gimmicks })).digest("hex");
-}
 
 const SUSPENDED_ACCOUNT = "このアカウントは停止されているため、ダウンロードできません。";
 const SUSPENDED_PURCHASE = "この版は運営により停止されているため、ダウンロードできません。";
@@ -96,35 +68,23 @@ async function loadWork(workId: string) {
   const contentHashes = new Map(
     work.work_images.flatMap((img) => (img.content_hash ? [[img.id, img.content_hash] as const] : [])),
   );
-  const baseHash = versionHash(template.id, withContentKeys(params, contentHashes));
-  const legacyBaseHash = versionHash(template.id, params);
-  const hash = fullVersionHash(baseHash, gimmicks);
-  const fullHashes = [hash, fullVersionHash(legacyBaseHash, gimmicks)];
-  const baseHashes = [...new Set([baseHash, legacyBaseHash])].join(",");
+  const { baseHash, hash, baseHashes, fullHashes } = workVersions(template.id, params, contentHashes, gimmicks);
 
   // 同じ土台の版の購入（ギミック導入前の購入は params_hash が土台の版と同じ）
   const { data: related } = await supabase
     .from("purchases")
     .select("id, params_hash, base_hash, gimmick_slugs, package_path, suspended_at")
     .eq("work_id", work.id)
-    .or(`base_hash.in.(${baseHashes}),params_hash.in.(${baseHashes})`);
-  const purchase = (related ?? []).find((p) => fullHashes.includes(p.params_hash)) ?? null;
+    .or(`base_hash.in.(${baseHashes.join(",")}),params_hash.in.(${baseHashes.join(",")})`);
+  const { purchase, basePaid, breakdown, cost } = priceVersion({
+    template: { name: template.name, tokenCost: template.token_cost },
+    gimmicks: gimmicks.map((g) => defs.get(g.slug) as GimmickDefinition),
+    related: related ?? [],
+    fullHashes,
+  });
   if (purchase?.suspended_at) return { error: SUSPENDED_PURCHASE } as const;
-  const basePaid = (related ?? []).length > 0;
-  const paidSlugs = new Set((related ?? []).flatMap((p) => p.gimmick_slugs ?? []));
-  const breakdown: CostLine[] = [
-    { label: `${template.name}（モデル）`, cost: template.token_cost, paid: basePaid },
-    ...gimmicks.map((g) => {
-      const def = defs.get(g.slug) as GimmickDefinition;
-      return { label: def.name, cost: def.tokenCost, paid: paidSlugs.has(g.slug) };
-    }),
-  ];
-  const cost = breakdown.reduce((sum, line) => sum + (line.paid ? 0 : line.cost), 0);
-  let versionKind: VersionKind = "gimmicks";
-  if (!basePaid) {
-    const { count } = await supabase.from("purchases").select("id", { count: "exact", head: true }).eq("work_id", work.id);
-    versionKind = count ? "changed" : "first";
-  }
+  const { count } = basePaid ? { count: 1 } : await supabase.from("purchases").select("id", { count: "exact", head: true }).eq("work_id", work.id);
+  const versionKind = versionKindOf(basePaid, Boolean(count));
   return { supabase, userId, work, template, slots, params, defs, gimmicks, baseHash, hash, purchase, breakdown, cost, versionKind } as const;
 }
 
