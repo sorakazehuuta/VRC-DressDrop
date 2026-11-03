@@ -4,7 +4,7 @@
   "category": "グッズ",
   "description": "デッキに好きな画像をプリントできるスケートボード。",
   "tokenCost": 1,
-  "isPublic": false,
+  "isPublic": true,
   "sortOrder": 90,
   "files": {
     "package": "Skateboard.unitypackage"
