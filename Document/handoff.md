@@ -1,4 +1,4 @@
-# 引継ぎ資料（2026-10-05 時点）
+# 引継ぎ資料（2026-11-03 時点）
 
 次のチャット（または別の担当者）が作業を続けるための資料です。要件は [project.md](project.md)、実装の進め方は [build-prompt.md](build-prompt.md) を参照してください。
 
@@ -17,7 +17,8 @@
 | 9 | テストの整備 | 未着手（確認用スクリプトは `web/tools/verification` にある） |
 
 - サービス名は **VRPrintLab**（ロゴ・ファビコンは `web/images/common`）。リポジトリ名・フォルダ名は VRC-DressDrop のまま
-- `main` に全フェーズの成果をマージ済み。push はしていない（リモートより先行している）
+- `main` に全フェーズの成果をマージ済み。**push はしていない**（origin/main は 2026-10-05 の `c1d5657` のまま。共同開発者は unitypackage 対応・視点の改修・追加テンプレートを持っていない）
+- テンプレートは `templates` ブランチで管理（`main` の変更は templates 側で `git merge main` して取り込む）
 
 ## 2. 構成
 
@@ -59,7 +60,7 @@ npm run gimmicks:check / gimmicks:sync
 - **Supabase**: 作成済み。URL・キーは `web/.env.local`（git 管理外）。無料プラン（1週間使わないと一時停止）
 - **マイグレーション**: `web/supabase/migrations` の 7 ファイルはすべて SQL Editor で実行済み。新しく作ったら利用者に実行を依頼する（Supabase CLI・Docker は入っていない）
 - **Storage バケット**: `work-images`（非公開・作品の画像とサムネイル）、`template-assets`（公開・glb とサムネイル）、`template-packages`（非公開・同梱用 fbx）、`packages`（非公開・生成した unitypackage と購入した版の控え）
-- **データ**: ギミック 16 件を登録済み。テンプレートは unitypackage 形式に移行（2026-10-16）。ケーキを `templates` ブランチに追加済み（Supabase への登録はマイグレーション 20261016000000 の実行後）。旧形式の Tシャツはファイルを削除し、DB の行は作品・購入履歴が参照しているため非公開にして残す
+- **データ**: ギミック 16 件。テンプレートは unitypackage 形式で 8 件を公開（ケーキ・缶バッジ・マグカップ・タペストリー・デスクマット・うちわ・抱き枕カバー・スケートボード）。旧形式の Tシャツは DB の行だけ非公開で残っている（他の利用者の作品が参照）
 - **Unity**: 2022.3.22f1（`C:\Program Files\Unity\Hub\Editor\2022.3.22f1`）。VCC の TestProject に UdonSharp・ClientSim あり。この PC には VRChat 本体が入っていない
 - **Playwright**: web の devDependencies に入っている（サムネイル生成と確認用）
 
@@ -84,11 +85,14 @@ npm run gimmicks:check / gimmicks:sync
 - **決済**: Stripe（Checkout + Webhook）に決定（2026-10-05）。カードとコンビニ払いから始め、PayPay は後で検討。返金・チャージバック・購入上限の方針は要件定義書 6.8・8章を参照
 - **不正対策**: 要件定義書 6.11 を追加（2026-10-05）。今の実装は新規登録の時点で3トークンを付与しているため、SMS で電話番号を確認した時点の付与に変える必要がある。CAPTCHA・使い捨てメールの拒否・カードのブロックも未実装
 - **トークンの有効期限切れ**: 残高計算では期限切れを除外しているが、履歴に「失効」を記録する処理は未実装（Phase 7）
+- **push**: main と templates が未 push。共同開発者の環境が古いままなので、確認を頼む前に push が必要
+- **Supabase の一時停止**: 無料プランは1週間使わないと止まる（2026-10-27 に停止、利用者が再開）。止まると templates:sync やサイト全体が `fetch failed` になる
 - **未決事項**: トークンの価格・各テンプレート/ギミックの消費量、ドメイン
-- **テンプレート（unitypackage 形式）**: 購入時はテンプレートの中身を作品フォルダの `Template/` に複製し、GUID を振り直してスロットの .mat の色・テクスチャだけを書き換える。プレビューの glb は `templates:prepare` が Unity のバッチモードで Prefab から作る（登録する PC に Unity 2022.3 が必要）。ケーキは 6.7 万三角形で Quest の目安（1万）を超えている
+- **テンプレート（unitypackage 形式）**: 購入時はテンプレートの中身を作品フォルダの `Template/` に複製し、GUID を振り直してスロットの .mat の色・テクスチャだけを書き換える。プレビューの glb は `templates:prepare` が Unity のバッチモードで Prefab から作る（登録する PC に Unity 2022.3 が必要）。エディタの最初の視点は、1つ目のプリント面の UV の中心を正面から見る向き（`src/lib/templates/view.ts`）。ケーキは 6.7 万・スケートボードは 1.06 万三角形で Quest の目安（1万）を超えている。スケートボードは templates:prepare で「UV が裏返っている」注意が出るが、利用者が問題なしと判断して公開
 - **ギミック**: VRChat 上での全員への同期は未確認。直近の修正版（光る・触れる・振る）は利用者の Unity での再確認待ち
 - **利用者の TestProject**: G01 の Prefab からオブジェクトが消えていた。修正版パッケージを読み込み、Tools > VRPrintLab > Prefab をすべて作り直す で復旧する手順を案内済み
 - **本番公開**: Vercel へのデプロイ、ドメイン、確認メールの送信サービス（Supabase 標準は 1 時間に数通まで）、Supabase の有料プラン検討
+- **共同開発者のブランチ**: `add-cake-model`（web/model-inbox と、ケーキ専用のローカル確認ページ）は unitypackage 対応で不要になった。取り込まず、扱いを共同開発者と決める
 - **git 履歴**: 公開リポジトリの過去の履歴に `.vs/` フォルダ（PC のユーザー名を含むパス）とコミットのメールアドレスが残っている。利用者は今回は対応しない判断
 
 ## 6. 作業ルール（利用者の指示）
