@@ -15,7 +15,7 @@ async function login(page, email) {
   await page.getByLabel("メールアドレス").fill(email);
   await page.getByLabel("パスワード").fill(password);
   await page.getByRole("button", { name: "ログイン", exact: true }).click();
-  await page.waitForURL(/\/account/);
+  await page.waitForURL((u) => u.pathname === "/account");
 }
 
 (async () => {

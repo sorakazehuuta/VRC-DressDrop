@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { LogoutButton } from "./logout-button";
 
 type NavItem = { href: string; label: string; match: string[] };
@@ -30,7 +30,8 @@ function TabLink({ item, pathname }: { item: NavItem; pathname: string }) {
   );
 }
 
-type HeaderNavProps = { loggedIn: boolean; balance: number };
+// adminTab / adminMenuItem: 管理者のときだけサーバーで描画して渡す要素（このファイルには管理画面の URL を書かない）
+type HeaderNavProps = { loggedIn: boolean; balance: number; adminTab?: ReactNode; adminMenuItem?: ReactNode };
 
 // useSearchParams は静的に書き出すページで Suspense が必要なため、読めない間は ?work= がないものとして表示する
 export function HeaderNav(props: HeaderNavProps) {
@@ -46,7 +47,7 @@ function NavWithSearchParams(props: HeaderNavProps) {
   return <Nav {...props} editingWork={editingWork} />;
 }
 
-function Nav({ loggedIn, balance, editingWork }: HeaderNavProps & { editingWork: boolean }) {
+function Nav({ loggedIn, balance, adminTab, adminMenuItem, editingWork }: HeaderNavProps & { editingWork: boolean }) {
   const rawPath = usePathname();
   const pathname = editingWork && rawPath.startsWith("/editor/") ? "/works/edit" : rawPath;
 
@@ -81,18 +82,19 @@ function Nav({ loggedIn, balance, editingWork }: HeaderNavProps & { editingWork:
         <TabLink item={WORKS} pathname={pathname} />
         {tokenChip}
         <TabLink item={ACCOUNT} pathname={pathname} />
+        {adminTab}
         <LogoutButton className="cursor-pointer text-zinc-600 hover:underline" />
       </nav>
       <div className="flex items-center gap-2 text-xs sm:hidden">
         {tokenChip}
-        <MobileMenu pathname={pathname} />
+        <MobileMenu pathname={pathname} adminMenuItem={adminMenuItem} />
       </div>
     </>
   );
 }
 
 // スマホ幅ではタブを並べきれないため、メニューボタンの中にまとめる
-function MobileMenu({ pathname }: { pathname: string }) {
+function MobileMenu({ pathname, adminMenuItem }: { pathname: string; adminMenuItem?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -151,6 +153,7 @@ function MobileMenu({ pathname }: { pathname: string }) {
                 </li>
               );
             })}
+            {adminMenuItem && <li>{adminMenuItem}</li>}
             <li className="mt-1 border-t border-zinc-100 pt-1">
               <LogoutButton className="block w-full cursor-pointer border-l-4 border-transparent px-4 py-3 text-left text-zinc-600 hover:bg-zinc-50" />
             </li>
