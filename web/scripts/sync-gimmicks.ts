@@ -67,22 +67,28 @@ async function main() {
   if (!url || !key) throw new Error(".env.local に NEXT_PUBLIC_SUPABASE_URL と SUPABASE_SECRET_KEY を設定してください");
   const supabase = createClient(url, key, { auth: { persistSession: false } });
 
-  const { error } = await supabase.from("gimmicks").upsert(
-    defs.map((d) => ({
-      slug: d.slug,
-      name: d.name,
-      category: d.category,
-      description: d.description,
-      script_path: d.script,
-      token_cost: d.tokenCost,
-      is_public: d.isPublic,
-      sort_order: d.sortOrder,
-      params_schema: d.params,
-      definition: d,
-    })),
-    { onConflict: "slug" },
-  );
-  if (error) throw new Error(`登録に失敗: ${error.message}`);
+  // トークン数・公開状態は、登録済みなら DB の値（管理画面で変えた値）を残す。catalog の値は初回の登録だけに使う
+  const { data: registered } = await supabase.from("gimmicks").select("slug");
+  const registeredSlugs = new Set((registered ?? []).map((g) => g.slug));
+  const rows = defs.map((d) => ({
+    slug: d.slug,
+    name: d.name,
+    category: d.category,
+    description: d.description,
+    script_path: d.script,
+    sort_order: d.sortOrder,
+    params_schema: d.params,
+    definition: d,
+    ...(registeredSlugs.has(d.slug) ? {} : { token_cost: d.tokenCost, is_public: d.isPublic }),
+  }));
+  // upsert は1回の呼び出しで列をそろえる必要があるため、新規と既存を分けて登録する
+  const fresh = rows.filter((r) => !registeredSlugs.has(r.slug));
+  const existingRows = rows.filter((r) => registeredSlugs.has(r.slug));
+  for (const batch of [fresh, existingRows]) {
+    if (batch.length === 0) continue;
+    const { error } = await supabase.from("gimmicks").upsert(batch, { onConflict: "slug" });
+    if (error) throw new Error(`登録に失敗: ${error.message}`);
+  }
 
   const { data: existing } = await supabase.from("gimmicks").select("slug, name, is_public");
   const removed = (existing ?? []).filter((g) => g.is_public && !defs.some((d) => d.slug === g.slug));

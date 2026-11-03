@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { authErrorMessage, safeNextPath, siteOrigin } from "@/lib/auth";
+import { TERMS_VERSION } from "@/lib/legal";
 import { createClient } from "@/lib/supabase/server";
 
 export type FormState = { error?: string; message?: string } | null;
@@ -49,7 +50,8 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     email,
     password,
     options: {
-      data: { name: displayName },
+      // 同意した規約の版。新規登録のトリガーが profiles に記録する
+      data: { name: displayName, terms_version: TERMS_VERSION },
       emailRedirectTo: `${await siteOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
     },
   });

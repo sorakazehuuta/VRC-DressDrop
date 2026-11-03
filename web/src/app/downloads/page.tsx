@@ -14,7 +14,7 @@ export default async function DownloadsPage() {
   const supabase = await createClient();
   const { data: purchases } = await supabase
     .from("purchases")
-    .select("id, work_id, work_name, template_name, token_spent, created_at, package_path, thumbnail_path, snapshot_deleted_at")
+    .select("id, work_id, work_name, template_name, token_spent, created_at, package_path, thumbnail_path, snapshot_deleted_at, suspended_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -72,7 +72,9 @@ export default async function DownloadsPage() {
                     編集内容を見る
                   </Link>
                 </div>
-                {p.package_path ? (
+                {p.suspended_at ? (
+                  <span className="text-xs text-red-700">運営により停止中</span>
+                ) : p.package_path ? (
                   <RedownloadButton purchaseId={p.id} />
                 ) : (
                   p.snapshot_deleted_at && <span className="text-xs text-zinc-400">控えは削除済み</span>

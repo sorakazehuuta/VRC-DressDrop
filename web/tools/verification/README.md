@@ -21,6 +21,7 @@ node --env-file=.env.local tools/verification/e2e/download-e2e.cjs  # ダウン�
 node --env-file=.env.local tools/verification/e2e/versions-e2e.cjs  # 数値入力・前回の内容を残す確認・履歴の詳細
 node --env-file=.env.local tools/verification/e2e/gimmick-e2e.cjs   # ギミックの選択・内訳・差額の課金
 node --env-file=.env.local tools/verification/e2e/data-handling-e2e.cjs  # 下書きの期限・LICENSE.txt・同じ画像の貼り直し・控えの削除・作品の削除・管理画面・退会
+node --env-file=.env.local tools/verification/e2e/phase8-e2e.cjs         # 非公開テンプレート・規約類のページ・通報・管理画面での対応と設定・集計
 ```
 
 スクリーンショットは `tools/verification/e2e/shots/`（`SHOTS_DIR` で変更可）に保存されます。

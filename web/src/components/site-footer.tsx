@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 const links = [
+  { href: "/guide", label: "導入ガイド" },
   { href: "/faq", label: "よくある質問" },
+  { href: "/report", label: "権利侵害・不適切な作品の通報" },
   { href: "/terms", label: "利用規約" },
   { href: "/privacy", label: "プライバシーポリシー" },
   { href: "/tokushoho", label: "特定商取引法に基づく表記" },

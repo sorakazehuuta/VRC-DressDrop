@@ -13,16 +13,16 @@
 | 5 | unitypackage のサーバー生成、トークン消費、購入済みの版の再ダウンロード、ダウンロード履歴 | 完了 |
 | 6 | ギミック 16 種、Prefab の自動組み立て、ギミック追加分だけの課金 | 完了（VRChat 上での同期は未確認） |
 | 7 | トークン購入・有効期限切れの記録 | 完了（Stripe のテスト環境で確認済み。本番の利用開始は規約類の公開と本番公開のあと。設定は [stripe-setup.md](stripe-setup.md)） |
-| 8 | 導入ガイド・規約類・通報・管理画面 | 一部完了（利用規約の下書き・FAQ・データの扱いの見直し・管理画面のトークン調整。導入ガイド・通報・管理画面の残りは未着手） |
+| 8 | 導入ガイド・規約類・通報・管理画面 | 実装済み（`feature/phase8-legal-guide-admin`、マイグレーションの実行と確認待ち）。規約類の文面は確認用の下書き、導入ガイドの画像は未作成 |
 | 9 | テストの整備 | 未着手（確認用スクリプトは `web/tools/verification` にある） |
 
 - サービス名は **VRPrintLab**（ロゴ・ファビコンは `web/images/common`）。リポジトリ名・フォルダ名は VRC-DressDrop のまま
 - `main` に Phase 1〜7 の成果をマージ済み。main（`dbca055`）と templates（`d494640`）は利用者が push 済みで、GitHub と一致している（2026-11-03）
-- **Phase 8 の途中**（`feature/terms-and-data-handling`、未マージ）。共同開発者の依頼で、販売・配布の条件と公開前のデータの扱いを先に整えた（2026-11-03）
-  - 利用規約は確認用の下書きを `web/content/terms.md` に作成（【要確認】は未確定。共同開発者が直す予定）。FAQ は `web/content/faq.md`。プライバシーポリシー・特商法表記は枠だけ（準備中）
-  - 規約の版は `web/src/lib/legal.ts`（`TERMS_VERSION` / `TERMS_DRAFT`）。パッケージの LICENSE.txt に書き込まれる
-  - マイグレーション `20261104000000_data_handling.sql` と `npm run images:backfill-hashes` は利用者が実行済み
-  - 残り: 導入ガイド、通報、管理画面の残り（テンプレート・ギミックの設定、作品の停止、集計など）。通報の受付方法などの質問は回答待ち
+- **Phase 8**（`feature/phase8-legal-guide-admin`）。`feature/terms-and-data-handling` は main にマージ済み（2026-11-03）
+  - 規約類の下書き: `web/content/terms.md` / `privacy.md` / `tokushoho.md`（【要確認】は未確定。共同開発者が直す予定）。FAQ は `faq.md`、導入ガイドは `guide.md`（画像は「画像準備中」の枠。`![説明](/パス)` に差し替える）
+  - 規約の版は `web/src/lib/legal.ts`（`TERMS_VERSION` / `TERMS_DRAFT`）。パッケージの LICENSE.txt、登録（profiles.terms_version）、購入（payments.terms_version）に記録する
+  - 通報は `/report`（ログインなし）→ `/admin/reports`。管理画面は ほかに ユーザー・テンプレート/ギミックの設定・集計（同じカードのアカウントを含む）
+  - マイグレーション `20261105000000_phase8.sql` は未実行（利用者に依頼中）。実行後に `tools/verification/e2e/phase8-e2e.cjs` で確認する
   - 本番前に [production-check.md](production-check.md) の未確認の項目を確かめる。運営の手順は [admin-operations.md](admin-operations.md)
 - テンプレートは `templates` ブランチで管理（`main` の変更は templates 側で `git merge main` して取り込む）
 
@@ -80,7 +80,7 @@ npm run gimmicks:check / gimmicks:sync
 - **トークンの有効期限は発行から 180 日**（資金決済法の前払式支払手段の届出を不要にするため。6か月未満が条件）
 - **購入した版の控え**: ダウンロード時に unitypackage・編集内容・画像・サムネイルを `packages` バケットに保存。作品を編集・削除しても履歴から確認・再ダウンロードできる
 - **プリントの描画**: ブラウザ（canvas）とサーバー（sharp）で同じ見た目になるよう、配置計算を `printPlacement` で共有し、明るさ・彩度は CSS フィルターと同じ式
-- **テンプレート / ギミックはファイルで定義し、同期コマンドで DB に登録**。トークン数・公開状態は DB の列が優先（管理画面から変えられるように）
+- **テンプレート / ギミックはファイルで定義し、同期コマンドで DB に登録**。トークン数・公開状態は登録済みなら同期で上書きしない（管理画面 /admin/catalog で変える。2026-11-03 に同期スクリプトを修正）。テンプレート一覧は公開中のものだけ（RLS では管理者に非公開も見えるため、クエリでも絞る）。非公開のテンプレートは管理者だけがエディタで開ける
 - **unitypackage の GUID** は購入 ID から決定的に作る（再インポートで上書き）。共通スクリプト（`Assets/VRPrintLab/_Runtime`）は固定の GUID
 - **Prefab の自動組み立て**（`VRPrintLabPrefabBuilder.cs`）
   - `EditorApplication.update` で読み込み完了を待つ（`delayCall` で自分を登録し直すと GUI の Unity が数分固まる）

@@ -45,3 +45,92 @@ export async function retryStorageDeletions(): Promise<FormState> {
   revalidatePath("/admin");
   return failed ? { error: `${done} 件を削除、${failed} 件は失敗しました。` } : { message: `${done} 件を削除しました。` };
 }
+
+// ===== 停止・設定の変更（どれも admin_actions に記録する） =====
+
+async function logAction(adminId: string, action: string, targetId: string, note: string | null) {
+  await createAdminClient().from("admin_actions").insert({ admin_id: adminId, action, target_id: targetId, note });
+}
+
+const field = (formData: FormData, key: string) => String(formData.get(key) ?? "").trim();
+
+// アカウントの停止・再開。停止中は購入・ダウンロード・作品の保存ができない
+export async function setUserStatus(formData: FormData) {
+  const adminUser = await requireAdmin();
+  const userId = field(formData, "userId");
+  const status = field(formData, "status") === "suspended" ? "suspended" : "active";
+  if (userId === adminUser.id) return;
+  await createAdminClient().from("profiles").update({ status }).eq("id", userId);
+  await logAction(adminUser.id, status === "suspended" ? "suspend_user" : "restore_user", userId, field(formData, "note") || null);
+  revalidatePath(`/admin/users/${userId}`);
+}
+
+// 作品の公開停止・再開。停止中の作品は編集・ダウンロードできない
+export async function setWorkStatus(formData: FormData) {
+  const adminUser = await requireAdmin();
+  const workId = field(formData, "workId");
+  const status = field(formData, "status") === "suspended" ? "suspended" : "active";
+  await createAdminClient().from("works").update({ status }).eq("id", workId);
+  await logAction(adminUser.id, status === "suspended" ? "suspend_work" : "restore_work", workId, field(formData, "note") || null);
+  revalidatePath("/admin", "layout");
+}
+
+// 購入した版の停止・再開。停止中の版は再ダウンロードできない
+export async function setPurchaseSuspended(formData: FormData) {
+  const adminUser = await requireAdmin();
+  const purchaseId = field(formData, "purchaseId");
+  const suspend = field(formData, "suspend") === "1";
+  await createAdminClient()
+    .from("purchases")
+    .update({ suspended_at: suspend ? new Date().toISOString() : null })
+    .eq("id", purchaseId);
+  await logAction(adminUser.id, suspend ? "suspend_purchase" : "restore_purchase", purchaseId, field(formData, "note") || null);
+  revalidatePath("/admin", "layout");
+}
+
+export async function resolveReport(formData: FormData) {
+  const adminUser = await requireAdmin();
+  const reportId = field(formData, "reportId");
+  const raw = field(formData, "status");
+  const status = raw === "resolved" || raw === "dismissed" ? raw : "open";
+  const note = field(formData, "note") || null;
+  await createAdminClient()
+    .from("reports")
+    .update({
+      status,
+      admin_note: note,
+      resolved_at: status === "open" ? null : new Date().toISOString(),
+      resolved_by: status === "open" ? null : adminUser.id,
+    })
+    .eq("id", reportId);
+  await logAction(adminUser.id, "resolve_report", reportId, `${status}${note ? `: ${note}` : ""}`);
+  revalidatePath("/admin", "layout");
+}
+
+const costSchema = (raw: string) => {
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 0 && n <= 100 ? n : null;
+};
+
+// テンプレートのトークン数・公開状態（同期コマンドより DB の値が優先される）
+export async function updateTemplate(formData: FormData) {
+  const adminUser = await requireAdmin();
+  const id = field(formData, "id");
+  const tokenCost = costSchema(field(formData, "tokenCost"));
+  if (tokenCost === null) return;
+  const isPublic = formData.get("isPublic") === "on";
+  await createAdminClient().from("templates").update({ token_cost: tokenCost, is_public: isPublic }).eq("id", id);
+  await logAction(adminUser.id, "update_template", id, `token_cost=${tokenCost} is_public=${isPublic}`);
+  revalidatePath("/", "layout");
+}
+
+export async function updateGimmick(formData: FormData) {
+  const adminUser = await requireAdmin();
+  const id = field(formData, "id");
+  const tokenCost = costSchema(field(formData, "tokenCost"));
+  if (tokenCost === null) return;
+  const isPublic = formData.get("isPublic") === "on";
+  await createAdminClient().from("gimmicks").update({ token_cost: tokenCost, is_public: isPublic }).eq("id", id);
+  await logAction(adminUser.id, "update_gimmick", id, `token_cost=${tokenCost} is_public=${isPublic}`);
+  revalidatePath("/", "layout");
+}

@@ -24,6 +24,8 @@ export async function listTemplates(): Promise<TemplateSummary[]> {
   const { data, error } = await supabase
     .from("templates")
     .select("slug, name, category, description, token_cost, thumbnail_path")
+    // RLS では管理者に非公開のものも見えるため、ここでも公開中に絞る
+    .eq("is_public", true)
     .order("sort_order")
     .order("name");
   if (error) throw error;
@@ -43,6 +45,7 @@ export const getTemplate = cache(async (slug: string): Promise<TemplateDetail | 
     .from("templates")
     .select("id, slug, name, category, description, token_cost, thumbnail_path, preview_model_path, slots")
     .eq("slug", slug)
+    // 非公開のものは RLS で管理者だけが開ける（公開前の確認用）
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { Card } from "./ui";
 
@@ -8,6 +9,23 @@ export function AuthLayout({ title, children, footer }: { title: string; childre
       <Card className="flex flex-col gap-6">{children}</Card>
       {footer && <div className="text-center text-sm text-zinc-600">{footer}</div>}
     </main>
+  );
+}
+
+// 登録・ログインの操作で同意したものとして、規約の版を記録する（auth/actions.ts と auth/callback）
+export function TermsNotice({ action }: { action: string }) {
+  return (
+    <p className="text-xs leading-relaxed text-zinc-500">
+      {action}すると、
+      <Link href="/terms" className="underline" target="_blank">
+        利用規約
+      </Link>
+      と
+      <Link href="/privacy" className="underline" target="_blank">
+        プライバシーポリシー
+      </Link>
+      に同意したものとみなします。
+    </p>
   );
 }
 

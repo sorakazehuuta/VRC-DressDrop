@@ -11,7 +11,7 @@
 4. `npm run templates:prepare` でブラウザ用のプレビューを作る
 5. `npm run templates:check` で確認し、サムネイルを作る
 6. `npm run templates:sync` で非公開のまま登録し、サイトと Unity で確認する
-7. 公開してコミットする
+7. 管理画面（/admin/catalog）で公開し、コミットする
 
 コマンドはすべて `web` フォルダで実行します（Windows の PowerShell で `npm` が動かないときは `npm.cmd` と打ちます）。
 
@@ -95,7 +95,7 @@ template.json の例:
 | `slug` | フォルダ名と同じにする |
 | `name` / `category` / `description` | サイトに表示する名前・分類・説明 |
 | `tokenCost` | ダウンロードに必要なトークン数 |
-| `isPublic` | `false` の間は一覧に出ない（管理者だけが確認できる）。確認が終わるまで `false` のまま |
+| `isPublic` | 初回の登録のときの公開状態。`false` の間は一覧に出ない（管理者だけがエディタの URL で確認できる）。登録後の公開・非公開は管理画面で変える |
 | `sortOrder` | 一覧の並び順（小さいほど前） |
 | `files.package` | unitypackage のファイル名 |
 | `files.prefab` | 使う Prefab の Unity 上のパス（例: `Assets/VRPrintLab/Mug/Mug.prefab`）。Prefab が1つだけなら書かなくてよい |
@@ -186,7 +186,7 @@ npm run templates:sync -- mug
 2. 保存してダウンロードし、Unity（VRChat のワールドプロジェクトのコピー）に読み込む
    - 自動で作られる Prefab をシーンに置き、色・プリント・大きさがサイトと同じか確かめる
 
-問題がなければ template.json の `isPublic` を `true` にして、もう一度 `npm run templates:sync -- mug` を実行すると一覧に表示されます。
+問題がなければ、管理画面の「テンプレート・ギミック」（/admin/catalog）で「公開」にすると一覧に表示されます。登録済みのテンプレートのトークン数・公開状態は、templates:sync では変わりません（管理画面で変えた値を残すため）。記録のため template.json の `isPublic` も `true` にしてコミットしておきます。
 
 ## 7. コミットする
 
@@ -205,8 +205,8 @@ GitHub へのプッシュと Supabase への登録（templates:sync）は別の�
 ## 更新・取り下げ
 
 - **モデルを直す**: unitypackage を差し替え → `templates:prepare` → `templates:check` → `templates:thumbnails -- mug --force` → `templates:sync -- mug` → コミット
-- **名前・説明・トークン数だけ直す**: template.json を直して `templates:sync -- mug` → コミット
-- **一覧から外す**: `isPublic` を `false` にして `templates:sync -- mug`。すでに作られた作品があるため、テンプレートのフォルダやデータは消さない
+- **名前・説明だけ直す**: template.json を直して `templates:sync -- mug` → コミット
+- **トークン数を変える・一覧から外す**: 管理画面（/admin/catalog）で変える。すでに作られた作品があるため、テンプレートのフォルダやデータは消さない
 
 ## 仕組み（参考）
 

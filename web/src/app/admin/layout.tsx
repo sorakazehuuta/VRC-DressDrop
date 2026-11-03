@@ -13,8 +13,17 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         <Link href="/admin" className="hover:underline">
           概要
         </Link>
+        <Link href="/admin/reports" className="hover:underline">
+          通報
+        </Link>
         <Link href="/admin/users" className="hover:underline">
           ユーザー
+        </Link>
+        <Link href="/admin/catalog" className="hover:underline">
+          テンプレート・ギミック
+        </Link>
+        <Link href="/admin/stats" className="hover:underline">
+          集計
         </Link>
       </nav>
       {children}

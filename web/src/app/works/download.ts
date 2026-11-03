@@ -54,6 +54,14 @@ function fullVersionHash(baseHash: string, gimmicks: GimmickSelection[]) {
   return createHash("sha256").update(JSON.stringify({ baseHash, gimmicks })).digest("hex");
 }
 
+const SUSPENDED_ACCOUNT = "このアカウントは停止されているため、ダウンロードできません。";
+const SUSPENDED_PURCHASE = "この版は運営により停止されているため、ダウンロードできません。";
+
+async function accountSuspended(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const { data } = await supabase.from("profiles").select("status").eq("id", userId).maybeSingle();
+  return data?.status === "suspended";
+}
+
 async function loadWork(workId: string) {
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
@@ -68,6 +76,7 @@ async function loadWork(workId: string) {
     .maybeSingle();
   if (!work) return { error: "作品が見つかりません。保存してからダウンロードしてください。" } as const;
   if (work.status === "suspended") return { error: "この作品は運営により公開停止されているため、ダウンロードできません。" } as const;
+  if (await accountSuspended(supabase, userId)) return { error: SUSPENDED_ACCOUNT } as const;
 
   const template = work.templates as unknown as {
     id: string;
@@ -96,10 +105,11 @@ async function loadWork(workId: string) {
   // 同じ土台の版の購入（ギミック導入前の購入は params_hash が土台の版と同じ）
   const { data: related } = await supabase
     .from("purchases")
-    .select("id, params_hash, base_hash, gimmick_slugs, package_path")
+    .select("id, params_hash, base_hash, gimmick_slugs, package_path, suspended_at")
     .eq("work_id", work.id)
     .or(`base_hash.in.(${baseHashes}),params_hash.in.(${baseHashes})`);
   const purchase = (related ?? []).find((p) => fullHashes.includes(p.params_hash)) ?? null;
+  if (purchase?.suspended_at) return { error: SUSPENDED_PURCHASE } as const;
   const basePaid = (related ?? []).length > 0;
   const paidSlugs = new Set((related ?? []).flatMap((p) => p.gimmick_slugs ?? []));
   const breakdown: CostLine[] = [
@@ -323,10 +333,12 @@ export async function purchaseDownloadUrl(purchaseId: string): Promise<{ ok: tru
   // RLS でも本人の購入に限られるが、設定ミスに備えてここでも絞り込む
   const { data } = await supabase
     .from("purchases")
-    .select("package_path, work_name")
+    .select("package_path, work_name, suspended_at")
     .eq("id", purchaseId)
     .eq("user_id", userId)
     .maybeSingle();
+  if (data?.suspended_at) return { ok: false, error: SUSPENDED_PURCHASE };
+  if (await accountSuspended(supabase, userId)) return { ok: false, error: SUSPENDED_ACCOUNT };
   if (!data?.package_path) return { ok: false, error: "ダウンロードできるファイルが見つかりません。" };
   const url = await signedDownloadUrl(supabase, data.package_path);
   return url ? { ok: true, url, filename: packageFileName(data.work_name) } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };

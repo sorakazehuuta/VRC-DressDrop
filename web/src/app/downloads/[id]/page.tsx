@@ -43,7 +43,7 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
   const supabase = await createClient();
   const { data: purchase } = await supabase
     .from("purchases")
-    .select("id, work_id, work_name, template_name, token_spent, created_at, package_path, thumbnail_path, snapshot, snapshot_deleted_at")
+    .select("id, work_id, work_name, template_name, token_spent, created_at, package_path, thumbnail_path, snapshot, snapshot_deleted_at, suspended_at")
     .eq("id", id)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -84,7 +84,11 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
           ) : (
             <span className="text-sm text-zinc-500">作品は削除済みです</span>
           )}
-          {purchase.package_path && <RedownloadButton purchaseId={purchase.id} />}
+          {purchase.suspended_at ? (
+            <span className="text-sm text-red-700">この版は運営により停止されています</span>
+          ) : (
+            purchase.package_path && <RedownloadButton purchaseId={purchase.id} />
+          )}
         </div>
       </div>
 

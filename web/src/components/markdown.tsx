@@ -4,7 +4,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 // 規約・FAQ などの文面（web/content/*.md）を表示する。
-// 使える書き方: 見出し（# / ## / ###）、段落、箇条書き（- / 1.）、**太字**、[リンク](URL)。
+// 使える書き方: 見出し（# / ## / ###）、段落、箇条書き（- / 1.）、**太字**、[リンク](URL)、`コード`、
+// 画像（1行に ![説明](/パス)。パスを placeholder にすると「画像準備中」の枠を出す）。
 // 【要確認】は未確定の箇所として目立たせる
 
 export async function readContent(name: string) {
@@ -13,7 +14,7 @@ export async function readContent(name: string) {
 
 function inline(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];
-  const pattern = /\*\*(.+?)\*\*|\[(.+?)\]\((.+?)\)|(【要確認[^】]*】)/g;
+  const pattern = /\*\*(.+?)\*\*|\[(.+?)\]\((.+?)\)|(【要確認[^】]*】)|`(.+?)`/g;
   let last = 0;
   for (const m of text.matchAll(pattern)) {
     if (m.index > last) nodes.push(text.slice(last, m.index));
@@ -32,6 +33,7 @@ function inline(text: string): ReactNode[] {
         ),
       );
     } else if (m[4]) nodes.push(<mark key={key} className="rounded bg-amber-100 px-1 text-amber-900">{m[4]}</mark>);
+    else if (m[5]) nodes.push(<code key={key} className="rounded bg-zinc-100 px-1 font-mono text-[0.9em]">{m[5]}</code>);
     last = m.index + m[0].length;
   }
   if (last < text.length) nodes.push(text.slice(last));
@@ -41,7 +43,8 @@ function inline(text: string): ReactNode[] {
 type Block =
   | { kind: "heading"; level: 1 | 2 | 3; text: string }
   | { kind: "paragraph"; text: string }
-  | { kind: "list"; ordered: boolean; items: string[] };
+  | { kind: "list"; ordered: boolean; items: string[] }
+  | { kind: "image"; alt: string; src: string };
 
 function parse(source: string): Block[] {
   const blocks: Block[] = [];
@@ -54,7 +57,12 @@ function parse(source: string): Block[] {
     const line = raw.trim();
     const heading = /^(#{1,3})\s+(.*)$/.exec(line);
     const item = /^(-|\d+\.)\s+(.*)$/.exec(line);
+    const image = /^!\[(.*?)\]\((.+?)\)$/.exec(line);
     if (!line) flush();
+    else if (image) {
+      flush();
+      blocks.push({ kind: "image", alt: image[1], src: image[2] });
+    }
     else if (heading) {
       flush();
       blocks.push({ kind: "heading", level: heading[1].length as 1 | 2 | 3, text: heading[2] });
@@ -78,6 +86,21 @@ export function Markdown({ source }: { source: string }) {
           if (b.level === 1) return <h1 key={i} className="text-2xl font-bold text-brand">{inline(b.text)}</h1>;
           if (b.level === 2) return <h2 key={i} className="mt-6 border-b border-zinc-200 pb-1 text-lg font-semibold text-brand">{inline(b.text)}</h2>;
           return <h3 key={i} className="mt-3 font-semibold">{inline(b.text)}</h3>;
+        }
+        if (b.kind === "image") {
+          return (
+            <figure key={i} className="flex flex-col gap-1">
+              {b.src === "placeholder" ? (
+                <div className="flex aspect-video items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50 p-4 text-center text-xs text-zinc-500">
+                  画像準備中: {b.alt}
+                </div>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={b.src} alt={b.alt} className="rounded-lg border border-zinc-200" />
+              )}
+              {b.src !== "placeholder" && <figcaption className="text-xs text-zinc-500">{b.alt}</figcaption>}
+            </figure>
+          );
         }
         if (b.kind === "list") {
           const List = b.ordered ? "ol" : "ul";
