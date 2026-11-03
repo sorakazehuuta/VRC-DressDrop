@@ -232,6 +232,9 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
   const result = (rows as { purchase_id: string; charged: number }[] | null)?.[0];
   if (error || !result) {
     await admin.storage.from(PACKAGES_BUCKET).remove([packagePath]);
+    if (error?.message.includes("account_suspended")) {
+      return { ok: false, error: "このアカウントは停止されているため、ダウンロードできません。" };
+    }
     if (error?.message.includes("insufficient_tokens")) {
       return { ok: false, error: "トークンが足りません。", code: "insufficient" };
     }

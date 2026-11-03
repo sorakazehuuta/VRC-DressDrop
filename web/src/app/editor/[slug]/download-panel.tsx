@@ -110,8 +110,8 @@ export function DownloadPanel({
         <p role={message.kind === "error" ? "alert" : "status"} className={message.kind === "error" ? "text-red-700" : "text-accent-dark"}>
           {message.text}
           {message.insufficient && (
-            <Link href="/account" className="ml-1 font-semibold underline">
-              トークンの残高を確認
+            <Link href="/tokens" className="ml-1 font-semibold underline">
+              トークンを購入する
             </Link>
           )}
         </p>
