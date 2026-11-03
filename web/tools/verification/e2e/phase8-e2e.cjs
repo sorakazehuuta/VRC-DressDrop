@@ -75,7 +75,7 @@ async function login(page, email) {
     await anon.getByLabel("通報の種類").selectOption("copyright");
     await anon.getByLabel(/取得 ID/).fill(`取得 ID: ${purchase.id}`);
     await anon.getByLabel(/見かけた場所/).fill("テストワールド");
-    await anon.getByLabel("内容").fill(`${marker} 無断転載の画像が使われています`);
+    await anon.locator('textarea[name="details"]').fill(`${marker} 無断転載の画像が使われています`);
     await anon.screenshot({ path: `${DIR}/report-form.png`, fullPage: true });
     await anon.getByRole("button", { name: "通報する" }).click();
     await anon.getByText("通報を受け付けました").waitFor({ timeout: 15000 });
@@ -88,7 +88,7 @@ async function login(page, email) {
     for (let i = 0; i < 5 && !limited; i++) {
       await anon.goto(`${BASE}/report`, { waitUntil: "networkidle" });
       await anon.getByLabel("通報の種類").selectOption("other");
-      await anon.getByLabel("内容").fill(`${marker} 連続投稿 ${i}`);
+      await anon.locator('textarea[name="details"]').fill(`${marker} 連続投稿 ${i}`);
       await anon.getByRole("button", { name: "通報する" }).click();
       await anon.getByText(/通報を受け付けました|短い時間に多くの通報/).waitFor({ timeout: 15000 });
       limited = await anon.getByText(/短い時間に多くの通報/).isVisible();

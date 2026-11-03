@@ -13,7 +13,7 @@
 | 5 | unitypackage のサーバー生成、トークン消費、購入済みの版の再ダウンロード、ダウンロード履歴 | 完了 |
 | 6 | ギミック 16 種、Prefab の自動組み立て、ギミック追加分だけの課金 | 完了（VRChat 上での同期は未確認） |
 | 7 | トークン購入・有効期限切れの記録 | 完了（Stripe のテスト環境で確認済み。本番の利用開始は規約類の公開と本番公開のあと。設定は [stripe-setup.md](stripe-setup.md)） |
-| 8 | 導入ガイド・規約類・通報・管理画面 | 実装済み（`feature/phase8-legal-guide-admin`、マイグレーションの実行と確認待ち）。規約類の文面は確認用の下書き、導入ガイドの画像は未作成 |
+| 8 | 導入ガイド・規約類・通報・管理画面 | 完了（`feature/phase8-legal-guide-admin`、未マージ。2026-11-03 に確認スクリプトで確認済み）。規約類の文面は確認用の下書き、導入ガイドの画像は未作成 |
 | 9 | テストの整備 | 未着手（確認用スクリプトは `web/tools/verification` にある） |
 
 - サービス名は **VRPrintLab**（ロゴ・ファビコンは `web/images/common`）。リポジトリ名・フォルダ名は VRC-DressDrop のまま
@@ -22,7 +22,7 @@
   - 規約類の下書き: `web/content/terms.md` / `privacy.md` / `tokushoho.md`（【要確認】は未確定。共同開発者が直す予定）。FAQ は `faq.md`、導入ガイドは `guide.md`（画像は「画像準備中」の枠。`![説明](/パス)` に差し替える）
   - 規約の版は `web/src/lib/legal.ts`（`TERMS_VERSION` / `TERMS_DRAFT`）。パッケージの LICENSE.txt、登録（profiles.terms_version）、購入（payments.terms_version）に記録する
   - 通報は `/report`（ログインなし）→ `/admin/reports`。管理画面は ほかに ユーザー・テンプレート/ギミックの設定・集計（同じカードのアカウントを含む）
-  - マイグレーション `20261105000000_phase8.sql` は未実行（利用者に依頼中）。実行後に `tools/verification/e2e/phase8-e2e.cjs` で確認する
+  - マイグレーション `20261105000000_phase8.sql` は実行済み。確認は `tools/verification/e2e/phase8-e2e.cjs` と `admin-link-check.cjs`（ヘッダーの「管理画面」は管理者にだけ届く）
   - 本番前に [production-check.md](production-check.md) の未確認の項目を確かめる。運営の手順は [admin-operations.md](admin-operations.md)
 - テンプレートは `templates` ブランチで管理（`main` の変更は templates 側で `git merge main` して取り込む）
 
@@ -64,7 +64,7 @@ npm run gimmicks:check / gimmicks:sync
 ## 3. 環境
 
 - **Supabase**: 作成済み。URL・キーは `web/.env.local`（git 管理外）。無料プラン（1週間使わないと一時停止）
-- **マイグレーション**: `web/supabase/migrations` の 10 ファイルはすべて SQL Editor で実行済み（最新は `20261104000000_data_handling.sql`）。新しく作ったら利用者に実行を依頼する（Supabase CLI・Docker は入っていない）
+- **マイグレーション**: `web/supabase/migrations` の 11 ファイルはすべて SQL Editor で実行済み（最新は `20261105000000_phase8.sql`）。新しく作ったら利用者に実行を依頼する（Supabase CLI・Docker は入っていない）
 - **Storage バケット**: `work-images`（非公開・作品の画像とサムネイル）、`template-assets`（公開・glb とサムネイル）、`template-packages`（非公開・テンプレートの unitypackage）、`packages`（非公開・生成した unitypackage と購入した版の控え）
 - **データ**: ギミック 16 件。テンプレートは unitypackage 形式で 8 件を公開（ケーキ・缶バッジ・マグカップ・タペストリー・デスクマット・うちわ・抱き枕カバー・スケートボード）。旧形式の Tシャツは DB の行だけ非公開で残っている（他の利用者の作品が参照）
 - **Unity**: 2022.3.22f1（`C:\Program Files\Unity\Hub\Editor\2022.3.22f1`）。VCC の TestProject に UdonSharp・ClientSim あり。この PC には VRChat 本体が入っていない

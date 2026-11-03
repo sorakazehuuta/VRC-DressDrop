@@ -182,7 +182,13 @@ async function filesUnder(bucket, prefix) {
     ok("見た目を変えると「新しい版として」", (await page.getByRole("dialog").innerText()).includes("新しい版としてトークンを使います"));
     await page.screenshot({ path: `${DIR}/changed-version-dialog.png` });
     await page.getByRole("dialog").getByRole("button", { name: "キャンセル" }).click();
-    ok("保存後のパネルにも「新しい版として」", await panel().getByText("新しい版としてトークンを使います").isVisible());
+    // 取得済みかどうかの確認は保存のあとに非同期で返ってくる
+    const shown = await panel()
+      .getByText("新しい版としてトークンを使います")
+      .waitFor({ timeout: 15000 })
+      .then(() => true)
+      .catch(() => false);
+    ok("保存後のパネルにも「新しい版として」", shown);
 
     // ---- 作品の削除 ----
     await page.goto(`${BASE}/works`, { waitUntil: "networkidle" });
