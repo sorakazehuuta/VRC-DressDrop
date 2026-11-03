@@ -11,6 +11,7 @@
     "templates:check": "tsx scripts/sync-templates.ts --dry-run",
     "templates:sync": "tsx --env-file=.env.local scripts/sync-templates.ts",
     "templates:thumbnails": "tsx scripts/render-thumbnails.ts",
+    "stripe:forward": "tsx --env-file=.env.local scripts/stripe-forward.ts",
     "gimmicks:check": "tsx scripts/sync-gimmicks.ts --dry-run",
     "gimmicks:sync": "tsx --env-file=.env.local scripts/sync-gimmicks.ts"
   },
@@ -24,6 +25,7 @@
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
     "sharp": "^0.35.5",
+    "stripe": "^23.1.0",
     "three": "^0.186.1",
     "zod": "^4.6.5"
   },

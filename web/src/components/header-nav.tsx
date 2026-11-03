@@ -65,7 +65,11 @@ function Nav({ loggedIn, balance, editingWork }: HeaderNavProps & { editingWork:
   }
 
   const tokenChip = (
-    <Link href="/account" className="rounded-full bg-accent-soft px-3 py-1 font-semibold tabular-nums text-accent-dark">
+    <Link
+      href="/tokens"
+      aria-current={pathname === "/tokens" ? "page" : undefined}
+      className={`rounded-full px-3 py-1 font-semibold tabular-nums ${balance < 0 ? "bg-red-50 text-red-700" : "bg-accent-soft text-accent-dark"}`}
+    >
       {balance} トークン
     </Link>
   );

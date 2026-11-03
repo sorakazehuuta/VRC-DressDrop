@@ -8,21 +8,13 @@ import { DeleteAccountForm, DisplayNameForm } from "./forms";
 
 export const metadata: Metadata = { title: "アカウント設定 | VRPrintLab" };
 
-const reasonLabels: Record<string, string> = {
-  signup_grant: "新規登録特典",
-  purchase: "購入",
-  consume: "ダウンロード",
-  expire: "有効期限切れ",
-  admin_adjust: "運営による調整",
-};
-
 const dateFormat = new Intl.DateTimeFormat("ja-JP", { dateStyle: "medium", timeZone: "Asia/Tokyo" });
 
 export default async function AccountPage() {
   const user = await requireUser("/account");
   const supabase = await createClient();
 
-  const [{ data: profile }, { data: balance }, { data: lots }, { data: history }] = await Promise.all([
+  const [{ data: profile }, { data: balance }, { data: lots }] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", user.id).single(),
     supabase.rpc("get_token_balance"),
     supabase
@@ -33,12 +25,6 @@ export default async function AccountPage() {
       .gt("expires_at", new Date().toISOString())
       .order("expires_at")
       .limit(1),
-    supabase
-      .from("token_transactions")
-      .select("id, delta, reason, note, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(10),
   ]);
 
   const nextExpiry = lots?.[0];
@@ -63,31 +49,14 @@ export default async function AccountPage() {
             （古いものから先に使われます）
           </p>
         )}
-        {history && history.length > 0 && (
-          <table className="mt-2 w-full text-sm">
-            <thead className="text-left text-zinc-500">
-              <tr>
-                <th className="py-1 font-medium">日付</th>
-                <th className="py-1 font-medium">内容</th>
-                <th className="py-1 text-right font-medium">増減</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((tx) => (
-                <tr key={tx.id} className="border-t border-zinc-100">
-                  <td className="py-1.5">{dateFormat.format(new Date(tx.created_at))}</td>
-                  <td className="py-1.5">{reasonLabels[tx.reason] ?? tx.reason}</td>
-                  <td className={`py-1.5 text-right tabular-nums ${tx.delta > 0 ? "text-emerald-700" : ""}`}>
-                    {tx.delta > 0 ? `+${tx.delta}` : tx.delta}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        <Link href="/downloads" className="self-start text-sm font-semibold text-accent-dark underline">
-          ダウンロード履歴を見る
-        </Link>
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          <Link href="/tokens" className="text-sm font-semibold text-accent-dark underline">
+            トークンの購入・履歴
+          </Link>
+          <Link href="/downloads" className="text-sm font-semibold text-accent-dark underline">
+            ダウンロード履歴を見る
+          </Link>
+        </div>
       </Card>
 
       <Card className="flex flex-col gap-4">
