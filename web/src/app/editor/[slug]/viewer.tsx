@@ -40,7 +40,8 @@ export default function Viewer(props: ViewerProps) {
       <Canvas flat dpr={[1, 2]} camera={{ fov: 35, position: INITIAL_CAMERA }}>
         <Lights dark={props.preview.dark} rigRef={rigRef} />
         <Suspense fallback={null}>
-          <Bounds fit clip observe margin={1.25}>
+          {/* カメラの移動中に操作が始まると注視点が途中で止まるため、動かさずに合わせる */}
+          <Bounds fit clip observe margin={1.25} maxDuration={0.001}>
             <GimmickBody
               rigRef={rigRef}
               selected={props.gimmicks}
@@ -149,18 +150,20 @@ function ResetView({ signal, viewDirRef }: { signal: number; viewDirRef: RefObje
     controls.enableDamping = false;
   }, [signal, bounds, get, viewDirRef]);
 
-  // 動かしている途中に利用者が操作したら、そこで止めて操作を優先する
+  // 動かしている途中に利用者が操作したら、そこで止めて操作を優先する。
+  // パンはできないので、回転の中心はいつもモデルの中心に戻す
   useEffect(() => {
     const controls = get().controls as OrbitControlsImpl | null;
     if (!hasControls || !controls) return;
     const stop = () => {
+      controls.target.copy(bounds.getSize().center);
       if (!animation.current) return;
       controls.enableDamping = animation.current.damping;
       animation.current = null;
     };
     controls.addEventListener("start", stop);
     return () => controls.removeEventListener("start", stop);
-  }, [hasControls, get]);
+  }, [hasControls, get, bounds]);
 
   useFrame((state, delta) => {
     const a = animation.current;
