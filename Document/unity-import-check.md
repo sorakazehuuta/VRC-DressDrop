@@ -28,8 +28,8 @@
 | # | 操作 | 期待する結果 | 自動 |
 |---|---|---|---|
 | A1 | パッケージを Unity のウィンドウにドラッグ＆ドロップし、Import を押す | Console に赤いエラーが出ない | 〇（import.log） |
-| A2 | 読み込みのあと、少し待つ | `Assets/VRPrintLab/<名前>_<番号>/<名前>_<番号>.prefab`（`<名前>` は作品名の英数字。なければ `VRPrintLab`） が自動で作られる | 〇（VRPLBatchTest） |
-| A3 | `Assets/VRPrintLab/<名前>_<番号>/` を開く | `Template/`・`Tex_*.png`・`README.txt`・`LICENSE.txt`・`VRPrintLab.json` がある | |
+| A2 | 読み込みのあと、少し待つ | `Assets/VRPrintLab/<名前>/<名前>.prefab`（`<名前>` は `VRPrintLab_<テンプレートの slug>_<購入日時>`） が自動で作られる | 〇（VRPLBatchTest） |
+| A3 | `Assets/VRPrintLab/<名前>/` を開く | `Template/`・`Tex_*.png`・`README.txt`・`LICENSE.txt`・`VRPrintLab.json` がある | |
 | A4 | `Tex_*.png` を選んで Inspector を見る | Max Size が 2048、Android の設定も 2048 | |
 | A5 | メニューの Tools > VRPrintLab > Prefab をすべて作り直す | エラーなく作り直される | 〇（VRPLBatchTest） |
 

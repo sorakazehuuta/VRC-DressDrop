@@ -2,14 +2,15 @@ import "server-only";
 import { siteUrl, termsVersionLabel } from "@/lib/legal";
 import { backgroundColor, type EditorParams } from "@/lib/templates/params";
 import type { Slot } from "@/lib/templates/schema";
-import { runtimeAssets, workBuildAssets, type GimmickInput } from "./gimmick-assets";
+import { gimmickScripts, runtimeAssets, workBuildAssets, type GimmickInput } from "./gimmick-assets";
 import { setCutout, setMainTexture, setMaterialColor, templateFiles } from "./template-package";
 import { renderPrintTexture } from "./texture";
-import { buildUnityPackage, deterministicGuid, safeFileName, textAssetMeta, textureMeta, type PackageAsset } from "./unitypackage";
+import { buildUnityPackage, deterministicGuid, textAssetMeta, textureMeta, type PackageAsset } from "./unitypackage";
 
 export type WorkPackageInput = {
   purchaseId: string;
   workName: string;
+  packageName: string;
   // prefabPath: テンプレートの unitypackage の中で使う Prefab（Assets/...）
   template: { slug: string; name: string; slots: Slot[]; prefabPath: string };
   params: EditorParams;
@@ -20,13 +21,15 @@ export type WorkPackageInput = {
   createdAt: Date;
 };
 
-// フォルダ・Prefab・ダウンロードのファイルで共通の名前。環境によって文字化けしないよう英数字だけにし、取得 ID で区別する
-export function packageBaseName(workName: string, purchaseId: string) {
-  return `${safeFileName(workName.replace(/[^A-Za-z0-9 _-]/g, ""), "VRPrintLab")}_${purchaseId.slice(0, 8)}`;
+// フォルダ・Prefab・ダウンロードのファイルで共通の名前。環境によって文字化けしないよう、テンプレートの slug と購入日時（日本時間）で作る
+export function packageBaseName(templateSlug: string, purchasedAt: Date) {
+  const stamp = new Intl.DateTimeFormat("sv-SE", { dateStyle: "short", timeStyle: "medium", timeZone: "Asia/Tokyo" }).format(purchasedAt).replace(/\D/g, "");
+  return `VRPrintLab_${templateSlug}_${stamp}`;
 }
 
-export function packageFileName(workName: string, purchaseId: string) {
-  return `${packageBaseName(workName, purchaseId)}.unitypackage`;
+// 名前を記録する前の購入は、テンプレートが分からなくても購入日時で区別する
+export function purchaseFileName(purchase: { package_name: string | null; created_at: string }) {
+  return `${purchase.package_name ?? packageBaseName("work", new Date(purchase.created_at))}.unitypackage`;
 }
 
 function readme(input: WorkPackageInput, folder: string, prefabName: string) {
@@ -34,7 +37,7 @@ function readme(input: WorkPackageInput, folder: string, prefabName: string) {
   const gimmickLines = input.gimmicks.length
     ? input.gimmicks.map((g) => `- ${g.def.name}：${g.def.description}${g.def.note ? `（${g.def.note}）` : ""}`).join("\n")
     : "なし";
-  const needsUdon = input.gimmicks.some((g) => g.def.script);
+  const needsUdon = gimmickScripts(input.gimmicks).size > 0;
   return `VRPrintLab で作成したモデル
 ==============================
 
@@ -63,7 +66,7 @@ ${gimmickLines}
 - Tex_*.png : プリントのテクスチャ
 - VRPrintLab.json : Prefab の組み立て設定
 - LICENSE.txt : 利用条件
-- Assets/VRPrintLab/_Runtime : Prefab の組み立てとギミックのスクリプト（ほかの作品と共通）
+- Assets/VRPrintLab/_Runtime : Prefab の組み立てと、選んだギミックのスクリプト（ほかの作品と共通）
 
 ■ ご利用にあたって
 自分が権利を持つ画像、または許諾を得た画像を貼った完成品は、VRChat の内外で利用でき、
@@ -114,7 +117,7 @@ function license(input: WorkPackageInput) {
 }
 
 export async function buildWorkPackage(input: WorkPackageInput) {
-  const folder = packageBaseName(input.workName, input.purchaseId);
+  const folder = input.packageName;
   const prefabName = folder;
   const base = `Assets/VRPrintLab/${folder}`;
   const assets: PackageAsset[] = [];
@@ -148,7 +151,7 @@ export async function buildWorkPackage(input: WorkPackageInput) {
 
   assets.push(...template.assets);
   assets.push(...(await workBuildAssets({ base, modelPath: template.prefabPath, prefabName, gimmicks: input.gimmicks })));
-  assets.push(...runtimeAssets());
+  assets.push(...runtimeAssets(input.gimmicks));
   assets.push({ path: `${base}/README.txt`, data: Buffer.from(readme(input, folder, prefabName), "utf8"), meta: textAssetMeta });
   assets.push({ path: `${base}/LICENSE.txt`, data: Buffer.from(license(input), "utf8"), meta: textAssetMeta });
 

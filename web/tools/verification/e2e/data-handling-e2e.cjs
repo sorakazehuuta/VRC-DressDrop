@@ -170,7 +170,7 @@ async function filesUnder(bucket, prefix) {
     await page.goto(`${BASE}/editor/${TEMPLATE.slug}?work=${workRow.id}`, { waitUntil: "networkidle" });
     await panel().getByText("この版は取得済みです").waitFor({ timeout: 30000 });
     const [d3] = await Promise.all([page.waitForEvent("download", { timeout: 60000 }), page.getByRole("button", { name: "ダウンロード", exact: true }).click()]);
-    ok("控えを消した版を作品から作り直せる", Boolean(d3.suggestedFilename()));
+    ok("控えを消した版を作品から同じ名前で作り直せる", d3.suggestedFilename() === d1.suggestedFilename(), d3.suggestedFilename());
     await page.waitForTimeout(1000);
     const { data: p3 } = await admin.from("purchases").select("package_path").eq("id", purchase.id).single();
     ok("作り直しは無料で、控えのパッケージが戻る", (await balance()) === "2 トークン" && Boolean(p3.package_path), p3.package_path);

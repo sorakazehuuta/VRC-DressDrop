@@ -93,12 +93,3 @@ TextScriptImporter:
   assetBundleName:
   assetBundleVariant:
 `;
-
-// Windows のファイル名に使えない文字を除いた、フォルダ・ファイル名用の文字列
-export function safeFileName(name: string, fallback: string) {
-  const cleaned = name
-    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, "")
-    .replace(/^[.\s]+|[.\s]+$/g, "")
-    .slice(0, 50);
-  return cleaned || fallback;
-}
