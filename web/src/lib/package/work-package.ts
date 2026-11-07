@@ -24,6 +24,11 @@ export function packageFolderName(workName: string, purchaseId: string) {
   return `${safeFileName(workName, "Work")}_${purchaseId.slice(0, 8)}`;
 }
 
+// ダウンロードのファイル名。環境によって文字化けしないよう ASCII の文字だけにする
+export function packageFileName(workName: string, purchaseId: string) {
+  return `${safeFileName(workName.replace(/[^\x20-\x7e]/g, ""), "VRPrintLab")}_${purchaseId.slice(0, 8)}.unitypackage`;
+}
+
 function readme(input: WorkPackageInput, folder: string, prefabName: string) {
   const date = new Intl.DateTimeFormat("ja-JP", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Tokyo" }).format(input.createdAt);
   const gimmickLines = input.gimmicks.length

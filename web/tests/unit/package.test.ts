@@ -6,7 +6,7 @@ import { gimmickDefinitionSchema } from "@/lib/gimmicks/schema";
 import { termsVersionLabel } from "@/lib/legal";
 import { readUnityPackage, type UnityPackageEntry } from "@/lib/package/read-unitypackage";
 import { buildUnityPackage, deterministicGuid, safeFileName, type PackageAsset } from "@/lib/package/unitypackage";
-import { buildWorkPackage, packageFolderName, type WorkPackageInput } from "@/lib/package/work-package";
+import { buildWorkPackage, packageFileName, packageFolderName, type WorkPackageInput } from "@/lib/package/work-package";
 import { IMAGE_A, params, slots } from "../helpers/fixtures";
 
 // ---- テスト用のテンプレート（Unity で書き出した unitypackage と同じ形） ----
@@ -180,5 +180,12 @@ describe("ファイル名", () => {
     expect(safeFileName('a/b\\c:d*e?"f<g>h|i', "x")).not.toMatch(/[\\/:*?"<>|]/);
     expect(safeFileName("   ", "代わり")).toBe("代わり");
     expect(safeFileName("ケーキの作品", "x")).toBe("ケーキの作品");
+  });
+
+  it("ダウンロードのファイル名は ASCII だけにし、取得 ID で区別する", () => {
+    expect(packageFileName("ケーキの作品", PURCHASE)).toBe("VRPrintLab_33333333.unitypackage");
+    expect(packageFileName("My Cake", PURCHASE)).toBe("My Cake_33333333.unitypackage");
+    expect(packageFileName("ケーキ Cake 作品", OTHER_PURCHASE)).toBe("Cake_44444444.unitypackage");
+    expect(packageFileName('a/b:c', PURCHASE)).toBe("abc_33333333.unitypackage");
   });
 });
