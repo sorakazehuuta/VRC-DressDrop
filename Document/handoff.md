@@ -14,7 +14,7 @@
 | 6 | ギミック 16 種、Prefab の自動組み立て、ギミック追加分だけの課金 | 完了（VRChat 上での同期は未確認） |
 | 7 | トークン購入・有効期限切れの記録 | 完了（Stripe のテスト環境で確認済み。本番の利用開始は規約類の公開と本番公開のあと。設定は [stripe-setup.md](stripe-setup.md)） |
 | 8 | 導入ガイド・規約類・通報・管理画面 | 完了（`feature/phase8-legal-guide-admin`、未マージ。2026-11-03 に確認スクリプトで確認済み）。規約類の文面は確認用の下書き、導入ガイドの画像は未作成 |
-| 9 | テストの整備 | 完了（`feature/phase9-tests`、未マージ）。単体テスト 60 件・DB 関数のテスト 34 件・Unity の手動確認の手順書・GitHub Actions |
+| 9 | テストの整備 | 完了（`feature/phase9-tests`、未マージ）。単体テスト 60 件・DB 関数のテスト 33 件・Unity の手動確認の手順書・GitHub Actions |
 
 - サービス名は **VRPrintLab**（ロゴ・ファビコンは `web/images/common`）。リポジトリ名・フォルダ名は VRC-DressDrop のまま
 - `main` に Phase 1〜7 の成果をマージ済み。main（`dbca055`）と templates（`d494640`）は利用者が push 済みで、GitHub と一致している（2026-11-03）
@@ -71,7 +71,7 @@ npm run typecheck                # ルートの型を作ってから型チェッ
 ## 3. 環境
 
 - **Supabase**: 作成済み。URL・キーは `web/.env.local`（git 管理外）。無料プラン（1週間使わないと一時停止）
-- **マイグレーション**: `web/supabase/migrations` の 12 ファイルのうち、`20261107000000_drop_reports.sql` 以外は SQL Editor で実行済み。新しく作ったら利用者に実行を依頼する（Supabase CLI・Docker は入っていない）
+- **マイグレーション**: `web/supabase/migrations` の 12 ファイルはすべて SQL Editor で実行済み（最新は `20261107000000_drop_reports.sql`）。新しく作ったら利用者に実行を依頼する（Supabase CLI・Docker は入っていない）
 - **Storage バケット**: `work-images`（非公開・作品の画像とサムネイル）、`template-assets`（公開・glb とサムネイル）、`template-packages`（非公開・テンプレートの unitypackage）、`packages`（非公開・生成した unitypackage と購入した版の控え）
 - **データ**: ギミック 16 件。テンプレートは unitypackage 形式で 8 件を公開（ケーキ・缶バッジ・マグカップ・タペストリー・デスクマット・うちわ・抱き枕カバー・スケートボード）。旧形式の Tシャツは DB の行だけ非公開で残っている（他の利用者の作品が参照）
 - **Unity**: 2022.3.22f1（`C:\Program Files\Unity\Hub\Editor\2022.3.22f1`）。VCC の TestProject に UdonSharp・ClientSim あり。この PC には VRChat 本体が入っていない
