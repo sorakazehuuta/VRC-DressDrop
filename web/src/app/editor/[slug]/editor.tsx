@@ -14,7 +14,7 @@ import { DownloadPanel } from "./download-panel";
 import { GimmickPanel } from "./gimmick-panel";
 import { PreviewOverlay } from "./gimmick-preview/preview-overlay";
 import { initialPreviewState, looksBetterInDark, primaryAction, type PreviewState } from "./gimmick-preview/spec";
-import { saveDraft, takeDraft } from "./draft";
+import { removeExpiredDrafts, saveDraft, takeDraft } from "./draft";
 import { loadImage, type LoadedImage } from "./images";
 import { formatSavedAt, useKeepPreviousDialog } from "./keep-previous-dialog";
 import { imageExt, uploadImages, uploadThumbnail } from "./save";
@@ -139,6 +139,11 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
         actionKind === "touch" ? { ...p, touches: p.touches + 1 } : { ...p, action: { kind: actionKind, id: (p.action?.id ?? 0) + 1 } },
       );
   }, [actionKind]);
+
+  // 期限切れの下書きはどのみち引き継がないので、読み込みを待たずに消してよい
+  useEffect(() => {
+    void removeExpiredDrafts();
+  }, []);
 
   // 保存済みの作品の画像、またはログイン前に一時保存した編集内容を読み込む
   useEffect(() => {

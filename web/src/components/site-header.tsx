@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import logo from "../../images/common/logos/VRPrintLab_logo.png";
 import { createClient } from "@/lib/supabase/server";
+import { AdminNavLink } from "./admin-nav-link";
 import { HeaderNav } from "./header-nav";
 
 export async function SiteHeader() {
@@ -9,6 +10,10 @@ export async function SiteHeader() {
   const { data } = await supabase.auth.getClaims();
   const loggedIn = Boolean(data?.claims);
   const balance = loggedIn ? (await supabase.rpc("get_token_balance")).data : null;
+  // RLS で本人の行だけが読める。管理者でなければリンクの要素を作らない
+  const isAdmin = loggedIn
+    ? Boolean((await supabase.from("profiles").select("is_admin").eq("id", data!.claims.sub).maybeSingle()).data?.is_admin)
+    : false;
 
   return (
     <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/95 backdrop-blur">
@@ -16,7 +21,12 @@ export async function SiteHeader() {
         <Link href="/" className="shrink-0">
           <Image src={logo} alt="VRPrintLab" priority className="h-9 w-auto sm:h-14" sizes="(min-width: 640px) 168px, 108px" />
         </Link>
-        <HeaderNav loggedIn={loggedIn} balance={balance ?? 0} />
+        <HeaderNav
+          loggedIn={loggedIn}
+          balance={balance ?? 0}
+          adminTab={isAdmin ? <AdminNavLink variant="tab" /> : null}
+          adminMenuItem={isAdmin ? <AdminNavLink variant="menu" /> : null}
+        />
       </div>
     </header>
   );

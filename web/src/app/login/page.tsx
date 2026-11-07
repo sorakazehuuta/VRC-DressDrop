@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AuthLayout, Divider } from "@/components/auth-layout";
+import { AuthLayout, Divider, TermsNotice } from "@/components/auth-layout";
 import { FormMessage } from "@/components/ui";
 import { getCurrentUser, safeNextPath } from "@/lib/auth";
 import { LoginForm, OAuthButtons } from "../auth/forms";
@@ -36,6 +36,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       <OAuthButtons next={next} />
       <Divider>またはメールアドレスで</Divider>
       <LoginForm next={next} />
+      <TermsNotice action="ログイン・登録" />
     </AuthLayout>
   );
 }

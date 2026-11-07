@@ -1,4 +1,5 @@
 import "server-only";
+import { siteUrl, termsVersionLabel } from "@/lib/legal";
 import { backgroundColor, type EditorParams } from "@/lib/templates/params";
 import type { Slot } from "@/lib/templates/schema";
 import { runtimeAssets, workBuildAssets, type GimmickInput } from "./gimmick-assets";
@@ -56,12 +57,54 @@ ${gimmickLines}
 - Template/ : テンプレートの3Dモデル・マテリアル・Prefab（色とプリントはこの作品用に設定済み）
 - Tex_*.png : プリントのテクスチャ
 - VRPrintLab.json : Prefab の組み立て設定
+- LICENSE.txt : 利用条件
 - Assets/VRPrintLab/_Runtime : Prefab の組み立てとギミックのスクリプト（ほかの作品と共通）
 
 ■ ご利用にあたって
-作成したモデルは VRChat の内外で自由にお使いいただけます。
-ただし、テンプレートの3Dモデルそのものを単体で再配布・販売することは禁止しています。
-アップロードした画像の権利は、作成者ご本人が保証するものとします。
+自分が権利を持つ画像、または許諾を得た画像を貼った完成品は、VRChat の内外で利用でき、
+BOOTH などで販売・無料配布もできます（販売用のライセンスや売上の歩合は不要です）。
+画像を貼っていないテンプレート、画像を外したモデル、色を変えただけのモデルは、再配布・販売できません。
+完成品を受け取った人は利用・配置・調整ができますが、このパッケージや取り出したモデル・テクスチャの
+再配布・再販売はできません。詳しくは LICENSE.txt と利用規約（${termsUrl()}）をご覧ください。
+`;
+}
+
+const termsUrl = () => `${siteUrl()}/terms`;
+
+// 完成品を販売・配布したときに受け取った人も読めるよう、利用条件をパッケージに同梱する
+function license(input: WorkPackageInput) {
+  return `VRPrintLab 利用条件
+==============================
+
+作品名      : ${input.workName}
+テンプレート: ${input.template.name}
+取得 ID     : ${input.purchaseId}
+利用規約    : ${termsUrl()}
+規約の版    : ${termsVersionLabel()}
+
+このパッケージは VRPrintLab（${siteUrl()}）で作成されたものです。
+ここに書いていないことは、上記の版の利用規約に従います。
+
+■ 作成した人（VRPrintLab でこのパッケージをダウンロードした人）
+- 完成品を VRChat の内外で利用できます。
+- 自分が権利を持つ画像、または権利者から許諾を得た画像を貼った完成品は、BOOTH などで販売・無料配布できます。
+  販売用のライセンスや売上の歩合は必要ありません。
+- 次のものは再配布・販売できません。
+  - 画像を貼っていない、未加工のテンプレート
+  - 完成品から画像を外したモデル
+  - 色を変えただけのモデル
+  - テンプレート・ギミックを完成品から取り出して単体にしたもの
+- 販売・配布するときは、受け取った人にも下の条件を守ってもらってください。
+
+■ 完成品を受け取った人（購入者・配布を受けた人）
+- VRChat などで、完成品を利用・配置・調整できます
+  （ワールドへの配置、位置・大きさ・向きの調整、ギミックの設定値の変更などを含みます）。
+- このパッケージ、およびパッケージから取り出したモデル・テクスチャ・スクリプトを、
+  再配布・再販売することはできません。
+
+■ 貼られた画像について
+- 画像の権利は、その画像の権利者にあります。
+- VRPrintLab の利用条件は、画像の権利者が元の画像を VRPrintLab とは別に利用することを制限しません。
 `;
 }
 
@@ -102,6 +145,7 @@ export async function buildWorkPackage(input: WorkPackageInput) {
   assets.push(...(await workBuildAssets({ base, workName: input.workName, modelPath: template.prefabPath, prefabName, gimmicks: input.gimmicks })));
   assets.push(...runtimeAssets());
   assets.push({ path: `${base}/README.txt`, data: Buffer.from(readme(input, folder, prefabName), "utf8"), meta: textAssetMeta });
+  assets.push({ path: `${base}/LICENSE.txt`, data: Buffer.from(license(input), "utf8"), meta: textAssetMeta });
 
   return buildUnityPackage(input.purchaseId, assets);
 }

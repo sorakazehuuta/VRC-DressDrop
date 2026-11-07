@@ -7,4 +7,5 @@ export const tokenReasonLabels: Record<string, string> = {
   admin_adjust: "運営による調整",
   refund: "返金による取り消し",
   chargeback: "支払いの取り消し",
+  account_deleted: "退会",
 };

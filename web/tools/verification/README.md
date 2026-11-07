@@ -1,7 +1,9 @@
 # 動作確認用スクリプト
 
-開発中の確認に使ったスクリプトです（自動テストとして整備するのは Phase 9 の予定）。
-いずれも **テスト用ユーザーを作って最後に削除** します。Supabase は `.env.local` の本番プロジェクトを使うので注意してください。
+画面を通した確認（ブラウザ）と、Unity での確認に使うスクリプトです。
+処理ごとの自動テストは `web/tests` にあります（`npm test` は単体テスト、`npm run test:db` は DB 関数のテスト）。
+Unity での手動確認の手順と記録表は `Document/unity-import-check.md` にあります。
+いずれも **テスト用ユーザーを作って最後に削除** します（退会後も残る記録の表も `e2e/cleanup.cjs` で消す）。Supabase は `.env.local` の本番プロジェクトを使うので注意してください。
 
 ## ブラウザでの通し確認（e2e/）
 
@@ -20,6 +22,9 @@ node --env-file=.env.local tools/verification/e2e/works-e2e.cjs     # 保存・�
 node --env-file=.env.local tools/verification/e2e/download-e2e.cjs  # ダウンロード・トークン消費・再ダウンロード・履歴
 node --env-file=.env.local tools/verification/e2e/versions-e2e.cjs  # 数値入力・前回の内容を残す確認・履歴の詳細
 node --env-file=.env.local tools/verification/e2e/gimmick-e2e.cjs   # ギミックの選択・内訳・差額の課金
+node --env-file=.env.local tools/verification/e2e/data-handling-e2e.cjs  # 下書きの期限・LICENSE.txt・同じ画像の貼り直し・控えの削除・作品の削除・管理画面・退会
+node --env-file=.env.local tools/verification/e2e/phase8-e2e.cjs         # 非公開テンプレート・規約類のページ・通報・管理画面での対応と設定・集計
+node --env-file=.env.local tools/verification/e2e/admin-link-check.cjs   # ヘッダーの「管理画面」が管理者にだけ届く（HTML・JavaScript・RSC に含まれない）
 ```
 
 スクリーンショットは `tools/verification/e2e/shots/`（`SHOTS_DIR` で変更可）に保存されます。

@@ -1,6 +1,7 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const { createClient } = require("@supabase/supabase-js");
+const { cleanupUser } = require("./cleanup.cjs");
 const BASE = "http://localhost:3002";
 // 確認に使うテンプレート（別のテンプレートで確かめるときはここを書き換える）
 const TEMPLATE = { slug: "cake", colorKey: "base", colorLabel: "クリームの色", defaultColor: "#fffbed" };
@@ -10,19 +11,7 @@ const email = `e2e-${Date.now()}@example.com`;
 const password = "TestPass-12345";
 const ok = (label, cond, extra = "") => console.log(`${cond ? "OK " : "NG "} ${label}${extra ? " — " + extra : ""}`);
 
-async function cleanup(uid) {
-  for (const bucket of ["work-images", "packages"]) {
-    const { data: entries } = await admin.storage.from(bucket).list(uid);
-    for (const e of entries || []) {
-      if (e.id) await admin.storage.from(bucket).remove([`${uid}/${e.name}`]);
-      else {
-        const { data: files } = await admin.storage.from(bucket).list(`${uid}/${e.name}`);
-        if (files && files.length) await admin.storage.from(bucket).remove(files.map((f) => `${uid}/${e.name}/${f.name}`));
-      }
-    }
-  }
-  return admin.auth.admin.deleteUser(uid);
-}
+const cleanup = (uid) => cleanupUser(admin, uid);
 
 (async () => {
   const { data: created, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
@@ -72,7 +61,7 @@ async function cleanup(uid) {
     await download1.saveAs(file1);
     const head = fs.readFileSync(file1).subarray(0, 2);
     ok("中身が gzip（unitypackage）", head[0] === 0x1f && head[1] === 0x8b, `${(fs.statSync(file1).size / 1024).toFixed(0)} KB`);
-    await page.getByText("この内容は購入済みです").waitFor({ timeout: 15000 });
+    await page.getByText("この版は取得済みです").waitFor({ timeout: 15000 });
     await page.waitForFunction(() => document.querySelector("header").innerText.includes("2 トークン"), null, { timeout: 15000 });
     ok("1トークン消費され、ヘッダーの残高が2になる", true);
 
@@ -84,7 +73,7 @@ async function cleanup(uid) {
 
     // 3回目: 編集して内容を変える → 再びトークンが必要
     await page.getByLabel("色 #16a34a").click();
-    ok("編集すると購入済み表示が消える", !(await page.getByText("この内容は購入済みです").isVisible()));
+    ok("編集すると購入済み表示が消える", !(await page.getByText("この版は取得済みです").isVisible()));
     await page.getByRole("button", { name: "保存してダウンロード" }).click();
     await page.getByRole("dialog").waitFor({ timeout: 30000 });
     await Promise.all([page.waitForEvent("download", { timeout: 60000 }), page.getByRole("dialog").getByRole("button", { name: "ダウンロードする" }).click()]);
@@ -107,8 +96,8 @@ async function cleanup(uid) {
     // 作品を削除しても履歴から落とせる
     const { data: work } = await admin.from("works").select("id").eq("user_id", uid).single();
     await page.goto(`${BASE}/works`, { waitUntil: "networkidle" });
-    page.once("dialog", (d) => d.accept());
-    await page.getByRole("button", { name: "削除" }).click();
+    await page.getByRole("button", { name: "削除", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "削除する" }).click();
     await page.waitForFunction(() => document.querySelectorAll("article").length === 0, null, { timeout: 15000 });
     await page.goto(`${BASE}/downloads`, { waitUntil: "networkidle" });
     ok("作品を削除しても履歴は残る", (await page.locator("main li").count()) === 2 && (await page.getByText("作品は削除済み").count()) === 2, work.id);

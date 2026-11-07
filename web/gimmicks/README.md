@@ -15,9 +15,9 @@ gimmicks/
 
 | やりたいこと | 手順 |
 |---|---|
-| トークン数を変える | `catalog/<slug>.json` の `tokenCost` を書き換えて `npm run gimmicks:sync` |
+| トークン数を変える | 管理画面（/admin/catalog）で変える。登録済みのギミックは gimmicks:sync でトークン数・公開状態が変わらない（`tokenCost` / `isPublic` は初回の登録だけに使う） |
 | 名前・説明を変える | `name` / `description` を書き換えて `npm run gimmicks:sync` |
-| 一時的に隠す | `isPublic` を `false` にして `npm run gimmicks:sync` |
+| 一時的に隠す | 管理画面（/admin/catalog）で「公開」を外す |
 | 削除する | `catalog/<slug>.json` を消して `npm run gimmicks:sync`（非公開になる。使っている作品を壊さないため DB からは消さない） |
 | 設定項目を足す | `params` に追加。スクリプトを使うギミックなら、同じ名前の `public` フィールドを `.cs` に足す |
 | 新しいギミックを作る | 下の「新しいギミックの作り方」 |

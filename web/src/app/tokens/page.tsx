@@ -18,6 +18,7 @@ const checkoutMessages: Record<SyncResult, { kind: "ok" | "info" | "error"; text
   awaiting_payment: { kind: "info", text: "コンビニでのお支払いをお待ちしています。入金が確認できしだいトークンを追加します（下の「お支払い待ち」から払込票を確認できます）。" },
   pending: { kind: "info", text: "お支払いを確認しています。反映まで少し時間がかかることがあります。しばらくしてからページを再読み込みしてください。" },
   blocked: { kind: "error", text: "このカードはご利用いただけません。お支払いは全額返金しました。" },
+  account_deleted: { kind: "error", text: "退会済みのアカウントのため、お支払いは全額返金しました。" },
   expired: { kind: "error", text: "決済画面の有効期限が切れました。もう一度お試しください。" },
   failed: { kind: "error", text: "お支払いを完了できませんでした。もう一度お試しください。" },
   unknown: { kind: "error", text: "お支払いの情報を確認できませんでした。" },
@@ -125,12 +126,26 @@ export default async function TokensPage({ searchParams }: { searchParams: Promi
           })}
         </ul>
         <ul className="list-disc space-y-1 pl-5 text-xs text-zinc-500">
+          <li>代金は表示の金額（税込）で、ほかに手数料はかかりません。カードは購入時に、コンビニ払いは払込票の期限（3日）までにお支払いください。</li>
+          <li>トークンは、カードは決済の完了後すぐに、コンビニ払いは入金の確認後に追加されます。</li>
+          <li>デジタルの商品のため、決済後の購入の取り消し（キャンセル）はできません。</li>
           <li>トークンの有効期限は、購入・付与から180日です。古いものから先に使われます。</li>
           <li>トークンは VRPrintLab の中だけで使えます。換金・譲渡はできません。</li>
           <li>購入したトークンは原則として払い戻しできません。運営側の不具合でダウンロードできなかった場合などは返金に応じます（未使用分のみ）。</li>
           <li>未成年の方は、保護者の同意を得てから購入してください。</li>
           <li>コンビニ払いは、お支払いから反映まで数分かかることがあります。支払い期限は3日です。</li>
         </ul>
+        <p className="text-xs text-zinc-600">
+          「購入する」を押すと、
+          <Link href="/terms" className="underline" target="_blank">
+            利用規約
+          </Link>
+          と
+          <Link href="/tokushoho" className="underline" target="_blank">
+            特定商取引法に基づく表記
+          </Link>
+          の内容に同意したものとみなします。
+        </p>
       </Card>
 
       {!!waiting?.length && (

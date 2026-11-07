@@ -1,0 +1,29 @@
+# web（Next.js）の確認: lint・型チェック・単体テスト。
+# DB 関数のテスト（npm run test:db）は本物の Supabase を使うため、ここでは実行しない（手元で実行する）
+name: web checks
+
+on:
+  push:
+    paths: ["web/**", ".github/workflows/web-checks.yml"]
+  pull_request:
+    paths: ["web/**", ".github/workflows/web-checks.yml"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      # ルートの型（PageProps など）を作ってから型チェックする
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+      - run: npm test

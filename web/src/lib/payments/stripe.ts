@@ -25,7 +25,7 @@ const paymentIdOf = (session: Stripe.Checkout.Session) => session.metadata?.paym
 const intentIdOf = (session: Stripe.Checkout.Session) =>
   typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent?.id ?? null);
 
-export type SyncResult = "completed" | "awaiting_payment" | "blocked" | "expired" | "failed" | "pending" | "unknown";
+export type SyncResult = "completed" | "awaiting_payment" | "blocked" | "account_deleted" | "expired" | "failed" | "pending" | "unknown";
 
 // Checkout セッションの状態を DB に反映する（Webhook と、決済後に戻ってきた画面の両方から呼ぶ。何度呼んでも同じ結果になる）
 export async function syncCheckoutSession(session: Stripe.Checkout.Session): Promise<SyncResult> {
@@ -104,6 +104,15 @@ async function completePayment(paymentId: string, intentId: string | null): Prom
       if (code !== "charge_disputed" && code !== "charge_already_refunded") throw e;
     }
     return "blocked";
+  }
+  if (data === "account_deleted" && intentId) {
+    // 退会したあとに入金された支払い（コンビニ払いなど）は、トークンを付与せず全額を返金する
+    try {
+      await stripe().refunds.create({ payment_intent: intentId, reason: "requested_by_customer" }, { idempotencyKey: `deleted-${paymentId}` });
+    } catch (e) {
+      if ((e as { code?: string }).code !== "charge_already_refunded") throw e;
+    }
+    return "account_deleted";
   }
   return data === "completed" ? "completed" : (data as SyncResult);
 }

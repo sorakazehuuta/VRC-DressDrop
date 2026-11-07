@@ -1,6 +1,5 @@
 "use server";
 
-import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { gimmickMap, listGimmicks } from "@/lib/gimmicks/queries";
 import { parseGimmickSelection, type GimmickDefinition, type GimmickSelection } from "@/lib/gimmicks/schema";
@@ -10,32 +9,29 @@ import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { parseEditorParams, type EditorParams } from "@/lib/templates/params";
 import { slotsSchema, type Slot } from "@/lib/templates/schema";
 import { WORK_IMAGES_BUCKET } from "@/lib/works/constants";
+import { priceVersion, versionKindOf, workVersions, type CostLine, type VersionKind } from "@/lib/works/versions";
 
 const PACKAGES_BUCKET = "packages";
 const URL_TTL_SECONDS = 5 * 60;
 
-// 内訳の1行。paid は「この土台の版で購入済み」なら true（今回は消費しない）
-export type CostLine = { label: string; cost: number; paid: boolean };
+export type { CostLine, VersionKind };
 
 export type DownloadQuote =
   | { ok: true; purchased: true }
-  | { ok: true; purchased: false; cost: number; balance: number; breakdown: CostLine[] }
+  | { ok: true; purchased: false; cost: number; balance: number; breakdown: CostLine[]; versionKind: VersionKind }
   | { ok: false; error: string };
 
 export type DownloadResult =
   | { ok: true; kind: "ready"; url: string; filename: string; charged: number }
-  | { ok: true; kind: "confirm"; cost: number; balance: number; breakdown: CostLine[] }
+  | { ok: true; kind: "confirm"; cost: number; balance: number; breakdown: CostLine[]; versionKind: VersionKind }
   | { ok: false; error: string; code?: "insufficient" };
 
-// 「土台の版」: テンプレートと見た目の編集内容（画像 ID を含む）。ギミックは含めない
-function versionHash(templateId: string, params: EditorParams) {
-  return createHash("sha256").update(JSON.stringify({ templateId, params })).digest("hex");
-}
+const SUSPENDED_ACCOUNT = "このアカウントは停止されているため、ダウンロードできません。";
+const SUSPENDED_PURCHASE = "この版は運営により停止されているため、ダウンロードできません。";
 
-// ギミックまで含めた版。ギミックがなければ土台の版と同じ（ギミック導入前の購入と互換）
-function fullVersionHash(baseHash: string, gimmicks: GimmickSelection[]) {
-  if (gimmicks.length === 0) return baseHash;
-  return createHash("sha256").update(JSON.stringify({ baseHash, gimmicks })).digest("hex");
+async function accountSuspended(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const { data } = await supabase.from("profiles").select("status").eq("id", userId).maybeSingle();
+  return data?.status === "suspended";
 }
 
 async function loadWork(workId: string) {
@@ -46,12 +42,13 @@ async function loadWork(workId: string) {
 
   const { data: work } = await supabase
     .from("works")
-    .select("id, name, params, gimmicks, status, template_id, thumbnail_path, templates(id, slug, name, slots, token_cost, package_model_path, package_prefab_path), work_images(id, storage_path)")
+    .select("id, name, params, gimmicks, status, template_id, thumbnail_path, templates(id, slug, name, slots, token_cost, package_model_path, package_prefab_path), work_images(id, storage_path, content_hash)")
     .eq("id", workId)
     .eq("user_id", userId)
     .maybeSingle();
   if (!work) return { error: "作品が見つかりません。保存してからダウンロードしてください。" } as const;
   if (work.status === "suspended") return { error: "この作品は運営により公開停止されているため、ダウンロードできません。" } as const;
+  if (await accountSuspended(supabase, userId)) return { error: SUSPENDED_ACCOUNT } as const;
 
   const template = work.templates as unknown as {
     id: string;
@@ -67,27 +64,28 @@ async function loadWork(workId: string) {
   const params = parseEditorParams(work.params, slots);
   const defs = gimmickMap(await listGimmicks());
   const gimmicks = parseGimmickSelection(work.gimmicks, defs);
-  const baseHash = versionHash(template.id, params);
-  const hash = fullVersionHash(baseHash, gimmicks);
+  // 新しい購入は画像の中身で計算した版で記録する。以前の購入（画像 ID で計算）とも一致すれば購入済みとする
+  const contentHashes = new Map(
+    work.work_images.flatMap((img) => (img.content_hash ? [[img.id, img.content_hash] as const] : [])),
+  );
+  const { baseHash, hash, baseHashes, fullHashes } = workVersions(template.id, params, contentHashes, gimmicks);
 
   // 同じ土台の版の購入（ギミック導入前の購入は params_hash が土台の版と同じ）
   const { data: related } = await supabase
     .from("purchases")
-    .select("id, params_hash, base_hash, gimmick_slugs, package_path")
+    .select("id, params_hash, base_hash, gimmick_slugs, package_path, suspended_at")
     .eq("work_id", work.id)
-    .or(`base_hash.eq.${baseHash},params_hash.eq.${baseHash}`);
-  const purchase = (related ?? []).find((p) => p.params_hash === hash) ?? null;
-  const basePaid = (related ?? []).length > 0;
-  const paidSlugs = new Set((related ?? []).flatMap((p) => p.gimmick_slugs ?? []));
-  const breakdown: CostLine[] = [
-    { label: `${template.name}（モデル）`, cost: template.token_cost, paid: basePaid },
-    ...gimmicks.map((g) => {
-      const def = defs.get(g.slug) as GimmickDefinition;
-      return { label: def.name, cost: def.tokenCost, paid: paidSlugs.has(g.slug) };
-    }),
-  ];
-  const cost = breakdown.reduce((sum, line) => sum + (line.paid ? 0 : line.cost), 0);
-  return { supabase, userId, work, template, slots, params, defs, gimmicks, baseHash, hash, purchase, breakdown, cost } as const;
+    .or(`base_hash.in.(${baseHashes.join(",")}),params_hash.in.(${baseHashes.join(",")})`);
+  const { purchase, basePaid, breakdown, cost } = priceVersion({
+    template: { name: template.name, tokenCost: template.token_cost },
+    gimmicks: gimmicks.map((g) => defs.get(g.slug) as GimmickDefinition),
+    related: related ?? [],
+    fullHashes,
+  });
+  if (purchase?.suspended_at) return { error: SUSPENDED_PURCHASE } as const;
+  const { count } = basePaid ? { count: 1 } : await supabase.from("purchases").select("id", { count: "exact", head: true }).eq("work_id", work.id);
+  const versionKind = versionKindOf(basePaid, Boolean(count));
+  return { supabase, userId, work, template, slots, params, defs, gimmicks, baseHash, hash, purchase, breakdown, cost, versionKind } as const;
 }
 
 async function balanceOf(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -99,7 +97,8 @@ export async function getDownloadQuote(workId: string): Promise<DownloadQuote> {
   const loaded = await loadWork(workId);
   if ("error" in loaded) return { ok: false, error: loaded.error as string };
   if (loaded.purchase) return { ok: true, purchased: true };
-  return { ok: true, purchased: false, cost: loaded.cost, balance: await balanceOf(loaded.supabase), breakdown: loaded.breakdown };
+  const { cost, breakdown, versionKind } = loaded;
+  return { ok: true, purchased: false, cost, balance: await balanceOf(loaded.supabase), breakdown, versionKind };
 }
 
 const packageFileName = (name: string) => `${safeFileName(name, "VRPrintLab")}.unitypackage`;
@@ -170,21 +169,26 @@ async function saveSnapshot(
 export async function downloadWork(workId: string, confirmed: boolean): Promise<DownloadResult> {
   const loaded = await loadWork(workId);
   if ("error" in loaded) return { ok: false, error: loaded.error as string };
-  const { supabase, userId, work, template, slots, params, defs, gimmicks, baseHash, hash, purchase, breakdown, cost } = loaded;
+  const { supabase, userId, work, template, slots, params, defs, gimmicks, baseHash, hash, purchase, breakdown, cost, versionKind } = loaded;
 
   if (purchase?.package_path) {
     const url = await signedDownloadUrl(supabase, purchase.package_path);
     return url ? { ok: true, kind: "ready", url, filename: packageFileName(work.name), charged: 0 } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
   }
 
-  const balance = await balanceOf(supabase);
-  // ギミックの設定値だけを変えた場合などは無料なので、確認せずに作り直す
-  if (!confirmed && cost > 0) return { ok: true, kind: "confirm", cost, balance, breakdown };
-  if (balance < cost) return { ok: false, error: `トークンが足りません（必要: ${cost} / 残り: ${balance}）。`, code: "insufficient" };
+  // 控えを削除した取得済みの版は、今の作品から無料で作り直す（同じ購入 ID なので GUID も同じになる）
+  const restoring = purchase !== null;
+  if (!restoring) {
+    const balance = await balanceOf(supabase);
+    // ギミックの設定値だけを変えた場合などは無料なので、確認せずに作り直す
+    if (!confirmed && cost > 0) return { ok: true, kind: "confirm", cost, balance, breakdown, versionKind };
+    if (balance < cost) return { ok: false, error: `トークンが足りません（必要: ${cost} / 残り: ${balance}）。`, code: "insufficient" };
+  }
 
   const admin = createAdminClient();
-  const purchaseId = crypto.randomUUID();
-  const packagePath = `${userId}/${purchaseId}.unitypackage`;
+  const purchaseId = purchase?.id ?? crypto.randomUUID();
+  // 作り直す場合は、削除キューに残っている以前のファイルと重ならないパスにする
+  const packagePath = restoring ? `${userId}/${purchaseId}-${Date.now()}.unitypackage` : `${userId}/${purchaseId}.unitypackage`;
   const images = new Map<string, Buffer>();
   const imageExt = new Map<string, string>();
 
@@ -217,6 +221,13 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
     if (uploadError) throw new Error("upload");
   } catch {
     return { ok: false, error: "モデルの生成に失敗しました。時間をおいて再度お試しください。トークンは消費していません。" };
+  }
+
+  if (restoring) {
+    const { error } = await admin.from("purchases").update({ package_path: packagePath }).eq("id", purchaseId);
+    if (error) return { ok: false, error: "ダウンロードの処理に失敗しました。" };
+    const url = await signedDownloadUrl(supabase, packagePath);
+    return url ? { ok: true, kind: "ready", url, filename: packageFileName(work.name), charged: 0 } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
   }
 
   const { data: rows, error } = await admin.rpc("purchase_work_version", {
@@ -282,10 +293,12 @@ export async function purchaseDownloadUrl(purchaseId: string): Promise<{ ok: tru
   // RLS でも本人の購入に限られるが、設定ミスに備えてここでも絞り込む
   const { data } = await supabase
     .from("purchases")
-    .select("package_path, work_name")
+    .select("package_path, work_name, suspended_at")
     .eq("id", purchaseId)
     .eq("user_id", userId)
     .maybeSingle();
+  if (data?.suspended_at) return { ok: false, error: SUSPENDED_PURCHASE };
+  if (await accountSuspended(supabase, userId)) return { ok: false, error: SUSPENDED_ACCOUNT };
   if (!data?.package_path) return { ok: false, error: "ダウンロードできるファイルが見つかりません。" };
   const url = await signedDownloadUrl(supabase, data.package_path);
   return url ? { ok: true, url, filename: packageFileName(data.work_name) } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };

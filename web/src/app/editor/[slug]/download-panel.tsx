@@ -3,11 +3,17 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { downloadWork, getDownloadQuote, type CostLine, type DownloadQuote } from "@/app/works/download";
+import { downloadWork, getDownloadQuote, type CostLine, type DownloadQuote, type VersionKind } from "@/app/works/download";
 import { Button } from "@/components/ui";
 import { saveFileFromUrl } from "@/lib/save-file";
 
-type Confirm = { workId: string; cost: number; balance: number; breakdown: CostLine[] };
+type Confirm = { workId: string; cost: number; balance: number; breakdown: CostLine[]; versionKind: VersionKind };
+
+const versionMessages: Record<VersionKind, string> = {
+  first: "この作品はまだ取得していません。",
+  changed: "取得済みの版から見た目が変わっているため、新しい版としてトークンを使います。",
+  gimmicks: "見た目は取得済みです。追加したギミックの分だけトークンを使います。",
+};
 
 export function DownloadPanel({
   tokenCost,
@@ -32,7 +38,7 @@ export function DownloadPanel({
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string; insufficient?: boolean } | null>(null);
 
-  // 保存済みの内容が購入済みかどうかを確認する（保存のたびに更新）
+  // 保存済みの内容が取得済みかどうかを確認する（保存のたびに更新）
   useEffect(() => {
     if (!workId) return;
     let cancelled = false;
@@ -53,7 +59,7 @@ export function DownloadPanel({
       return;
     }
     if (result.kind === "confirm") {
-      setConfirm({ workId: id, cost: result.cost, balance: result.balance, breakdown: result.breakdown });
+      setConfirm({ workId: id, cost: result.cost, balance: result.balance, breakdown: result.breakdown, versionKind: result.versionKind });
       return;
     }
     await saveFileFromUrl(result.url, result.filename);
@@ -91,21 +97,33 @@ export function DownloadPanel({
   return (
     <div className="mt-auto flex flex-col gap-3 rounded-lg bg-zinc-100 p-4 text-sm">
       {purchased ? (
-        <p className="font-medium text-accent-dark">この内容は購入済みです。何度でも無料でダウンロードできます。</p>
+        <p className="font-medium text-accent-dark">この版は取得済みです。何度でも無料でダウンロードできます。</p>
       ) : (
-        <p>
-          ダウンロードに必要なトークン:{" "}
-          <strong className="text-base">{!dirty && quote?.ok && !quote.purchased ? quote.cost : tokenCost}</strong>
-          {!dirty && quote?.ok && !quote.purchased && quote.cost < tokenCost && (
-            <span className="ml-1 text-xs text-accent-dark">（購入済みの分を除く）</span>
+        <div className="flex flex-col gap-1">
+          <p>
+            ダウンロードに必要なトークン:{" "}
+            <strong className="text-base">{!dirty && quote?.ok && !quote.purchased ? quote.cost : tokenCost}</strong>
+            {!dirty && quote?.ok && !quote.purchased && quote.cost < tokenCost && (
+              <span className="ml-1 text-xs text-accent-dark">（取得済みの分を除く）</span>
+            )}
+            {quote?.ok && !quote.purchased && <span className="ml-2 text-xs text-zinc-500">（残り {quote.balance}）</span>}
+          </p>
+          {!dirty && quote?.ok && !quote.purchased && (
+            <p className="text-xs text-zinc-600">{quote.cost === 0 ? "ギミックの設定値の変更や取り外しだけなので、トークンは使いません。" : versionMessages[quote.versionKind]}</p>
           )}
-          {quote?.ok && !quote.purchased && <span className="ml-2 text-xs text-zinc-500">（残り {quote.balance}）</span>}
-        </p>
+          {dirty && workId && <p className="text-xs text-zinc-500">保存すると、取得済みの版かどうかを確認します。</p>}
+        </div>
       )}
       <Button type="button" onClick={() => void onClick()} disabled={disabled || busy}>
         {busy ? "準備中…" : loggedIn ? (dirty || !workId ? "保存してダウンロード" : "ダウンロード") : "ログインしてダウンロード"}
       </Button>
-      <p className="text-xs text-zinc-500">VRChat 用の unitypackage（PC / Quest 対応）をダウンロードします。</p>
+      <p className="text-xs text-zinc-500">
+        VRChat 用の unitypackage（PC / Quest 対応）をダウンロードします。ワールドへの置き方は
+        <Link href="/guide" target="_blank" className="underline">
+          導入ガイド
+        </Link>
+        をご覧ください。
+      </p>
       {message && (
         <p role={message.kind === "error" ? "alert" : "status"} className={message.kind === "error" ? "text-red-700" : "text-accent-dark"}>
           {message.text}
@@ -123,11 +141,12 @@ export function DownloadPanel({
             <h2 id="download-confirm-title" className="text-lg font-bold text-brand">
               トークンを使ってダウンロード
             </h2>
+            <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">{versionMessages[confirm.versionKind]}</p>
             <ul className="flex flex-col gap-1 rounded-md bg-zinc-50 p-3 text-sm">
               {confirm.breakdown.map((line) => (
                 <li key={line.label} className="flex justify-between gap-3">
                   <span>{line.label}</span>
-                  <span className="tabular-nums">{line.paid ? <span className="text-xs text-accent-dark">購入済み 0</span> : line.cost}</span>
+                  <span className="tabular-nums">{line.paid ? <span className="text-xs text-accent-dark">取得済み 0</span> : line.cost}</span>
                 </li>
               ))}
             </ul>
@@ -145,7 +164,7 @@ export function DownloadPanel({
               <p className="text-sm text-red-700">トークンが足りません。</p>
             ) : (
               <p className="text-xs text-zinc-500">
-                一度ダウンロードした内容は、あとから何度でも無料でダウンロードできます。編集して内容を変えた場合は、新しくトークンが必要です。
+                一度ダウンロードした版は、あとから何度でも無料でダウンロードできます。見た目を変えると新しい版になり、トークンが必要です。
               </p>
             )}
             <div className="flex justify-end gap-2">

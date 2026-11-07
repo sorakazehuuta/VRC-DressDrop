@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { requireUser, siteOrigin } from "@/lib/auth";
+import { TERMS_VERSION } from "@/lib/legal";
 import { paymentMethodTypes, stripe, stripeConfigured } from "@/lib/payments/stripe";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -22,7 +23,7 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
 
   const { data: payment, error } = await admin
     .from("payments")
-    .insert({ user_id: user.id, pack_id: pack.id, amount_jpy: pack.price_jpy, tokens: pack.tokens, status: "created" })
+    .insert({ user_id: user.id, pack_id: pack.id, amount_jpy: pack.price_jpy, tokens: pack.tokens, status: "created", terms_version: TERMS_VERSION })
     .select("id")
     .single();
   if (error || !payment) return { error: "購入の準備に失敗しました。時間をおいて再度お試しください。" };

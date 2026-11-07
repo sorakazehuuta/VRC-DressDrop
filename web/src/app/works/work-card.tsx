@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Button } from "@/components/ui";
 import { deleteWork, duplicateWork, renameWork, type WorkActionResult } from "./actions";
 
 export type WorkCardData = {
@@ -18,6 +20,7 @@ const dateFormat = new Intl.DateTimeFormat("ja-JP", { dateStyle: "medium", timeS
 
 export function WorkCard({ work, canDuplicate }: { work: WorkCardData; canDuplicate: boolean }) {
   const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [name, setName] = useState(work.name);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -109,17 +112,42 @@ export function WorkCard({ work, canDuplicate }: { work: WorkCardData; canDuplic
           <button
             type="button"
             disabled={pending}
-            onClick={() => {
-              if (window.confirm(`「${work.name}」を削除します。アップロードした画像も削除され、元に戻せません。よろしいですか？`)) {
-                run(() => deleteWork(work.id));
-              }
-            }}
+            onClick={() => setConfirmingDelete(true)}
             className="cursor-pointer text-red-600 hover:underline"
           >
             削除
           </button>
         </div>
       </div>
+      {confirmingDelete && (
+        <ConfirmDialog title={`「${work.name}」を削除しますか？`} onClose={() => setConfirmingDelete(false)}>
+          <div className="flex flex-col gap-2 text-sm leading-relaxed text-zinc-600">
+            <p>作品と、編集用にアップロードした画像を削除します。元に戻せません。</p>
+            <p>
+              ダウンロードした版の控え（パッケージと元画像のコピー）は削除されず、
+              <Link href="/downloads" className="underline">
+                ダウンロード履歴
+              </Link>
+              から再ダウンロードできます。控えも消したい場合は、ダウンロード履歴の版の詳細から削除してください。
+            </p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={() => setConfirmingDelete(false)}>
+              キャンセル
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={() => {
+                setConfirmingDelete(false);
+                run(() => deleteWork(work.id));
+              }}
+            >
+              削除する
+            </Button>
+          </div>
+        </ConfirmDialog>
+      )}
     </article>
   );
 }

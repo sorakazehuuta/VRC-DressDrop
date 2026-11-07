@@ -149,8 +149,13 @@ async function main() {
     return name;
   }
 
+  // トークン数・公開状態は、登録済みなら DB の値（管理画面で変えた値）を残す。template.json の値は初回の登録だけに使う
+  const { data: registered } = await supabase.from("templates").select("slug");
+  const registeredSlugs = new Set((registered ?? []).map((t) => t.slug));
+
   for (const { dir, manifest, prefab, packageFile } of loaded) {
     if (!manifest) continue;
+    const isNew = !registeredSlugs.has(manifest.slug);
     const previewPath = await upload("template-assets", manifest.slug, path.join(dir, manifest.files.preview));
     const packagePath = await upload("template-packages", manifest.slug, packageFile);
     // template.json で指定がなければ、templates:thumbnails が自動生成した thumbnail.png を使う
@@ -164,8 +169,7 @@ async function main() {
         name: manifest.name,
         category: manifest.category,
         description: manifest.description,
-        token_cost: manifest.tokenCost,
-        is_public: manifest.isPublic,
+        ...(isNew ? { token_cost: manifest.tokenCost, is_public: manifest.isPublic } : {}),
         sort_order: manifest.sortOrder,
         preview_model_path: previewPath,
         package_model_path: packagePath,
@@ -179,7 +183,11 @@ async function main() {
       const hint = error.message.includes("package_prefab_path") ? "（マイグレーション 20261016000000_unitypackage_templates.sql を SQL Editor で実行してください）" : "";
       throw new Error(`${manifest.slug} の登録に失敗: ${error.message}${hint}`);
     }
-    console.log(`登録しました: ${manifest.slug}（${manifest.isPublic ? "公開" : "非公開"}）`);
+    console.log(
+      isNew
+        ? `登録しました: ${manifest.slug}（${manifest.isPublic ? "公開" : "非公開"}）`
+        : `更新しました: ${manifest.slug}（トークン数・公開状態は管理画面の値のまま）`,
+    );
   }
 }
 

@@ -5,6 +5,7 @@ import { Card } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { PrintParams } from "@/lib/templates/params";
+import { DeleteSnapshotButton } from "../delete-snapshot-button";
 import { RedownloadButton } from "../redownload-button";
 import { parseSnapshot } from "../snapshot";
 import { gimmickMap, listGimmicks } from "@/lib/gimmicks/queries";
@@ -42,7 +43,7 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
   const supabase = await createClient();
   const { data: purchase } = await supabase
     .from("purchases")
-    .select("id, work_id, work_name, template_name, token_spent, created_at, package_path, thumbnail_path, snapshot")
+    .select("id, work_id, work_name, template_name, token_spent, created_at, package_path, thumbnail_path, snapshot, snapshot_deleted_at, suspended_at")
     .eq("id", id)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -83,9 +84,27 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
           ) : (
             <span className="text-sm text-zinc-500">作品は削除済みです</span>
           )}
-          {purchase.package_path && <RedownloadButton purchaseId={purchase.id} />}
+          {purchase.suspended_at ? (
+            <span className="text-sm text-red-700">この版は運営により停止されています</span>
+          ) : (
+            purchase.package_path && <RedownloadButton purchaseId={purchase.id} />
+          )}
         </div>
       </div>
+
+      {purchase.package_path ? (
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
+          この版の控え（パッケージ・元画像のコピー）を保存しています。
+          <DeleteSnapshotButton purchaseId={purchase.id} />
+        </p>
+      ) : (
+        purchase.snapshot_deleted_at && (
+          <p className="rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-600">
+            この版の控えは {dateFormat.format(new Date(purchase.snapshot_deleted_at))} に削除したため、ダウンロード履歴からは再ダウンロードできません。
+            作品が残っていて内容が同じ場合は、エディタから無料でダウンロードできます。
+          </p>
+        )
+      )}
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="aspect-[4/3] overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100">
@@ -176,7 +195,7 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
           </div>
         ) : (
           <p className="rounded-lg bg-zinc-50 p-4 text-sm text-zinc-600">
-            この版は、編集内容を記録する機能を追加する前に購入されたため、詳しい内容を表示できません。ダウンロードは引き続き可能です。
+            この版は、編集内容を記録する機能を追加する前に購入されたため、詳しい内容を表示できません。
           </p>
         )}
       </div>

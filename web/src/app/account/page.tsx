@@ -82,10 +82,31 @@ export default async function AccountPage() {
 
       <Card className="flex flex-col gap-3 border-red-200">
         <h2 className="text-lg font-semibold text-red-700">退会</h2>
-        <p className="text-sm text-zinc-600">
-          保存した作品・アップロードした画像・残っているトークンはすべて削除され、元に戻せません。
-          購入済みのトークンも払い戻しされません。
-        </p>
+        <div className="flex flex-col gap-2 text-sm leading-relaxed text-zinc-600">
+          <p>退会すると元に戻せません。ダウンロードした版も、再ダウンロードできなくなります。</p>
+          <div>
+            <p className="font-semibold text-zinc-800">削除されるもの</p>
+            <ul className="list-disc pl-5">
+              <li>保存した作品と、アップロードした画像</li>
+              <li>ダウンロードした版の控え（パッケージ・元画像のコピー・プレビュー画像）</li>
+              <li>残っているトークン（購入したトークンも払い戻しされません）</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-semibold text-zinc-800">取引の記録として残るもの</p>
+            <ul className="list-disc pl-5">
+              <li>支払いの記録、トークンの履歴</li>
+              <li>ダウンロードの記録（日時・使ったトークン数・作品名・編集内容。画像とパッケージは含みません）</li>
+            </ul>
+          </div>
+          <p>
+            コンビニ払いの支払い待ちがある間は退会できません。詳しくは
+            <Link href="/terms" className="underline">
+              利用規約
+            </Link>
+            の第10条をご覧ください。
+          </p>
+        </div>
         <DeleteAccountForm />
       </Card>
     </main>
