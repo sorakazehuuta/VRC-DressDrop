@@ -53,10 +53,21 @@ function unityScripts() {
   return result;
 }
 
-// Prefab の自動組み立てスクリプトと、ギミックのスクリプト一式
-export function runtimeAssets(): PackageAsset[] {
-  const scripts = unityScripts();
-  const folders = [RUNTIME_FOLDER, `${RUNTIME_FOLDER}/Scripts`, `${RUNTIME_FOLDER}/Editor`];
+// 選んだギミックが使うスクリプトのクラス名。魔法陣はカタログの script がなくても回転に VRPLSpin を使う
+export function gimmickScripts(gimmicks: GimmickInput[]) {
+  const names = new Set<string>();
+  for (const { def } of gimmicks) {
+    if (def.script) names.add(def.script);
+    if (def.setup.includes("magic-circle")) names.add("VRPLSpin");
+  }
+  return names;
+}
+
+// Prefab の自動組み立てスクリプトと、選んだギミックのスクリプト
+export function runtimeAssets(gimmicks: GimmickInput[]): PackageAsset[] {
+  const used = gimmickScripts(gimmicks);
+  const scripts = unityScripts().filter((s) => !s.path.startsWith(`${RUNTIME_FOLDER}/Scripts/`) || used.has(path.posix.basename(s.path, ".cs")));
+  const folders = [RUNTIME_FOLDER, ...(used.size ? [`${RUNTIME_FOLDER}/Scripts`] : []), `${RUNTIME_FOLDER}/Editor`];
   return [
     ...folders.map((folder) => ({ path: folder, data: Buffer.alloc(0), meta: folderMeta, folder: true, guidSeed: RUNTIME_GUID_SEED })),
     ...scripts.map((s) => ({ path: s.path, data: s.data, meta: monoScriptMeta, guidSeed: RUNTIME_GUID_SEED })),

@@ -3,6 +3,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { beforeAll, describe, expect, it } from "vitest";
 import { gimmickDefinitionSchema } from "@/lib/gimmicks/schema";
+import { gimmickScripts } from "@/lib/package/gimmick-assets";
 import { termsVersionLabel } from "@/lib/legal";
 import { readUnityPackage, type UnityPackageEntry } from "@/lib/package/read-unitypackage";
 import { buildUnityPackage, deterministicGuid, safeFileName, type PackageAsset } from "@/lib/package/unitypackage";
@@ -98,9 +99,24 @@ describe("作品のパッケージ", () => {
     expect(entries.some((e) => e.path.endsWith("Evil.cs"))).toBe(false);
   });
 
-  it("共通スクリプトとギミックのスクリプトが入る", () => {
-    expect(find("Assets/VRPrintLab/_Runtime/Scripts/VRPLSpin.cs")).toBeDefined();
+  it("組み立てスクリプトと、選んだギミックのスクリプトだけが入る", () => {
+    expect(entries.filter((e) => e.path.startsWith("Assets/VRPrintLab/_Runtime/Scripts/") && e.path.endsWith(".cs")).map((e) => e.path)).toEqual([
+      "Assets/VRPrintLab/_Runtime/Scripts/VRPLSpin.cs",
+    ]);
     expect(entries.some((e) => e.path.startsWith("Assets/VRPrintLab/_Runtime/Editor/") && e.path.endsWith(".cs"))).toBe(true);
+  });
+
+  it("ギミックがなければ、ギミックのスクリプトもフォルダも入らない", async () => {
+    const plain = readUnityPackage(await buildWorkPackage({ ...input(), gimmicks: [] }));
+    expect(plain.some((e) => e.path.startsWith("Assets/VRPrintLab/_Runtime/Scripts"))).toBe(false);
+    expect(plain.some((e) => e.path.startsWith("Assets/VRPrintLab/_Runtime/Editor/") && e.path.endsWith(".cs"))).toBe(true);
+    expect(plain.find((e) => e.path.endsWith("/README.txt"))!.asset!.toString("utf8")).not.toContain("UdonSharp を追加");
+  });
+
+  it("魔法陣はカタログにスクリプトがなくても回転のスクリプトが入る", () => {
+    const circle = gimmickDefinitionSchema.parse(JSON.parse(readFileSync(path.join(process.cwd(), "gimmicks", "catalog", "magic-circle.json"), "utf8")));
+    expect(circle.script).toBeNull();
+    expect([...gimmickScripts([{ def: circle, params: {} }])]).toEqual(["VRPLSpin"]);
   });
 
   it("色のスロットのマテリアルに、選んだ色が入る", () => {

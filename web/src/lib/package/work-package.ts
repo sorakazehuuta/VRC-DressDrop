@@ -2,7 +2,7 @@ import "server-only";
 import { siteUrl, termsVersionLabel } from "@/lib/legal";
 import { backgroundColor, type EditorParams } from "@/lib/templates/params";
 import type { Slot } from "@/lib/templates/schema";
-import { runtimeAssets, workBuildAssets, type GimmickInput } from "./gimmick-assets";
+import { gimmickScripts, runtimeAssets, workBuildAssets, type GimmickInput } from "./gimmick-assets";
 import { setCutout, setMainTexture, setMaterialColor, templateFiles } from "./template-package";
 import { renderPrintTexture } from "./texture";
 import { buildUnityPackage, deterministicGuid, safeFileName, textAssetMeta, textureMeta, type PackageAsset } from "./unitypackage";
@@ -34,7 +34,7 @@ function readme(input: WorkPackageInput, folder: string, prefabName: string) {
   const gimmickLines = input.gimmicks.length
     ? input.gimmicks.map((g) => `- ${g.def.name}：${g.def.description}${g.def.note ? `（${g.def.note}）` : ""}`).join("\n")
     : "なし";
-  const needsUdon = input.gimmicks.some((g) => g.def.script);
+  const needsUdon = gimmickScripts(input.gimmicks).size > 0;
   return `VRPrintLab で作成したモデル
 ==============================
 
@@ -63,7 +63,7 @@ ${gimmickLines}
 - Tex_*.png : プリントのテクスチャ
 - VRPrintLab.json : Prefab の組み立て設定
 - LICENSE.txt : 利用条件
-- Assets/VRPrintLab/_Runtime : Prefab の組み立てとギミックのスクリプト（ほかの作品と共通）
+- Assets/VRPrintLab/_Runtime : Prefab の組み立てと、選んだギミックのスクリプト（ほかの作品と共通）
 
 ■ ご利用にあたって
 自分が権利を持つ画像、または許諾を得た画像を貼った完成品は、VRChat の内外で利用でき、
@@ -148,7 +148,7 @@ export async function buildWorkPackage(input: WorkPackageInput) {
 
   assets.push(...template.assets);
   assets.push(...(await workBuildAssets({ base, modelPath: template.prefabPath, prefabName, gimmicks: input.gimmicks })));
-  assets.push(...runtimeAssets());
+  assets.push(...runtimeAssets(input.gimmicks));
   assets.push({ path: `${base}/README.txt`, data: Buffer.from(readme(input, folder, prefabName), "utf8"), meta: textAssetMeta });
   assets.push({ path: `${base}/LICENSE.txt`, data: Buffer.from(license(input), "utf8"), meta: textAssetMeta });
 

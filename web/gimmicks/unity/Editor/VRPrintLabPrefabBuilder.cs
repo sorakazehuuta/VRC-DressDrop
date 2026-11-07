@@ -242,10 +242,6 @@ namespace VRPrintLab.EditorTools
                 };
                 ctx.bounds = CalculateBounds(ctx.renderers, root.transform.position);
 
-                BoxCollider collider = root.AddComponent<BoxCollider>();
-                collider.center = ctx.bounds.center;
-                collider.size = ctx.bounds.size;
-
                 foreach (VRPLGimmick gimmick in config.gimmicks ?? new VRPLGimmick[0]) BuildGimmick(ctx, gimmick);
 
                 PrefabUtility.SaveAsPrefabAsset(root, config.prefabPath);
@@ -315,6 +311,7 @@ namespace VRPrintLab.EditorTools
                         break;
                     case "pickup":
                         SetupPickup(ctx, GetBool(p, "physics", false));
+                        EnsureCollider(ctx);
                         break;
                     case "object-sync":
                         SetupObjectSync(ctx);
@@ -325,7 +322,26 @@ namespace VRPrintLab.EditorTools
                 }
             }
 
-            if (!string.IsNullOrEmpty(g.script)) AttachScript(host, g.script, p, refs, g.name);
+            if (!string.IsNullOrEmpty(g.script))
+            {
+                AttachScript(host, g.script, p, refs, g.name);
+                if (host == ctx.root && UsesInteract(g.script)) EnsureCollider(ctx);
+            }
+        }
+
+        // コライダーは、触る・持つギミックが動くのに必要なときだけ付ける
+        private static void EnsureCollider(Context ctx)
+        {
+            if (ctx.root.GetComponent<BoxCollider>() != null) return;
+            BoxCollider collider = ctx.root.AddComponent<BoxCollider>();
+            collider.center = ctx.bounds.center;
+            collider.size = ctx.bounds.size;
+        }
+
+        private static bool UsesInteract(string className)
+        {
+            Type type = FindType("VRPrintLab." + className);
+            return type != null && type.GetMethod("Interact", BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly) != null;
         }
 
         // ---------------- 各組み立て手順 ----------------
