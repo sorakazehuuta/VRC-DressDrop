@@ -1,0 +1,29 @@
+{
+  "slug": "roll-banner",
+  "name": "ロールバナー",
+  "category": "グッズ",
+  "description": "大きな面に好きな画像をプリントできるロールバナー。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 130,
+  "files": {
+    "package": "RollBanner.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "base",
+      "type": "color",
+      "label": "バナーの色",
+      "material": "Mat_Base",
+      "defaultColor": "#ffffff"
+    },
+    {
+      "key": "print",
+      "type": "print",
+      "label": "プリント",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 0.42
+    }
+  ]
+}
