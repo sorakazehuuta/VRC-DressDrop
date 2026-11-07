@@ -1,0 +1,45 @@
+{
+  "slug": "book",
+  "name": "本",
+  "category": "グッズ",
+  "description": "表紙・裏表紙・背表紙に別々の画像を貼れる本。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 100,
+  "files": {
+    "package": "Book.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "base",
+      "type": "color",
+      "label": "表紙の色",
+      "material": "Mat_Base",
+      "defaultColor": "#2c5976"
+    },
+    {
+      "key": "print",
+      "type": "print",
+      "label": "表紙のプリント",
+      "material": "Mat_Print_Front",
+      "background": "transparent",
+      "aspect": 0.69
+    },
+    {
+      "key": "print_back",
+      "type": "print",
+      "label": "裏表紙のプリント",
+      "material": "Mat_Print_Back",
+      "background": "transparent",
+      "aspect": 0.69
+    },
+    {
+      "key": "print_spine",
+      "type": "print",
+      "label": "背表紙のプリント",
+      "material": "Mat_Print_Spine",
+      "background": "transparent",
+      "aspect": 0.1
+    }
+  ]
+}

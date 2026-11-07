@@ -1,0 +1,29 @@
+{
+  "slug": "coaster",
+  "name": "コースター",
+  "category": "グッズ",
+  "description": "コルクに好きな画像をプリントできるコースター。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 120,
+  "files": {
+    "package": "Coaster.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "base",
+      "type": "color",
+      "label": "コルクの色",
+      "material": "Mat_Base",
+      "defaultColor": "#ffffff"
+    },
+    {
+      "key": "print",
+      "type": "print",
+      "label": "プリント",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 1
+    }
+  ]
+}

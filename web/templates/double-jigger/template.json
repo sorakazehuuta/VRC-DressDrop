@@ -1,0 +1,22 @@
+{
+  "slug": "double-jigger",
+  "name": "ダブルジガー",
+  "category": "グッズ",
+  "description": "好きな画像をプリントできる、カクテル用の計量カップ。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 170,
+  "files": {
+    "package": "DoubleJigger.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "print",
+      "type": "print",
+      "label": "プリント",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 3.07
+    }
+  ]
+}

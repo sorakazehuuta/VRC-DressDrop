@@ -1,0 +1,22 @@
+{
+  "slug": "service-tray",
+  "name": "サービストレイ",
+  "category": "グッズ",
+  "description": "好きな画像をプリントできるサービストレイ。",
+  "tokenCost": 1,
+  "isPublic": false,
+  "sortOrder": 190,
+  "files": {
+    "package": "ServiceTray.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "print",
+      "type": "print",
+      "label": "プリント",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 1
+    }
+  ]
+}

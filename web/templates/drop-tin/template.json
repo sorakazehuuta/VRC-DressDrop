@@ -1,0 +1,22 @@
+{
+  "slug": "drop-tin",
+  "name": "ドロップ缶",
+  "category": "グッズ",
+  "description": "好きな画像をプリントできるドロップ缶。",
+  "tokenCost": 1,
+  "isPublic": true,
+  "sortOrder": 150,
+  "files": {
+    "package": "DropTin.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "print",
+      "type": "print",
+      "label": "プリント",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 0.8
+    }
+  ]
+}
