@@ -71,7 +71,7 @@ npm run typecheck                # ルートの型を作ってから型チェッ
 ## 3. 環境
 
 - **Supabase**: 作成済み。URL・キーは `web/.env.local`（git 管理外）。無料プラン（1週間使わないと一時停止）
-- **マイグレーション**: `web/supabase/migrations` の 13 ファイルのうち、`20261108000000_purchase_package_name.sql` 以外は SQL Editor で実行済み。新しく作ったら利用者に実行を依頼する（Supabase CLI・Docker は入っていない）
+- **マイグレーション**: `web/supabase/migrations` の 13 ファイルはすべて SQL Editor で実行済み（最新は `20261108000000_purchase_package_name.sql`）。新しく作ったら利用者に実行を依頼する（Supabase CLI・Docker は入っていない）
 - **Storage バケット**: `work-images`（非公開・作品の画像とサムネイル）、`template-assets`（公開・glb とサムネイル）、`template-packages`（非公開・テンプレートの unitypackage）、`packages`（非公開・生成した unitypackage と購入した版の控え）
 - **データ**: ギミック 16 件。テンプレートは unitypackage 形式で 8 件を公開（ケーキ・缶バッジ・マグカップ・タペストリー・デスクマット・うちわ・抱き枕カバー・スケートボード）。旧形式の Tシャツは DB の行だけ非公開で残っている（他の利用者の作品が参照）
 - **Unity**: 2022.3.22f1（`C:\Program Files\Unity\Hub\Editor\2022.3.22f1`）。VCC の TestProject に UdonSharp・ClientSim あり。この PC には VRChat 本体が入っていない
