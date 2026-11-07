@@ -14,17 +14,8 @@ export default async function AdminPage() {
     .order("created_at")
     .limit(50);
 
-  const { count: openReports } = await admin.from("reports").select("id", { count: "exact", head: true }).eq("status", "open");
-
   return (
     <main className="flex flex-col gap-6">
-      <Card className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">未対応の通報（{openReports ?? 0} 件）</h2>
-        <Link href="/admin/reports" className="self-start text-sm font-semibold underline">
-          通報を確認する
-        </Link>
-      </Card>
-
       <Card className="flex flex-col gap-2">
         <h1 className="text-lg font-semibold">ユーザーとトークン</h1>
         <p className="text-sm text-zinc-600">トークンの手動調整（二重消費・不具合の補填など）は、ユーザーの詳細画面から行います。</p>

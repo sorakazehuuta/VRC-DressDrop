@@ -88,25 +88,6 @@ export async function setPurchaseSuspended(formData: FormData) {
   revalidatePath("/admin", "layout");
 }
 
-export async function resolveReport(formData: FormData) {
-  const adminUser = await requireAdmin();
-  const reportId = field(formData, "reportId");
-  const raw = field(formData, "status");
-  const status = raw === "resolved" || raw === "dismissed" ? raw : "open";
-  const note = field(formData, "note") || null;
-  await createAdminClient()
-    .from("reports")
-    .update({
-      status,
-      admin_note: note,
-      resolved_at: status === "open" ? null : new Date().toISOString(),
-      resolved_by: status === "open" ? null : adminUser.id,
-    })
-    .eq("id", reportId);
-  await logAction(adminUser.id, "resolve_report", reportId, `${status}${note ? `: ${note}` : ""}`);
-  revalidatePath("/admin", "layout");
-}
-
 const costSchema = (raw: string) => {
   const n = Number(raw);
   return Number.isInteger(n) && n >= 0 && n <= 100 ? n : null;

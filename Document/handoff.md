@@ -21,7 +21,7 @@
 - **Phase 8**（`feature/phase8-legal-guide-admin`）。`feature/terms-and-data-handling` は main にマージ済み（2026-11-03）
   - 規約類の下書き: `web/content/terms.md` / `privacy.md` / `tokushoho.md`（【要確認】は未確定。共同開発者が直す予定）。FAQ は `faq.md`、導入ガイドは `guide.md`（画像は「画像準備中」の枠。`![説明](/パス)` に差し替える）
   - 規約の版は `web/src/lib/legal.ts`（`TERMS_VERSION` / `TERMS_DRAFT`）。パッケージの LICENSE.txt、登録（profiles.terms_version）、購入（payments.terms_version）に記録する
-  - 通報は `/report`（ログインなし）→ `/admin/reports`。管理画面は ほかに ユーザー・テンプレート/ギミックの設定・集計（同じカードのアカウントを含む）
+  - 通報の機能は 2026-11-07 に利用者の判断で削除した（`reports` テーブルは DB に残っている）。管理画面は ユーザー・テンプレート/ギミックの設定・集計（同じカードのアカウントを含む）
   - マイグレーション `20261105000000_phase8.sql` は実行済み。確認は `tools/verification/e2e/phase8-e2e.cjs` と `admin-link-check.cjs`（ヘッダーの「管理画面」は管理者にだけ届く）
   - 本番前に [production-check.md](production-check.md) の未確認の項目を確かめる。運営の手順は [admin-operations.md](admin-operations.md)
 - テンプレートは `templates` ブランチで管理（`main` の変更は templates 側で `git merge main` して取り込む）
