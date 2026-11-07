@@ -4,7 +4,7 @@
   "category": "グッズ",
   "description": "表紙・裏表紙・背表紙に別々の画像を貼れる本。",
   "tokenCost": 1,
-  "isPublic": false,
+  "isPublic": true,
   "sortOrder": 100,
   "files": {
     "package": "Book.unitypackage"

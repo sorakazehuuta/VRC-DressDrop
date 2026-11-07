@@ -4,7 +4,7 @@
   "category": "グッズ",
   "description": "コルクに好きな画像をプリントできるコースター。",
   "tokenCost": 1,
-  "isPublic": false,
+  "isPublic": true,
   "sortOrder": 120,
   "files": {
     "package": "Coaster.unitypackage"

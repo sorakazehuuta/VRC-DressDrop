@@ -4,7 +4,7 @@
   "category": "グッズ",
   "description": "側面に好きな画像をプリントできる缶。本体の色も変えられます。",
   "tokenCost": 1,
-  "isPublic": false,
+  "isPublic": true,
   "sortOrder": 110,
   "files": {
     "package": "Can.unitypackage"
