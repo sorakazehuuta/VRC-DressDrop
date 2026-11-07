@@ -77,7 +77,6 @@ function paramEntry(key: string, type: string, value: GimmickParamValue) {
 // Unity 側の VRPrintLabPrefabBuilder が読む組み立て設定と、それに必要な素材
 export async function workBuildAssets(opts: {
   base: string;
-  workName: string;
   modelPath: string;
   prefabName: string;
   gimmicks: GimmickInput[];
@@ -91,7 +90,7 @@ export async function workBuildAssets(opts: {
 
   const config = {
     version: 1,
-    name: opts.workName,
+    name: opts.prefabName,
     folder: opts.base,
     modelPath: opts.modelPath,
     prefabPath: `${opts.base}/${opts.prefabName}.prefab`,

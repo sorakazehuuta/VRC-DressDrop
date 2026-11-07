@@ -6,7 +6,7 @@ import { gimmickDefinitionSchema } from "@/lib/gimmicks/schema";
 import { termsVersionLabel } from "@/lib/legal";
 import { readUnityPackage, type UnityPackageEntry } from "@/lib/package/read-unitypackage";
 import { buildUnityPackage, deterministicGuid, safeFileName, type PackageAsset } from "@/lib/package/unitypackage";
-import { buildWorkPackage, packageFolderName, type WorkPackageInput } from "@/lib/package/work-package";
+import { buildWorkPackage, packageBaseName, packageFileName, type WorkPackageInput } from "@/lib/package/work-package";
 import { IMAGE_A, params, slots } from "../helpers/fixtures";
 
 // ---- テスト用のテンプレート（Unity で書き出した unitypackage と同じ形） ----
@@ -73,7 +73,7 @@ const input = (purchaseId = PURCHASE): WorkPackageInput => ({
 });
 
 let entries: UnityPackageEntry[];
-const base = `Assets/VRPrintLab/${packageFolderName("テスト作品", PURCHASE)}`;
+const base = `Assets/VRPrintLab/${packageBaseName("テスト作品", PURCHASE)}`;
 const find = (p: string) => entries.find((e) => e.path === p);
 const text = (p: string) => find(p)?.asset?.toString("utf8") ?? "";
 
@@ -87,7 +87,11 @@ describe("作品のパッケージ", () => {
     for (const p of ["Template/Model.prefab", "Template/Mat_Print.mat", "Tex_print.png", "Tex_sticker.png", "README.txt", "LICENSE.txt", "VRPrintLab.json"]) {
       expect(find(`${base}/${p}`), p).toBeDefined();
     }
-    expect(base).toBe("Assets/VRPrintLab/テスト作品_33333333");
+    expect(base).toBe("Assets/VRPrintLab/VRPrintLab_33333333");
+  });
+
+  it("パッケージの中のパスに日本語が入らない", () => {
+    expect(entries.filter((e) => /[^\x20-\x7e]/.test(e.path)).map((e) => e.path)).toEqual([]);
   });
 
   it("テンプレートに入っていたスクリプトは取り除く", () => {
@@ -139,6 +143,8 @@ describe("作品のパッケージ", () => {
     const config = JSON.parse(text(`${base}/VRPrintLab.json`));
     expect(JSON.stringify(config)).toContain("VRPLSpin");
     expect(JSON.stringify(config)).toContain("90");
+    expect(config.name).toBe("VRPrintLab_33333333");
+    expect(config.prefabPath).toBe(`${base}/VRPrintLab_33333333.prefab`);
   });
 });
 
@@ -180,5 +186,12 @@ describe("ファイル名", () => {
     expect(safeFileName('a/b\\c:d*e?"f<g>h|i', "x")).not.toMatch(/[\\/:*?"<>|]/);
     expect(safeFileName("   ", "代わり")).toBe("代わり");
     expect(safeFileName("ケーキの作品", "x")).toBe("ケーキの作品");
+  });
+
+  it("ダウンロードのファイル名は英数字だけにし、取得 ID で区別する", () => {
+    expect(packageFileName("ケーキの作品", PURCHASE)).toBe("VRPrintLab_33333333.unitypackage");
+    expect(packageFileName("My Cake", PURCHASE)).toBe("My Cake_33333333.unitypackage");
+    expect(packageFileName("ケーキ Cake 作品", OTHER_PURCHASE)).toBe("Cake_44444444.unitypackage");
+    expect(packageFileName("a/b:c.d", PURCHASE)).toBe("abcd_33333333.unitypackage");
   });
 });

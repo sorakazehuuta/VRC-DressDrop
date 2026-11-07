@@ -56,7 +56,7 @@ const cleanup = (uid) => cleanupUser(admin, uid);
     const t0 = Date.now();
     const [download1] = await Promise.all([page.waitForEvent("download", { timeout: 60000 }), dialog.getByRole("button", { name: "ダウンロードする" }).click()]);
     console.log("   生成〜ダウンロード開始:", ((Date.now() - t0) / 1000).toFixed(1), "秒");
-    ok("ファイル名が日本語", download1.suggestedFilename() === "ケーキの作品.unitypackage", download1.suggestedFilename());
+    ok("ファイル名に日本語が入らない", /^VRPrintLab_[0-9a-f]{8}\.unitypackage$/.test(download1.suggestedFilename()), download1.suggestedFilename());
     const file1 = `${DIR}/dl1.unitypackage`;
     await download1.saveAs(file1);
     const head = fs.readFileSync(file1).subarray(0, 2);
@@ -67,7 +67,7 @@ const cleanup = (uid) => cleanupUser(admin, uid);
 
     // 2回目: 同じ内容 → 確認なしで無料
     const [download2] = await Promise.all([page.waitForEvent("download", { timeout: 30000 }), page.getByRole("button", { name: "ダウンロード", exact: true }).click()]);
-    ok("購入済みの内容は確認なしでダウンロード", download2.suggestedFilename() === "ケーキの作品.unitypackage");
+    ok("購入済みの内容は確認なしでダウンロード", download2.suggestedFilename() === download1.suggestedFilename());
     await page.waitForTimeout(1000);
     ok("再ダウンロードでは消費しない", (await balance()) === "2 トークン", await balance());
 
@@ -76,7 +76,7 @@ const cleanup = (uid) => cleanupUser(admin, uid);
     ok("編集すると購入済み表示が消える", !(await page.getByText("この版は取得済みです").isVisible()));
     await page.getByRole("button", { name: "保存してダウンロード" }).click();
     await page.getByRole("dialog").waitFor({ timeout: 30000 });
-    await Promise.all([page.waitForEvent("download", { timeout: 60000 }), page.getByRole("dialog").getByRole("button", { name: "ダウンロードする" }).click()]);
+    const [newVersion] = await Promise.all([page.waitForEvent("download", { timeout: 60000 }), page.getByRole("dialog").getByRole("button", { name: "ダウンロードする" }).click()]);
     await page.waitForFunction(() => document.querySelector("header").innerText.includes("1 トークン"), null, { timeout: 15000 });
     ok("内容を変えたら新しい版としてもう1トークン消費", true);
 
@@ -90,7 +90,8 @@ const cleanup = (uid) => cleanupUser(admin, uid);
     await page.goto(`${BASE}/downloads`, { waitUntil: "networkidle" });
     ok("ダウンロード履歴に2件", (await page.locator("main li").count()) === 2);
     const [download3] = await Promise.all([page.waitForEvent("download", { timeout: 30000 }), page.locator("main li").first().getByRole("button", { name: "ダウンロード" }).click()]);
-    ok("履歴から日本語のファイル名で再ダウンロード", download3.suggestedFilename() === "ケーキの作品.unitypackage");
+    ok("別の版は別のファイル名", newVersion.suggestedFilename() !== download1.suggestedFilename(), newVersion.suggestedFilename());
+    ok("履歴から同じファイル名で再ダウンロード", download3.suggestedFilename() === newVersion.suggestedFilename());
     await page.screenshot({ path: `${DIR}/downloads.png` });
 
     // 作品を削除しても履歴から落とせる
