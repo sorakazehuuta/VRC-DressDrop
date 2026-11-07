@@ -1,0 +1,22 @@
+{
+  "slug": "bar-mat",
+  "name": "バーマット",
+  "category": "グッズ",
+  "description": "好きな画像をプリントできるバーマット。",
+  "tokenCost": 1,
+  "isPublic": false,
+  "sortOrder": 180,
+  "files": {
+    "package": "BarMat.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "print",
+      "type": "print",
+      "label": "プリント",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 2.8
+    }
+  ]
+}

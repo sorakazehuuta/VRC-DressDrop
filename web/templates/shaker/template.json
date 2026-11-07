@@ -1,0 +1,22 @@
+{
+  "slug": "shaker",
+  "name": "カクテルシェイカー",
+  "category": "グッズ",
+  "description": "好きな画像をプリントできるカクテルシェイカー。",
+  "tokenCost": 1,
+  "isPublic": false,
+  "sortOrder": 160,
+  "files": {
+    "package": "Shaker.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "print",
+      "type": "print",
+      "label": "プリント",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 1.03
+    }
+  ]
+}
