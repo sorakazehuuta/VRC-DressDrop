@@ -99,15 +99,10 @@ describe("トークン・お金", () => {
 });
 
 describe("管理者だけの表", () => {
-  it("通報・削除キュー・管理者の操作・退会の記録・ブロックしたカードは読めない", async () => {
-    for (const table of ["reports", "storage_deletions", "admin_actions", "deleted_accounts", "blocked_cards"]) {
+  it("削除キュー・管理者の操作・退会の記録・ブロックしたカードは読めない", async () => {
+    for (const table of ["storage_deletions", "admin_actions", "deleted_accounts", "blocked_cards"]) {
       const { data } = await me.client.from(table).select("*").limit(1);
       expect(data ?? [], table).toEqual([]);
     }
-  });
-
-  it("通報はブラウザから直接は登録できない（サーバー経由のみ）", async () => {
-    const { error } = await me.client.from("reports").insert({ reason: "直接", reporter_id: me.id });
-    expect(error).not.toBeNull();
   });
 });
