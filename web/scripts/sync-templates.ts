@@ -163,22 +163,22 @@ async function main() {
     const thumbnailPath = thumbnailFile ? await upload("template-assets", manifest.slug, path.join(dir, thumbnailFile)) : null;
     if (!thumbnailFile) console.log(`   注意: ${manifest.slug} にサムネイルがありません（npm run templates:thumbnails で作れます）`);
 
-    const { error } = await supabase.from("templates").upsert(
-      {
-        slug: manifest.slug,
-        name: manifest.name,
-        category: manifest.category,
-        description: manifest.description,
-        ...(isNew ? { token_cost: manifest.tokenCost, is_public: manifest.isPublic } : {}),
-        sort_order: manifest.sortOrder,
-        preview_model_path: previewPath,
-        package_model_path: packagePath,
-        package_prefab_path: prefab,
-        thumbnail_path: thumbnailPath,
-        slots: manifest.slots,
-      },
-      { onConflict: "slug" },
-    );
+    // 登録済みの行は update にする（upsert は NOT NULL の列を省けない）
+    const row = {
+      slug: manifest.slug,
+      name: manifest.name,
+      category: manifest.category,
+      description: manifest.description,
+      sort_order: manifest.sortOrder,
+      preview_model_path: previewPath,
+      package_model_path: packagePath,
+      package_prefab_path: prefab,
+      thumbnail_path: thumbnailPath,
+      slots: manifest.slots,
+    };
+    const { error } = isNew
+      ? await supabase.from("templates").insert({ ...row, token_cost: manifest.tokenCost, is_public: manifest.isPublic })
+      : await supabase.from("templates").update(row).eq("slug", manifest.slug);
     if (error) {
       const hint = error.message.includes("package_prefab_path") ? "（マイグレーション 20261016000000_unitypackage_templates.sql を SQL Editor で実行してください）" : "";
       throw new Error(`${manifest.slug} の登録に失敗: ${error.message}${hint}`);

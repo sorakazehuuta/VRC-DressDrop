@@ -70,24 +70,22 @@ async function main() {
   // トークン数・公開状態は、登録済みなら DB の値（管理画面で変えた値）を残す。catalog の値は初回の登録だけに使う
   const { data: registered } = await supabase.from("gimmicks").select("slug");
   const registeredSlugs = new Set((registered ?? []).map((g) => g.slug));
-  const rows = defs.map((d) => ({
-    slug: d.slug,
-    name: d.name,
-    category: d.category,
-    description: d.description,
-    script_path: d.script,
-    sort_order: d.sortOrder,
-    params_schema: d.params,
-    definition: d,
-    ...(registeredSlugs.has(d.slug) ? {} : { token_cost: d.tokenCost, is_public: d.isPublic }),
-  }));
-  // upsert は1回の呼び出しで列をそろえる必要があるため、新規と既存を分けて登録する
-  const fresh = rows.filter((r) => !registeredSlugs.has(r.slug));
-  const existingRows = rows.filter((r) => registeredSlugs.has(r.slug));
-  for (const batch of [fresh, existingRows]) {
-    if (batch.length === 0) continue;
-    const { error } = await supabase.from("gimmicks").upsert(batch, { onConflict: "slug" });
-    if (error) throw new Error(`登録に失敗: ${error.message}`);
+  // 登録済みの行は update にする（upsert は NOT NULL の列を省けない）
+  for (const d of defs) {
+    const row = {
+      slug: d.slug,
+      name: d.name,
+      category: d.category,
+      description: d.description,
+      script_path: d.script,
+      sort_order: d.sortOrder,
+      params_schema: d.params,
+      definition: d,
+    };
+    const { error } = registeredSlugs.has(d.slug)
+      ? await supabase.from("gimmicks").update(row).eq("slug", d.slug)
+      : await supabase.from("gimmicks").insert({ ...row, token_cost: d.tokenCost, is_public: d.isPublic });
+    if (error) throw new Error(`${d.slug} の登録に失敗: ${error.message}`);
   }
 
   const { data: existing } = await supabase.from("gimmicks").select("slug, name, is_public");
