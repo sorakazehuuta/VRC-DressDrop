@@ -15,7 +15,7 @@
       "type": "color",
       "label": "本体の色",
       "material": "Mat_Base",
-      "defaultColor": "#d1deef"
+      "defaultColor": "#ffffff"
     },
     {
       "key": "print",
