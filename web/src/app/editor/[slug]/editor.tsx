@@ -90,6 +90,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
   const history = useHistory<EditorState>(initialState);
   const { value: state, change: changeState, commit, undo, redo, reset } = history;
   const { params, gimmicks } = state;
+  const gimmickSlugs = gimmickDefs.map((d) => d.slug).join(",");
   const change = useCallback(
     (update: (prev: EditorParams) => EditorParams, isCommit = true) =>
       changeState((prev) => {
@@ -160,7 +161,9 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
             const loaded = await Promise.all(draft.images.map((i) => loadImage(i.file, i.id)));
             setImages((prev) => ({ ...prev, ...Object.fromEntries(loaded.map((i) => [i.id, i])) }));
             setName(draft.name);
-            reset({ params: draft.params, gimmicks: draft.gimmicks ?? [] });
+            // 下書きのあとに非公開になったギミックは外す（パネルが出ないと外せなくなる）
+            const usable = gimmickSlugs.split(",");
+            reset({ params: draft.params, gimmicks: (draft.gimmicks ?? []).filter((g) => usable.includes(g.slug)) });
           }
           window.history.replaceState(null, "", `/editor/${template.slug}`);
         }
@@ -173,7 +176,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
     return () => {
       cancelled = true;
     };
-  }, [initialWork, restoreDraft, template.slug, reset]);
+  }, [initialWork, restoreDraft, template.slug, reset, gimmickSlugs]);
 
   const changeSlot = useCallback(
     <T extends SlotParams>(key: string) =>
@@ -405,9 +408,11 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
             })}
           </fieldset>
 
-          <fieldset disabled={readOnly}>
-            <GimmickPanel defs={gimmickDefs} selected={gimmicks} onChange={changeGimmicks} onCommit={commit} />
-          </fieldset>
+          {gimmickDefs.length > 0 && (
+            <fieldset disabled={readOnly}>
+              <GimmickPanel defs={gimmickDefs} selected={gimmicks} onChange={changeGimmicks} onCommit={commit} />
+            </fieldset>
+          )}
 
           {status.kind === "error" && (
             <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">

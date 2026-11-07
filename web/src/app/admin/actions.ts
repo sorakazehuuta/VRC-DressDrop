@@ -90,28 +90,46 @@ export async function setPurchaseSuspended(formData: FormData) {
 
 const costSchema = (raw: string) => {
   const n = Number(raw);
-  return Number.isInteger(n) && n >= 0 && n <= 100 ? n : null;
+  return raw !== "" && Number.isInteger(n) && n >= 0 && n <= 100 ? n : null;
 };
 
-// テンプレートのトークン数・公開状態（同期コマンドより DB の値が優先される）
-export async function updateTemplate(formData: FormData) {
+// トークン数・公開状態をまとめて保存する（同期コマンドより DB の値が優先される）。変わった行だけ更新して記録に残す
+async function saveCatalog(table: "templates" | "gimmicks", formData: FormData): Promise<FormState> {
   const adminUser = await requireAdmin();
-  const id = field(formData, "id");
-  const tokenCost = costSchema(field(formData, "tokenCost"));
-  if (tokenCost === null) return;
-  const isPublic = formData.get("isPublic") === "on";
-  await createAdminClient().from("templates").update({ token_cost: tokenCost, is_public: isPublic }).eq("id", id);
-  await logAction(adminUser.id, "update_template", id, `token_cost=${tokenCost} is_public=${isPublic}`);
+  const admin = createAdminClient();
+  const { data: rows, error } = await admin.from(table).select("id, token_cost, is_public");
+  if (error) return { error: `読み込めませんでした: ${error.message}` };
+
+  const changes: { id: string; tokenCost: number; isPublic: boolean }[] = [];
+  for (const row of rows) {
+    const raw = formData.get(`tokenCost:${row.id}`);
+    if (raw === null) continue; // 画面を開いたあとに追加された行
+    const tokenCost = costSchema(String(raw).trim());
+    if (tokenCost === null) return { error: "トークン数は 0〜100 の整数で入力してください。保存していません。" };
+    const isPublic = formData.get(`isPublic:${row.id}`) === "on";
+    if (tokenCost !== row.token_cost || isPublic !== row.is_public) changes.push({ id: row.id, tokenCost, isPublic });
+  }
+  if (!changes.length) return { message: "変更はありません。" };
+
+  const action = table === "templates" ? "update_template" : "update_gimmick";
+  let saved = 0;
+  for (const c of changes) {
+    const { error: updateError } = await admin.from(table).update({ token_cost: c.tokenCost, is_public: c.isPublic }).eq("id", c.id);
+    if (updateError) {
+      revalidatePath("/", "layout");
+      return { error: `${changes.length} 件のうち ${saved} 件まで保存して失敗しました: ${updateError.message}` };
+    }
+    await logAction(adminUser.id, action, c.id, `token_cost=${c.tokenCost} is_public=${c.isPublic}`);
+    saved++;
+  }
   revalidatePath("/", "layout");
+  return { message: `${saved} 件を保存しました。` };
 }
 
-export async function updateGimmick(formData: FormData) {
-  const adminUser = await requireAdmin();
-  const id = field(formData, "id");
-  const tokenCost = costSchema(field(formData, "tokenCost"));
-  if (tokenCost === null) return;
-  const isPublic = formData.get("isPublic") === "on";
-  await createAdminClient().from("gimmicks").update({ token_cost: tokenCost, is_public: isPublic }).eq("id", id);
-  await logAction(adminUser.id, "update_gimmick", id, `token_cost=${tokenCost} is_public=${isPublic}`);
-  revalidatePath("/", "layout");
+export async function updateTemplates(_prev: FormState, formData: FormData) {
+  return saveCatalog("templates", formData);
+}
+
+export async function updateGimmicks(_prev: FormState, formData: FormData) {
+  return saveCatalog("gimmicks", formData);
 }

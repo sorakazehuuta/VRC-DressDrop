@@ -1,5 +1,5 @@
 // Phase 8 の確認: 非公開テンプレートが管理者にも出ない、規約ページ、通報の画面がなくなっていること、
-// 管理画面での版・作品・アカウントの停止、停止の利用者側の表示、テンプレートの設定、集計、規約の同意の記録
+// 管理画面での版・作品・アカウントの停止、停止の利用者側の表示、テンプレートのまとめての保存、ギミックがないときのエディタ、集計、規約の同意の記録
 const { chromium } = require("playwright");
 const { createClient } = require("@supabase/supabase-js");
 const { cleanupUser } = require("./cleanup.cjs");
@@ -36,6 +36,8 @@ async function login(page, email) {
 
   // 停止の対象にする作品と購入した版（ファイルは使わないので DB の行だけ）
   const { data: cake } = await admin.from("templates").select("id, token_cost").eq("slug", "cake").single();
+  const { data: badge } = await admin.from("templates").select("id, token_cost").eq("slug", "badge").single();
+  const { data: gimmicksBefore } = await admin.from("gimmicks").select("id, is_public").order("sort_order");
   const { data: work } = await admin.from("works").insert({ user_id: ownerId, template_id: cake.id, name: "停止テスト" }).select("id").single();
   const { data: purchase } = await admin
     .from("purchases")
@@ -108,20 +110,43 @@ async function login(page, email) {
     ok("停止中のアカウントは購入できない表示", await ownerPage.getByText("このアカウントは停止されています").isVisible());
     ok("購入画面に特商法表記への同意の案内", await ownerPage.getByRole("link", { name: "特定商取引法に基づく表記" }).first().isVisible());
 
-    // ---- テンプレートの設定（変えて元に戻す） ----
+    // ---- テンプレートの設定（変えて元に戻す。保存はまとめて1回） ----
     await adminPage.goto(`${BASE}/admin/catalog`, { waitUntil: "networkidle" });
-    const cakeRow = adminPage.locator("form", { hasText: "cake" }).first();
-    await cakeRow.locator('input[name="tokenCost"]').fill(String(cake.token_cost + 1));
-    await cakeRow.getByRole("button", { name: "保存" }).click();
+    ok("保存ボタンはテンプレートとギミックで1つずつ", (await adminPage.getByRole("button", { name: /保存/ }).count()) === 2);
+    await adminPage.getByRole("button", { name: "テンプレートを保存" }).click();
+    await adminPage.getByText("変更はありません。").waitFor();
+    const cakeCost = adminPage.locator(`input[name="tokenCost:${cake.id}"]`);
+    const badgeCost = adminPage.locator(`input[name="tokenCost:${badge.id}"]`);
+    await cakeCost.fill(String(cake.token_cost + 1));
+    await badgeCost.fill(String(badge.token_cost + 1));
+    await adminPage.getByRole("button", { name: "テンプレートを保存" }).click();
+    await adminPage.getByText("2 件を保存しました。").waitFor();
+    const { data: changed } = await admin.from("templates").select("slug, token_cost").in("id", [cake.id, badge.id]);
+    ok("2つのテンプレートをまとめて変えられる", changed.every((t) => t.token_cost === (t.slug === "cake" ? cake : badge).token_cost + 1));
+    ok("保存後の画面に新しい値", (await cakeCost.inputValue()) === String(cake.token_cost + 1));
+    const { count: logged } = await admin.from("admin_actions").select("id", { count: "exact", head: true }).eq("admin_id", adminId).eq("action", "update_template");
+    ok("変えた行だけ記録する", logged === 2, `${logged} 件`);
+    await cakeCost.fill(String(cake.token_cost));
+    await badgeCost.fill(String(badge.token_cost));
+    await adminPage.getByRole("button", { name: "テンプレートを保存" }).click();
     await adminPage.waitForTimeout(1500);
-    const { data: changed } = await admin.from("templates").select("token_cost").eq("id", cake.id).single();
-    ok("テンプレートのトークン数を変えられる", changed.token_cost === cake.token_cost + 1);
-    await adminPage.reload({ waitUntil: "networkidle" });
-    await adminPage.locator("form", { hasText: "cake" }).first().locator('input[name="tokenCost"]').fill(String(cake.token_cost));
-    await adminPage.locator("form", { hasText: "cake" }).first().getByRole("button", { name: "保存" }).click();
-    await adminPage.waitForTimeout(1500);
-    const { data: restored } = await admin.from("templates").select("token_cost").eq("id", cake.id).single();
-    ok("元のトークン数に戻す", restored.token_cost === cake.token_cost);
+    const { data: restored } = await admin.from("templates").select("slug, token_cost").in("id", [cake.id, badge.id]);
+    ok("元のトークン数に戻す", restored.every((t) => t.token_cost === (t.slug === "cake" ? cake : badge).token_cost));
+
+    // ---- ギミックの公開状態とエディタのパネル ----
+    const panel = adminPage.getByRole("button", { name: /ギミック（動き・演出）/ });
+    await adminPage.goto(`${BASE}/editor/cake`, { waitUntil: "networkidle" });
+    ok("公開中のギミックがあればパネルを表示", await panel.isVisible());
+    await adminPage.goto(`${BASE}/admin/catalog`, { waitUntil: "networkidle" });
+    for (const g of gimmicksBefore) await adminPage.locator(`input[name="isPublic:${g.id}"]`).uncheck();
+    await adminPage.getByRole("button", { name: "ギミックを保存" }).click();
+    await adminPage.getByText(/件を保存しました。/).waitFor();
+    await adminPage.goto(`${BASE}/editor/cake`, { waitUntil: "networkidle" });
+    ok("すべて非公開ならパネルを表示しない", (await panel.count()) === 0);
+    await adminPage.screenshot({ path: `${DIR}/editor-no-gimmicks.png`, fullPage: true });
+    await admin.from("gimmicks").update({ is_public: true }).eq("id", gimmicksBefore[0].id);
+    await adminPage.goto(`${BASE}/editor/cake`, { waitUntil: "networkidle" });
+    ok("1つでも公開ならパネルを表示", await panel.isVisible());
 
     // ---- 集計 ----
     await adminPage.goto(`${BASE}/admin/stats`, { waitUntil: "networkidle" });
@@ -133,6 +158,8 @@ async function login(page, email) {
     await browser.close();
     await admin.from("admin_actions").delete().eq("admin_id", adminId);
     await admin.from("templates").update({ token_cost: cake.token_cost }).eq("id", cake.id);
+    await admin.from("templates").update({ token_cost: badge.token_cost }).eq("id", badge.id);
+    for (const g of gimmicksBefore) await admin.from("gimmicks").update({ is_public: g.is_public }).eq("id", g.id);
     const r1 = await cleanupUser(admin, ownerId);
     const r2 = await cleanupUser(admin, adminId);
     console.log("テストユーザーの後片付け:", r1.error || r2.error ? "失敗" : "OK");
