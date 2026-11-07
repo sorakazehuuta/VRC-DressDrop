@@ -4,7 +4,7 @@
   "category": "グッズ",
   "description": "好きな画像をプリントできるバーマット。",
   "tokenCost": 1,
-  "isPublic": false,
+  "isPublic": true,
   "sortOrder": 180,
   "files": {
     "package": "BarMat.unitypackage"
