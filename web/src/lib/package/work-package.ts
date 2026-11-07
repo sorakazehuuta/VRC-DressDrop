@@ -20,13 +20,13 @@ export type WorkPackageInput = {
   createdAt: Date;
 };
 
-export function packageFolderName(workName: string, purchaseId: string) {
-  return `${safeFileName(workName, "Work")}_${purchaseId.slice(0, 8)}`;
+// フォルダ・Prefab・ダウンロードのファイルで共通の名前。環境によって文字化けしないよう英数字だけにし、取得 ID で区別する
+export function packageBaseName(workName: string, purchaseId: string) {
+  return `${safeFileName(workName.replace(/[^A-Za-z0-9 _-]/g, ""), "VRPrintLab")}_${purchaseId.slice(0, 8)}`;
 }
 
-// ダウンロードのファイル名。環境によって文字化けしないよう ASCII の文字だけにする
 export function packageFileName(workName: string, purchaseId: string) {
-  return `${safeFileName(workName.replace(/[^\x20-\x7e]/g, ""), "VRPrintLab")}_${purchaseId.slice(0, 8)}.unitypackage`;
+  return `${packageBaseName(workName, purchaseId)}.unitypackage`;
 }
 
 function readme(input: WorkPackageInput, folder: string, prefabName: string) {
@@ -114,8 +114,8 @@ function license(input: WorkPackageInput) {
 }
 
 export async function buildWorkPackage(input: WorkPackageInput) {
-  const folder = packageFolderName(input.workName, input.purchaseId);
-  const prefabName = safeFileName(input.workName, "Work");
+  const folder = packageBaseName(input.workName, input.purchaseId);
+  const prefabName = folder;
   const base = `Assets/VRPrintLab/${folder}`;
   const assets: PackageAsset[] = [];
   const guidOf = (path: string) => deterministicGuid(input.purchaseId, path);
@@ -147,7 +147,7 @@ export async function buildWorkPackage(input: WorkPackageInput) {
   }
 
   assets.push(...template.assets);
-  assets.push(...(await workBuildAssets({ base, workName: input.workName, modelPath: template.prefabPath, prefabName, gimmicks: input.gimmicks })));
+  assets.push(...(await workBuildAssets({ base, modelPath: template.prefabPath, prefabName, gimmicks: input.gimmicks })));
   assets.push(...runtimeAssets());
   assets.push({ path: `${base}/README.txt`, data: Buffer.from(readme(input, folder, prefabName), "utf8"), meta: textAssetMeta });
   assets.push({ path: `${base}/LICENSE.txt`, data: Buffer.from(license(input), "utf8"), meta: textAssetMeta });

@@ -34,7 +34,7 @@ Unity のバージョンは、VCC・ALCOM の画面で案内されるものを�
 
 ![Import の確認画面](placeholder)
 
-読み込みが終わると、`Assets/VRPrintLab/<作品名>_<番号>/` の中に、作品の Prefab（`<作品名>.prefab`）が自動で作られます。色・プリント・ギミックは設定済みです。
+読み込みが終わると、`Assets/VRPrintLab/VRPrintLab_<番号>/` の中に、作品の Prefab（`VRPrintLab_<番号>.prefab`）が自動で作られます。色・プリント・ギミックは設定済みです。
 
 Prefab が作られないときは、メニューの **Tools > VRPrintLab > Prefab をすべて作り直す** を実行してください。
 
