@@ -71,7 +71,7 @@ npm run typecheck                # ルートの型を作ってから型チェッ
 ## 3. 環境
 
 - **Supabase**: 作成済み。URL・キーは `web/.env.local`（git 管理外）。無料プラン（1週間使わないと一時停止）
-- **マイグレーション**: `web/supabase/migrations` の 12 ファイルはすべて SQL Editor で実行済み（最新は `20261107000000_drop_reports.sql`）。新しく作ったら利用者に実行を依頼する（Supabase CLI・Docker は入っていない）
+- **マイグレーション**: `web/supabase/migrations` の 13 ファイルのうち、`20261108000000_purchase_package_name.sql` 以外は SQL Editor で実行済み。新しく作ったら利用者に実行を依頼する（Supabase CLI・Docker は入っていない）
 - **Storage バケット**: `work-images`（非公開・作品の画像とサムネイル）、`template-assets`（公開・glb とサムネイル）、`template-packages`（非公開・テンプレートの unitypackage）、`packages`（非公開・生成した unitypackage と購入した版の控え）
 - **データ**: ギミック 16 件。テンプレートは unitypackage 形式で 8 件を公開（ケーキ・缶バッジ・マグカップ・タペストリー・デスクマット・うちわ・抱き枕カバー・スケートボード）。旧形式の Tシャツは DB の行だけ非公開で残っている（他の利用者の作品が参照）
 - **Unity**: 2022.3.22f1（`C:\Program Files\Unity\Hub\Editor\2022.3.22f1`）。VCC の TestProject に UdonSharp・ClientSim あり。この PC には VRChat 本体が入っていない
@@ -88,6 +88,7 @@ npm run typecheck                # ルートの型を作ってから型チェッ
 - **購入した版の控え**: ダウンロード時に unitypackage・編集内容・画像・サムネイルを `packages` バケットに保存。作品を編集・削除しても履歴から確認・再ダウンロードできる
 - **プリントの描画**: ブラウザ（canvas）とサーバー（sharp）で同じ見た目になるよう、配置計算を `printPlacement` で共有し、明るさ・彩度は CSS フィルターと同じ式
 - **テンプレート / ギミックはファイルで定義し、同期コマンドで DB に登録**。トークン数・公開状態は登録済みなら同期で上書きしない（管理画面 /admin/catalog で変える。2026-11-03 に同期スクリプトを修正）。テンプレート一覧は公開中のものだけ（RLS では管理者に非公開も見えるため、クエリでも絞る）。非公開のテンプレートは管理者だけがエディタで開ける
+- **パッケージの名前**: フォルダ・Prefab・ファイルは `VRPrintLab_<テンプレートの slug>_<購入日時>`（`purchases.package_name` に記録。控えから作り直しても同じ名前）
 - **unitypackage の GUID** は購入 ID から決定的に作る（再インポートで上書き）。共通スクリプト（`Assets/VRPrintLab/_Runtime`）は固定の GUID
 - **Prefab の自動組み立て**（`VRPrintLabPrefabBuilder.cs`）
   - `EditorApplication.update` で読み込み完了を待つ（`delayCall` で自分を登録し直すと GUI の Unity が数分固まる）

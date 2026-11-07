@@ -56,7 +56,7 @@ const cleanup = (uid) => cleanupUser(admin, uid);
     const t0 = Date.now();
     const [download1] = await Promise.all([page.waitForEvent("download", { timeout: 60000 }), dialog.getByRole("button", { name: "ダウンロードする" }).click()]);
     console.log("   生成〜ダウンロード開始:", ((Date.now() - t0) / 1000).toFixed(1), "秒");
-    ok("ファイル名に日本語が入らない", /^VRPrintLab_[0-9a-f]{8}\.unitypackage$/.test(download1.suggestedFilename()), download1.suggestedFilename());
+    ok("ファイル名がテンプレートと購入日時", /^VRPrintLab_cake_\d{14}\.unitypackage$/.test(download1.suggestedFilename()), download1.suggestedFilename());
     const file1 = `${DIR}/dl1.unitypackage`;
     await download1.saveAs(file1);
     const head = fs.readFileSync(file1).subarray(0, 2);

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { gimmickMap, listGimmicks } from "@/lib/gimmicks/queries";
 import { parseGimmickSelection, type GimmickDefinition, type GimmickSelection } from "@/lib/gimmicks/schema";
-import { buildWorkPackage, packageFileName } from "@/lib/package/work-package";
+import { buildWorkPackage, packageBaseName, purchaseFileName } from "@/lib/package/work-package";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { parseEditorParams, type EditorParams } from "@/lib/templates/params";
 import { slotsSchema, type Slot } from "@/lib/templates/schema";
@@ -72,7 +72,7 @@ async function loadWork(workId: string) {
   // 同じ土台の版の購入（ギミック導入前の購入は params_hash が土台の版と同じ）
   const { data: related } = await supabase
     .from("purchases")
-    .select("id, params_hash, base_hash, gimmick_slugs, package_path, suspended_at")
+    .select("id, params_hash, base_hash, gimmick_slugs, package_path, package_name, created_at, suspended_at")
     .eq("work_id", work.id)
     .or(`base_hash.in.(${baseHashes.join(",")}),params_hash.in.(${baseHashes.join(",")})`);
   const { purchase, basePaid, breakdown, cost } = priceVersion({
@@ -170,7 +170,7 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
 
   if (purchase?.package_path) {
     const url = await signedDownloadUrl(supabase, purchase.package_path);
-    return url ? { ok: true, kind: "ready", url, filename: packageFileName(work.name, purchase.id), charged: 0 } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
+    return url ? { ok: true, kind: "ready", url, filename: purchaseFileName(purchase), charged: 0 } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
   }
 
   // 控えを削除した取得済みの版は、今の作品から無料で作り直す（同じ購入 ID なので GUID も同じになる）
@@ -184,6 +184,7 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
 
   const admin = createAdminClient();
   const purchaseId = purchase?.id ?? crypto.randomUUID();
+  const packageName = purchase?.package_name ?? packageBaseName(template.slug, purchase ? new Date(purchase.created_at) : new Date());
   // 作り直す場合は、削除キューに残っている以前のファイルと重ならないパスにする
   const packagePath = restoring ? `${userId}/${purchaseId}-${Date.now()}.unitypackage` : `${userId}/${purchaseId}.unitypackage`;
   const images = new Map<string, Buffer>();
@@ -205,6 +206,7 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
     const file = await buildWorkPackage({
       purchaseId,
       workName: work.name,
+      packageName,
       template: { slug: template.slug, name: template.name, slots, prefabPath },
       params,
       gimmicks: gimmicks.map((g) => ({ def: defs.get(g.slug) as GimmickDefinition, params: g.params })),
@@ -221,10 +223,10 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
   }
 
   if (restoring) {
-    const { error } = await admin.from("purchases").update({ package_path: packagePath }).eq("id", purchaseId);
+    const { error } = await admin.from("purchases").update({ package_path: packagePath, package_name: packageName }).eq("id", purchaseId);
     if (error) return { ok: false, error: "ダウンロードの処理に失敗しました。" };
     const url = await signedDownloadUrl(supabase, packagePath);
-    return url ? { ok: true, kind: "ready", url, filename: packageFileName(work.name, purchaseId), charged: 0 } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
+    return url ? { ok: true, kind: "ready", url, filename: `${packageName}.unitypackage`, charged: 0 } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
   }
 
   const { data: rows, error } = await admin.rpc("purchase_work_version", {
@@ -251,11 +253,12 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
 
   // 同時に押された場合などで既存の購入が返ってきたら、今回作ったファイルは不要
   let finalPath = packagePath;
+  let filename = `${packageName}.unitypackage`;
   if (result.purchase_id === purchaseId) {
     // 次回の差額計算に使うので、控えとは別に確実に記録する
     await admin
       .from("purchases")
-      .update({ base_hash: baseHash, gimmick_slugs: gimmicks.map((g) => g.slug) })
+      .update({ base_hash: baseHash, gimmick_slugs: gimmicks.map((g) => g.slug), package_name: packageName })
       .eq("id", purchaseId);
     await saveSnapshot(admin, {
       userId,
@@ -271,14 +274,15 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
     });
   } else {
     await admin.storage.from(PACKAGES_BUCKET).remove([packagePath]);
-    const { data: existing } = await supabase.from("purchases").select("package_path").eq("id", result.purchase_id).single();
+    const { data: existing } = await supabase.from("purchases").select("package_path, package_name, created_at").eq("id", result.purchase_id).single();
     finalPath = existing?.package_path ?? packagePath;
+    if (existing) filename = purchaseFileName(existing);
   }
 
   revalidatePath("/", "layout");
   const url = await signedDownloadUrl(supabase, finalPath);
   return url
-    ? { ok: true, kind: "ready", url, filename: packageFileName(work.name, result.purchase_id), charged: result.charged }
+    ? { ok: true, kind: "ready", url, filename, charged: result.charged }
     : { ok: false, error: "購入は完了しました。ダウンロード履歴から再ダウンロードしてください。" };
 }
 
@@ -290,7 +294,7 @@ export async function purchaseDownloadUrl(purchaseId: string): Promise<{ ok: tru
   // RLS でも本人の購入に限られるが、設定ミスに備えてここでも絞り込む
   const { data } = await supabase
     .from("purchases")
-    .select("package_path, work_name, suspended_at")
+    .select("package_path, package_name, created_at, suspended_at")
     .eq("id", purchaseId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -298,5 +302,5 @@ export async function purchaseDownloadUrl(purchaseId: string): Promise<{ ok: tru
   if (await accountSuspended(supabase, userId)) return { ok: false, error: SUSPENDED_ACCOUNT };
   if (!data?.package_path) return { ok: false, error: "ダウンロードできるファイルが見つかりません。" };
   const url = await signedDownloadUrl(supabase, data.package_path);
-  return url ? { ok: true, url, filename: packageFileName(data.work_name, purchaseId) } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
+  return url ? { ok: true, url, filename: purchaseFileName(data) } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
 }

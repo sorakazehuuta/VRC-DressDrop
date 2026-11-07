@@ -5,11 +5,12 @@ import type { Slot } from "@/lib/templates/schema";
 import { gimmickScripts, runtimeAssets, workBuildAssets, type GimmickInput } from "./gimmick-assets";
 import { setCutout, setMainTexture, setMaterialColor, templateFiles } from "./template-package";
 import { renderPrintTexture } from "./texture";
-import { buildUnityPackage, deterministicGuid, safeFileName, textAssetMeta, textureMeta, type PackageAsset } from "./unitypackage";
+import { buildUnityPackage, deterministicGuid, textAssetMeta, textureMeta, type PackageAsset } from "./unitypackage";
 
 export type WorkPackageInput = {
   purchaseId: string;
   workName: string;
+  packageName: string;
   // prefabPath: テンプレートの unitypackage の中で使う Prefab（Assets/...）
   template: { slug: string; name: string; slots: Slot[]; prefabPath: string };
   params: EditorParams;
@@ -20,13 +21,15 @@ export type WorkPackageInput = {
   createdAt: Date;
 };
 
-// フォルダ・Prefab・ダウンロードのファイルで共通の名前。環境によって文字化けしないよう英数字だけにし、取得 ID で区別する
-export function packageBaseName(workName: string, purchaseId: string) {
-  return `${safeFileName(workName.replace(/[^A-Za-z0-9 _-]/g, ""), "VRPrintLab")}_${purchaseId.slice(0, 8)}`;
+// フォルダ・Prefab・ダウンロードのファイルで共通の名前。環境によって文字化けしないよう、テンプレートの slug と購入日時（日本時間）で作る
+export function packageBaseName(templateSlug: string, purchasedAt: Date) {
+  const stamp = new Intl.DateTimeFormat("sv-SE", { dateStyle: "short", timeStyle: "medium", timeZone: "Asia/Tokyo" }).format(purchasedAt).replace(/\D/g, "");
+  return `VRPrintLab_${templateSlug}_${stamp}`;
 }
 
-export function packageFileName(workName: string, purchaseId: string) {
-  return `${packageBaseName(workName, purchaseId)}.unitypackage`;
+// 名前を記録する前の購入は、テンプレートが分からなくても購入日時で区別する
+export function purchaseFileName(purchase: { package_name: string | null; created_at: string }) {
+  return `${purchase.package_name ?? packageBaseName("work", new Date(purchase.created_at))}.unitypackage`;
 }
 
 function readme(input: WorkPackageInput, folder: string, prefabName: string) {
@@ -114,7 +117,7 @@ function license(input: WorkPackageInput) {
 }
 
 export async function buildWorkPackage(input: WorkPackageInput) {
-  const folder = packageBaseName(input.workName, input.purchaseId);
+  const folder = input.packageName;
   const prefabName = folder;
   const base = `Assets/VRPrintLab/${folder}`;
   const assets: PackageAsset[] = [];

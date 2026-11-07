@@ -6,8 +6,8 @@ import { gimmickDefinitionSchema } from "@/lib/gimmicks/schema";
 import { gimmickScripts } from "@/lib/package/gimmick-assets";
 import { termsVersionLabel } from "@/lib/legal";
 import { readUnityPackage, type UnityPackageEntry } from "@/lib/package/read-unitypackage";
-import { buildUnityPackage, deterministicGuid, safeFileName, type PackageAsset } from "@/lib/package/unitypackage";
-import { buildWorkPackage, packageBaseName, packageFileName, type WorkPackageInput } from "@/lib/package/work-package";
+import { buildUnityPackage, deterministicGuid, type PackageAsset } from "@/lib/package/unitypackage";
+import { buildWorkPackage, packageBaseName, purchaseFileName, type WorkPackageInput } from "@/lib/package/work-package";
 import { IMAGE_A, params, slots } from "../helpers/fixtures";
 
 // ---- テスト用のテンプレート（Unity で書き出した unitypackage と同じ形） ----
@@ -60,11 +60,13 @@ const templatePackage = buildUnityPackage(OLD_SEED, templateAssets);
 const spin = gimmickDefinitionSchema.parse(JSON.parse(readFileSync(path.join(process.cwd(), "gimmicks", "catalog", "spin.json"), "utf8")));
 const PURCHASE = "33333333-3333-4333-8333-333333333333";
 const OTHER_PURCHASE = "44444444-4444-4444-8444-444444444444";
+const NAME = packageBaseName("test", new Date("2026-11-03T12:00:00+09:00"));
 
 let image: Buffer;
 const input = (purchaseId = PURCHASE): WorkPackageInput => ({
   purchaseId,
   workName: "テスト作品",
+  packageName: NAME,
   template: { slug: "test", name: "テスト", slots, prefabPath: `${T}/Model.prefab` },
   params: params({ color: "#123456" }),
   gimmicks: [{ def: spin, params: { speed: 90, axis: "1" } }],
@@ -74,7 +76,7 @@ const input = (purchaseId = PURCHASE): WorkPackageInput => ({
 });
 
 let entries: UnityPackageEntry[];
-const base = `Assets/VRPrintLab/${packageBaseName("テスト作品", PURCHASE)}`;
+const base = `Assets/VRPrintLab/${NAME}`;
 const find = (p: string) => entries.find((e) => e.path === p);
 const text = (p: string) => find(p)?.asset?.toString("utf8") ?? "";
 
@@ -88,7 +90,7 @@ describe("作品のパッケージ", () => {
     for (const p of ["Template/Model.prefab", "Template/Mat_Print.mat", "Tex_print.png", "Tex_sticker.png", "README.txt", "LICENSE.txt", "VRPrintLab.json"]) {
       expect(find(`${base}/${p}`), p).toBeDefined();
     }
-    expect(base).toBe("Assets/VRPrintLab/VRPrintLab_33333333");
+    expect(base).toBe("Assets/VRPrintLab/VRPrintLab_test_20261103120000");
   });
 
   it("パッケージの中のパスに日本語が入らない", () => {
@@ -159,8 +161,8 @@ describe("作品のパッケージ", () => {
     const config = JSON.parse(text(`${base}/VRPrintLab.json`));
     expect(JSON.stringify(config)).toContain("VRPLSpin");
     expect(JSON.stringify(config)).toContain("90");
-    expect(config.name).toBe("VRPrintLab_33333333");
-    expect(config.prefabPath).toBe(`${base}/VRPrintLab_33333333.prefab`);
+    expect(config.name).toBe(NAME);
+    expect(config.prefabPath).toBe(`${base}/${NAME}.prefab`);
   });
 });
 
@@ -198,16 +200,12 @@ describe("GUID（再インポートで上書きされるように）", () => {
 });
 
 describe("ファイル名", () => {
-  it("Windows で使えない文字を置き換え、空なら代わりの名前にする", () => {
-    expect(safeFileName('a/b\\c:d*e?"f<g>h|i', "x")).not.toMatch(/[\\/:*?"<>|]/);
-    expect(safeFileName("   ", "代わり")).toBe("代わり");
-    expect(safeFileName("ケーキの作品", "x")).toBe("ケーキの作品");
+  it("テンプレートの slug と購入日時（日本時間）で作る", () => {
+    expect(packageBaseName("roll-banner", new Date("2026-11-07T23:30:05Z"))).toBe("VRPrintLab_roll-banner_20261108083005");
   });
 
-  it("ダウンロードのファイル名は英数字だけにし、取得 ID で区別する", () => {
-    expect(packageFileName("ケーキの作品", PURCHASE)).toBe("VRPrintLab_33333333.unitypackage");
-    expect(packageFileName("My Cake", PURCHASE)).toBe("My Cake_33333333.unitypackage");
-    expect(packageFileName("ケーキ Cake 作品", OTHER_PURCHASE)).toBe("Cake_44444444.unitypackage");
-    expect(packageFileName("a/b:c.d", PURCHASE)).toBe("abcd_33333333.unitypackage");
+  it("記録した名前を使い、記録がない購入は購入日時で作る", () => {
+    expect(purchaseFileName({ package_name: NAME, created_at: "2026-11-03T03:00:00Z" })).toBe(`${NAME}.unitypackage`);
+    expect(purchaseFileName({ package_name: null, created_at: "2026-11-03T03:00:00Z" })).toBe("VRPrintLab_work_20261103120000.unitypackage");
   });
 });
