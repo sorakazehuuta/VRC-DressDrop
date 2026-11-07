@@ -73,7 +73,7 @@ npm run typecheck                # ルートの型を作ってから型チェッ
 - **Supabase**: 作成済み。URL・キーは `web/.env.local`（git 管理外）。無料プラン（1週間使わないと一時停止）
 - **マイグレーション**: `web/supabase/migrations` の 11 ファイルはすべて SQL Editor で実行済み（最新は `20261105000000_phase8.sql`）。新しく作ったら利用者に実行を依頼する（Supabase CLI・Docker は入っていない）
 - **Storage バケット**: `work-images`（非公開・作品の画像とサムネイル）、`template-assets`（公開・glb とサムネイル）、`template-packages`（非公開・テンプレートの unitypackage）、`packages`（非公開・生成した unitypackage と購入した版の控え）
-- **データ**: ギミック 16 件。テンプレートは unitypackage 形式で 8 件を公開（ケーキ・缶バッジ・マグカップ・タペストリー・デスクマット・うちわ・抱き枕カバー・スケートボード）。旧形式の Tシャツは DB の行だけ非公開で残っている（他の利用者の作品が参照）
+- **データ**: ギミック 16 件。テンプレートは unitypackage 形式で 8 件を公開（ケーキ・缶バッジ・マグカップ・タペストリー・デスクマット・うちわ・抱き枕カバー・スケートボード）、3 件を非公開で登録済み（本・缶・コースター。2026-11-07 登録、公開は利用者の確認待ち）。旧形式の Tシャツは DB の行だけ非公開で残っている（他の利用者の作品が参照）
 - **Unity**: 2022.3.22f1（`C:\Program Files\Unity\Hub\Editor\2022.3.22f1`）。VCC の TestProject に UdonSharp・ClientSim あり。この PC には VRChat 本体が入っていない
 - **Playwright**: web の devDependencies に入っている（サムネイル生成と確認用）
 - **Stripe**: サンドボックス「VRPrintLabサンドボックス」（日本・円、カードとコンビニ決済を有効化済み）。テスト用のキー `STRIPE_SECRET_KEY`（sk_test_）と開発用の `STRIPE_WEBHOOK_SECRET` は `web/.env.local`。Stripe CLI は入っていないので、Webhook は `npm run stripe:forward` で転送する。チャージバックのテストに使ったメールアドレスは Radar が自動でブロックするので、テストのたびに新しいユーザーを使う
@@ -102,7 +102,7 @@ npm run typecheck                # ルートの型を作ってから型チェッ
 - **不正対策**: 要件定義書 6.11 を追加（2026-10-05）。今の実装は新規登録の時点で3トークンを付与しているため、SMS で電話番号を確認した時点の付与に変える必要がある。CAPTCHA・使い捨てメールの拒否・カードのブロックも未実装
 - **Supabase の一時停止**: 無料プランは1週間使わないと止まる（2026-10-27 に停止、利用者が再開）。止まると templates:sync やサイト全体が `fetch failed` になる
 - **未決事項**: トークンの価格・各テンプレート/ギミックの消費量、ドメイン
-- **テンプレート（unitypackage 形式）**: 購入時はテンプレートの中身を作品フォルダの `Template/` に複製し、GUID を振り直してスロットの .mat の色・テクスチャだけを書き換える。プレビューの glb は `templates:prepare` が Unity のバッチモードで Prefab から作る（登録する PC に Unity 2022.3 が必要）。エディタの最初の視点は、1つ目のプリント面の UV の中心を正面から見る向き（`src/lib/templates/view.ts`）。ケーキは 6.7 万・スケートボードは 1.06 万三角形で Quest の目安（1万）を超えている。スケートボードは templates:prepare で「UV が裏返っている」注意が出るが、利用者が問題なしと判断して公開
+- **テンプレート（unitypackage 形式）**: 購入時はテンプレートの中身を作品フォルダの `Template/` に複製し、GUID を振り直してスロットの .mat の色・テクスチャだけを書き換える。プレビューの glb は `templates:prepare` が Unity のバッチモードで Prefab から作る（登録する PC に Unity 2022.3 が必要）。エディタの最初の視点は、1つ目のプリント面の UV の中心を正面から見る向き（`src/lib/templates/view.ts`）。ケーキは 6.7 万・缶は 1.32 万・スケートボードは 1.06 万三角形で Quest の目安（1万）を超えている。本はエディタのプレビューで、表紙のプリントの上に背の溝が細かい点で透ける（Unity では出ない）
 - **ギミック**: VRChat 上での全員への同期は未確認。直近の修正版（光る・触れる・振る）は利用者の Unity での再確認待ち
 - **利用者の TestProject**: G01 の Prefab からオブジェクトが消えていた。修正版パッケージを読み込み、Tools > VRPrintLab > Prefab をすべて作り直す で復旧する手順を案内済み
 - **本番公開**: Vercel へのデプロイ、ドメイン、確認メールの送信サービス（Supabase 標準は 1 時間に数通まで）、Supabase の有料プラン検討
