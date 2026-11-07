@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import { readContent } from "@/components/markdown";
 import { FormMessage } from "@/components/ui";
+import { parseNews } from "@/lib/news";
 import { createClient } from "@/lib/supabase/server";
 import icon from "../../images/common/icons/VRPrintLab_icon.png";
 
@@ -15,6 +17,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const loggedIn = Boolean(data?.claims);
+  const news = parseNews(await readContent("news.md")).slice(0, 3);
 
   return (
     <main className="flex flex-1 flex-col">
@@ -63,6 +66,31 @@ export default async function Home({ searchParams }: PageProps<"/">) {
           ))}
         </ol>
       </section>
+
+      {news.length > 0 && (
+        <section className="border-t border-zinc-200">
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-10">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="font-semibold text-brand">お知らせ</h2>
+              <Link href="/news" className="text-sm text-zinc-600 underline">
+                すべて見る
+              </Link>
+            </div>
+            <ul className="flex flex-col gap-2 text-sm">
+              {news.map((item) => (
+                <li key={`${item.date}-${item.title}`} className="flex flex-col gap-x-4 sm:flex-row">
+                  <time dateTime={item.date} className="shrink-0 tabular-nums text-zinc-500">
+                    {item.date.replaceAll("-", "/")}
+                  </time>
+                  <Link href="/news" className="hover:underline">
+                    {item.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
     </main>
   );
 }

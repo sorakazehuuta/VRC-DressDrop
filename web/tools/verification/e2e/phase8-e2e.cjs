@@ -64,7 +64,7 @@ async function login(page, email) {
     ok("管理者のテンプレート一覧に Tシャツが出ない", (await adminPage.getByText("Tシャツ", { exact: true }).count()) === 0);
 
     // ---- 規約類のページ ----
-    for (const [path, heading] of [["/privacy", "プライバシーポリシー"], ["/tokushoho", "特定商取引法に基づく表記"], ["/guide", "VRChat への導入ガイド"]]) {
+    for (const [path, heading] of [["/privacy", "プライバシーポリシー"], ["/tokushoho", "特定商取引法に基づく表記"], ["/guide", "VRChat への導入ガイド"], ["/news", "お知らせ"]]) {
       await adminPage.goto(`${BASE}${path}`, { waitUntil: "networkidle" });
       ok(`${path} が表示される`, await adminPage.getByRole("heading", { name: heading, level: 1 }).isVisible());
     }
@@ -135,6 +135,7 @@ async function login(page, email) {
 
     // ---- ギミックの公開状態とエディタのパネル ----
     const panel = adminPage.getByRole("button", { name: /ギミック（動き・演出）/ });
+    await admin.from("gimmicks").update({ is_public: true }).eq("id", gimmicksBefore[0].id); // すべて非公開の環境でも確認できるように
     await adminPage.goto(`${BASE}/editor/cake`, { waitUntil: "networkidle" });
     ok("公開中のギミックがあればパネルを表示", await panel.isVisible());
     await adminPage.goto(`${BASE}/admin/catalog`, { waitUntil: "networkidle" });

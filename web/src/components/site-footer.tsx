@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 const links = [
+  { href: "/news", label: "お知らせ" },
   { href: "/guide", label: "導入ガイド" },
   { href: "/faq", label: "よくある質問" },
   { href: "/terms", label: "利用規約" },
