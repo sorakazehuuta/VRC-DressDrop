@@ -1,0 +1,37 @@
+{
+  "slug": "diptych",
+  "name": "二つ折りパネル",
+  "category": "グッズ",
+  "description": "二つ折りのパネル。左右に別々の画像をプリントできます。",
+  "tokenCost": 1,
+  "isPublic": false,
+  "sortOrder": 230,
+  "files": {
+    "package": "Diptych.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "base",
+      "type": "color",
+      "label": "本体の色",
+      "material": "Mat_Base",
+      "defaultColor": "#ffffff"
+    },
+    {
+      "key": "print",
+      "type": "print",
+      "label": "左のパネル",
+      "material": "Mat_Print1",
+      "background": "transparent",
+      "aspect": 0.75
+    },
+    {
+      "key": "print_2",
+      "type": "print",
+      "label": "右のパネル",
+      "material": "Mat_Print2",
+      "background": "transparent",
+      "aspect": 0.75
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "slug": "menu-pedestal",
+  "name": "メニュースタンド",
+  "category": "グッズ",
+  "description": "支柱付きのメニュー立て。好きな画像をプリントできます。",
+  "tokenCost": 1,
+  "isPublic": false,
+  "sortOrder": 280,
+  "files": {
+    "package": "MenuPedestal.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "base",
+      "type": "color",
+      "label": "本体の色",
+      "material": "Mat_Base",
+      "defaultColor": "#ffffff"
+    },
+    {
+      "key": "print",
+      "type": "print",
+      "label": "プリント",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 0.8
+    }
+  ]
+}

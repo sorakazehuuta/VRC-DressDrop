@@ -1,0 +1,141 @@
+{
+  "slug": "photo-frame",
+  "name": "フォトボード",
+  "category": "グッズ",
+  "description": "15枚の写真を吊るせるボード。1枚ずつ好きな画像をプリントできます。",
+  "tokenCost": 1,
+  "isPublic": false,
+  "sortOrder": 310,
+  "files": {
+    "package": "Photoframe.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "base",
+      "type": "color",
+      "label": "本体の色",
+      "material": "Mat_Base",
+      "defaultColor": "#ffffff"
+    },
+    {
+      "key": "print",
+      "type": "print",
+      "label": "写真1",
+      "material": "Mat_Print1",
+      "background": "transparent",
+      "aspect": 1.0
+    },
+    {
+      "key": "print_2",
+      "type": "print",
+      "label": "写真2",
+      "material": "Mat_Print2",
+      "background": "transparent",
+      "aspect": 1.0
+    },
+    {
+      "key": "print_3",
+      "type": "print",
+      "label": "写真3",
+      "material": "Mat_Print3",
+      "background": "transparent",
+      "aspect": 1.0
+    },
+    {
+      "key": "print_4",
+      "type": "print",
+      "label": "写真4",
+      "material": "Mat_Print4",
+      "background": "transparent",
+      "aspect": 1.0
+    },
+    {
+      "key": "print_5",
+      "type": "print",
+      "label": "写真5",
+      "material": "Mat_Print5",
+      "background": "transparent",
+      "aspect": 1.0
+    },
+    {
+      "key": "print_6",
+      "type": "print",
+      "label": "写真6",
+      "material": "Mat_Print6",
+      "background": "transparent",
+      "aspect": 1.0
+    },
+    {
+      "key": "print_7",
+      "type": "print",
+      "label": "写真7",
+      "material": "Mat_Print7",
+      "background": "transparent",
+      "aspect": 1.0
+    },
+    {
+      "key": "print_8",
+      "type": "print",
+      "label": "写真8",
+      "material": "Mat_Print8",
+      "background": "transparent",
+      "aspect": 1.0
+    },
+    {
+      "key": "print_9",
+      "type": "print",
+      "label": "写真9",
+      "material": "Mat_Print9",
+      "background": "transparent",
+      "aspect": 1.0
+    },
+    {
+      "key": "print_10",
+      "type": "print",
+      "label": "写真10",
+      "material": "Mat_Print10",
+      "background": "transparent",
+      "aspect": 1.0
+    },
+    {
+      "key": "print_11",
+      "type": "print",
+      "label": "写真11",
+      "material": "Mat_Print11",
+      "background": "transparent",
+      "aspect": 1.0
+    },
+    {
+      "key": "print_12",
+      "type": "print",
+      "label": "写真12",
+      "material": "Mat_Print12",
+      "background": "transparent",
+      "aspect": 1.0
+    },
+    {
+      "key": "print_13",
+      "type": "print",
+      "label": "写真13",
+      "material": "Mat_Print13",
+      "background": "transparent",
+      "aspect": 1.0
+    },
+    {
+      "key": "print_14",
+      "type": "print",
+      "label": "写真14",
+      "material": "Mat_Print14",
+      "background": "transparent",
+      "aspect": 1.0
+    },
+    {
+      "key": "print_15",
+      "type": "print",
+      "label": "写真15",
+      "material": "Mat_Print15",
+      "background": "transparent",
+      "aspect": 1.0
+    }
+  ]
+}

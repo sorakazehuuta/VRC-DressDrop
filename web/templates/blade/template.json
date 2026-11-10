@@ -1,0 +1,22 @@
+{
+  "slug": "blade",
+  "name": "突き出し看板",
+  "category": "グッズ",
+  "description": "壁から突き出す看板。好きな画像をプリントできます。",
+  "tokenCost": 1,
+  "isPublic": false,
+  "sortOrder": 200,
+  "files": {
+    "package": "Blade.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "print",
+      "type": "print",
+      "label": "プリント",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 1.6
+    }
+  ]
+}
