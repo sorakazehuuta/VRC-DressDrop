@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { downloadWork, getDownloadQuote, type CostLine, type DownloadQuote, type VersionKind } from "@/app/works/download";
+import { useOnTabReturn } from "@/components/tab-return";
 import { Button } from "@/components/ui";
 import { saveFileFromUrl } from "@/lib/save-file";
 
@@ -37,8 +38,10 @@ export function DownloadPanel({
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string; insufficient?: boolean } | null>(null);
+  const [tabReturns, setTabReturns] = useState(0);
+  useOnTabReturn(() => setTabReturns((n) => n + 1));
 
-  // 保存済みの内容が取得済みかどうかを確認する（保存のたびに更新）
+  // 保存済みの内容が取得済みかどうかを確認する（保存のたび・タブに戻るたびに更新）
   useEffect(() => {
     if (!workId) return;
     let cancelled = false;
@@ -48,7 +51,7 @@ export function DownloadPanel({
     return () => {
       cancelled = true;
     };
-  }, [workId, saveCount]);
+  }, [workId, saveCount, tabReturns]);
 
   const purchased = !dirty && quote?.ok === true && quote.purchased;
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { RefreshOnTabReturn } from "@/components/tab-return";
 import { listTemplates } from "@/lib/templates/queries";
 
 export const metadata: Metadata = { title: "テンプレート一覧 | VRPrintLab" };
@@ -10,6 +11,7 @@ export default async function TemplatesPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-10">
+      <RefreshOnTabReturn />
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold">テンプレートを選ぶ</h1>
         <p className="text-zinc-600">作りたいアイテムを選ぶと、画像を貼って編集できます。</p>

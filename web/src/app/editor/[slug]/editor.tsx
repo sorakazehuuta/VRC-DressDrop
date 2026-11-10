@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { duplicateWork, saveWork } from "@/app/works/actions";
+import { useOnTabReturn } from "@/components/tab-return";
 import { Button } from "@/components/ui";
 import { defaultParams, type ColorParams, type EditorParams, type PrintParams, type SlotParams } from "@/lib/templates/params";
 import type { Slot } from "@/lib/templates/schema";
 import type { GimmickDefinition, GimmickSelection } from "@/lib/gimmicks/schema";
 import { ColorControls, PrintControls } from "./controls";
+import { latestCosts } from "./costs";
 import { DownloadPanel } from "./download-panel";
 import { GimmickPanel } from "./gimmick-panel";
 import { PreviewOverlay } from "./gimmick-preview/preview-overlay";
@@ -91,6 +93,15 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
   const { value: state, change: changeState, commit, undo, redo, reset } = history;
   const { params, gimmicks } = state;
   const gimmickSlugs = gimmickDefs.map((d) => d.slug).join(",");
+
+  // 開いている間に管理画面でトークン数が変わっても、タブに戻ったら表示を合わせる
+  const [costs, setCosts] = useState<Awaited<ReturnType<typeof latestCosts>> | null>(null);
+  useOnTabReturn(() => void latestCosts(template.slug).then(setCosts));
+  const templateCost = costs?.template ?? template.tokenCost;
+  const pricedDefs = useMemo(
+    () => (costs ? gimmickDefs.map((d) => (d.slug in costs.gimmicks ? { ...d, tokenCost: costs.gimmicks[d.slug] } : d)) : gimmickDefs),
+    [costs, gimmickDefs],
+  );
   const change = useCallback(
     (update: (prev: EditorParams) => EditorParams, isCommit = true) =>
       changeState((prev) => {
@@ -410,7 +421,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
 
           {gimmickDefs.length > 0 && (
             <fieldset disabled={readOnly}>
-              <GimmickPanel defs={gimmickDefs} selected={gimmicks} onChange={changeGimmicks} onCommit={commit} />
+              <GimmickPanel defs={pricedDefs} selected={gimmicks} onChange={changeGimmicks} onCommit={commit} />
             </fieldset>
           )}
 
@@ -426,7 +437,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
           )}
 
           <DownloadPanel
-            tokenCost={template.tokenCost + gimmicks.reduce((sum, g) => sum + (gimmickDefs.find((d) => d.slug === g.slug)?.tokenCost ?? 0), 0)}
+            tokenCost={templateCost + gimmicks.reduce((sum, g) => sum + (pricedDefs.find((d) => d.slug === g.slug)?.tokenCost ?? 0), 0)}
             workId={workId}
             loggedIn={Boolean(userId)}
             dirty={dirty}
