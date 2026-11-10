@@ -6,14 +6,14 @@ import { CatalogForm } from "./form";
 export default async function AdminCatalogPage() {
   const admin = createAdminClient();
   const [{ data: templates }, { data: gimmicks }] = await Promise.all([
-    admin.from("templates").select("id, slug, name, token_cost, is_public").order("sort_order"),
+    admin.from("templates").select("id, slug, name, name_reading, token_cost, is_public").order("sort_order"),
     admin.from("gimmicks").select("id, slug, name, token_cost, is_public").order("sort_order"),
   ]);
 
   return (
     <main className="flex flex-col gap-6">
       <p className="text-sm text-zinc-600">
-        トークン数と公開状態はここで変えます。同期コマンド（templates:sync / gimmicks:sync）は、登録済みのもののトークン数・公開状態を上書きしません（ファイルの値は初回の登録だけに使います）。
+        トークン数・公開状態・並び順（テンプレートは名前の読みも）はここで変えます。同期コマンド（templates:sync / gimmicks:sync）は、登録済みのものの値を上書きしません（ファイルの値は初回の登録だけに使い、新しく登録したものは最後に並びます）。読みはテンプレート一覧の「名前順」に使います。
         モデル・スロット・ギミックの中身の登録と更新は、これまでどおりファイルと同期コマンドで行います。非公開のテンプレートは、管理者だけがエディタで確認できます。
       </p>
       <Card className="flex flex-col">

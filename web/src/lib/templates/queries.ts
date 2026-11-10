@@ -13,17 +13,20 @@ export type TemplateSummary = {
   thumbnailUrl: string | null;
 };
 
+// 一覧で並べ替え・絞り込みに使う項目つき
+export type TemplateListItem = TemplateSummary & { nameReading: string; createdAt: string };
+
 export type TemplateDetail = TemplateSummary & { id: string; previewModelUrl: string; slots: Slot[] };
 
 export function templateAssetUrl(path: string) {
   return `${supabaseUrl}/storage/v1/object/public/template-assets/${path}`;
 }
 
-export async function listTemplates(): Promise<TemplateSummary[]> {
+export async function listTemplates(): Promise<TemplateListItem[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("templates")
-    .select("slug, name, category, description, token_cost, thumbnail_path")
+    .select("slug, name, name_reading, category, description, token_cost, thumbnail_path, created_at")
     // RLS では管理者に非公開のものも見えるため、ここでも公開中に絞る
     .eq("is_public", true)
     .order("sort_order")
@@ -36,6 +39,8 @@ export async function listTemplates(): Promise<TemplateSummary[]> {
     description: t.description,
     tokenCost: t.token_cost,
     thumbnailUrl: t.thumbnail_path ? templateAssetUrl(t.thumbnail_path) : null,
+    nameReading: t.name_reading,
+    createdAt: t.created_at,
   }));
 }
 

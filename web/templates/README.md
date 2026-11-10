@@ -94,9 +94,10 @@ template.json の例:
 |---|---|
 | `slug` | フォルダ名と同じにする |
 | `name` / `category` / `description` | サイトに表示する名前・分類・説明 |
+| `nameReading` | 名前の読み（ひらがな、省略可）。一覧の「名前順」に使う。初回の登録だけに使い、あとは管理画面で変える |
 | `tokenCost` | ダウンロードに必要なトークン数 |
 | `isPublic` | 初回の登録のときの公開状態。`false` の間は一覧に出ない（管理者だけがエディタの URL で確認できる）。登録後の公開・非公開は管理画面で変える |
-| `sortOrder` | 一覧の並び順（小さいほど前） |
+| `sortOrder` | 同時に新しく登録するもの同士の並び順（小さいほど前）。新しいものは今の一覧の最後に並ぶ。登録後の並び順は管理画面のドラッグで変える |
 | `files.package` | unitypackage のファイル名 |
 | `files.prefab` | 使う Prefab の Unity 上のパス（例: `Assets/VRPrintLab/Mug/Mug.prefab`）。Prefab が1つだけなら書かなくてよい |
 | `files.thumbnail` | 自分で用意したサムネイル画像のファイル名（省略すると `thumbnail.png`） |

@@ -51,6 +51,8 @@ export const slotsSchema = z
 export const templateManifestSchema = z.object({
   slug: z.string().regex(/^[a-z0-9][a-z0-9-]*$/, "英小文字・数字・- で指定してください"),
   name: z.string().min(1),
+  // 名前の読み（ひらがな）。一覧の「名前順」に使う。初回の登録だけに使い、あとは管理画面で変える
+  nameReading: z.string().max(100).default(""),
   category: z.string().min(1),
   description: z.string().default(""),
   tokenCost: z.number().int().positive(),

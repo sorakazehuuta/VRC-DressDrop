@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
 import { RefreshOnTabReturn } from "@/components/tab-return";
 import { listTemplates } from "@/lib/templates/queries";
+import { parseTemplateSort } from "@/lib/templates/sort";
+import { TemplateList } from "./template-list";
 
 export const metadata: Metadata = { title: "テンプレート一覧 | VRPrintLab" };
 
-export default async function TemplatesPage() {
-  const templates = await listTemplates();
+export default async function TemplatesPage({ searchParams }: { searchParams: Promise<{ sort?: string; q?: string }> }) {
+  const [templates, params] = await Promise.all([listTemplates(), searchParams]);
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-10">
@@ -22,32 +22,7 @@ export default async function TemplatesPage() {
           公開中のテンプレートはまだありません。
         </p>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {templates.map((t) => (
-            <li key={t.slug}>
-              <Link
-                href={`/editor/${t.slug}`}
-                className="group flex h-full flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white transition-shadow hover:shadow-md"
-              >
-                <div className="relative flex aspect-[4/3] items-center justify-center bg-zinc-100">
-                  {t.thumbnailUrl ? (
-                    <Image src={t.thumbnailUrl} alt="" fill sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" className="object-cover" unoptimized />
-                  ) : (
-                    <span className="text-5xl font-bold text-zinc-300">{t.name.slice(0, 1)}</span>
-                  )}
-                </div>
-                <div className="flex flex-1 flex-col gap-1 p-4">
-                  <span className="text-xs text-zinc-500">{t.category}</span>
-                  <span className="font-semibold group-hover:underline">{t.name}</span>
-                  {t.description && <p className="text-sm text-zinc-600">{t.description}</p>}
-                  <span className="mt-auto pt-2 text-sm">
-                    <strong>{t.tokenCost}</strong> トークン
-                  </span>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <TemplateList templates={templates} initialSort={parseTemplateSort(params.sort)} initialQuery={typeof params.q === "string" ? params.q : ""} />
       )}
     </main>
   );

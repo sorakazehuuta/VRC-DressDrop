@@ -67,9 +67,17 @@ async function main() {
   if (!url || !key) throw new Error(".env.local に NEXT_PUBLIC_SUPABASE_URL と SUPABASE_SECRET_KEY を設定してください");
   const supabase = createClient(url, key, { auth: { persistSession: false } });
 
-  // トークン数・公開状態は、登録済みなら DB の値（管理画面で変えた値）を残す。catalog の値は初回の登録だけに使う
-  const { data: registered } = await supabase.from("gimmicks").select("slug");
+  // トークン数・公開状態・並び順は、登録済みなら DB の値（管理画面で変えた値）を残す。catalog の値は初回の登録だけに使う
+  const { data: registered } = await supabase.from("gimmicks").select("slug, sort_order");
   const registeredSlugs = new Set((registered ?? []).map((g) => g.slug));
+  // 新しく登録するものは、管理画面で並べた順番を崩さないよう最後に並べる（新しいもの同士は sortOrder の順）
+  const lastSortOrder = Math.max(0, ...(registered ?? []).map((g) => g.sort_order));
+  const newSortOrders = new Map(
+    defs
+      .filter((d) => !registeredSlugs.has(d.slug))
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((d, i) => [d.slug, lastSortOrder + (i + 1) * 10]),
+  );
   // 登録済みの行は update にする（upsert は NOT NULL の列を省けない）
   for (const d of defs) {
     const row = {
@@ -78,13 +86,12 @@ async function main() {
       category: d.category,
       description: d.description,
       script_path: d.script,
-      sort_order: d.sortOrder,
       params_schema: d.params,
       definition: d,
     };
     const { error } = registeredSlugs.has(d.slug)
       ? await supabase.from("gimmicks").update(row).eq("slug", d.slug)
-      : await supabase.from("gimmicks").insert({ ...row, token_cost: d.tokenCost, is_public: d.isPublic });
+      : await supabase.from("gimmicks").insert({ ...row, token_cost: d.tokenCost, is_public: d.isPublic, sort_order: newSortOrders.get(d.slug) });
     if (error) throw new Error(`${d.slug} の登録に失敗: ${error.message}`);
   }
 

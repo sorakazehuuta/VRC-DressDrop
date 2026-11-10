@@ -25,6 +25,7 @@ node --env-file=.env.local tools/verification/e2e/gimmick-e2e.cjs   # ギミッ�
 node --env-file=.env.local tools/verification/e2e/data-handling-e2e.cjs  # 下書きの期限・LICENSE.txt・同じ画像の貼り直し・控えの削除・作品の削除・管理画面・退会
 node --env-file=.env.local tools/verification/e2e/phase8-e2e.cjs         # 非公開テンプレート・規約類のページ・管理画面での停止と設定・集計
 node --env-file=.env.local tools/verification/e2e/tab-return-check.cjs   # 管理画面で変えたトークン数が、開いたままのタブにも反映される
+node --env-file=.env.local tools/verification/e2e/catalog-order-check.cjs  # 管理画面の並べ替えが一覧に反映される・一覧の並べ替えと検索
 node tools/verification/e2e/orbit-center-check.cjs                       # 読み込み直後に操作しても、エディタのモデルが中心で回る
 node --env-file=.env.local tools/verification/e2e/admin-link-check.cjs   # ヘッダーの「管理画面」が管理者にだけ届く（HTML・JavaScript・RSC に含まれない）
 ```

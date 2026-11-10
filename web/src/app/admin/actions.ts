@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { FormState } from "@/app/auth/actions";
 import { requireAdmin } from "@/lib/admin";
+import { catalogSortOrders } from "@/lib/catalog-order";
 import { processDeletions } from "@/lib/storage-deletions";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -93,33 +94,47 @@ const costSchema = (raw: string) => {
   return raw !== "" && Number.isInteger(n) && n >= 0 && n <= 100 ? n : null;
 };
 
-// トークン数・公開状態をまとめて保存する（同期コマンドより DB の値が優先される）。変わった行だけ更新して記録に残す
+// トークン数・公開状態・並び順（・テンプレートの読み）をまとめて保存する（同期コマンドより DB の値が優先される）。変わった行だけ更新して記録に残す
 async function saveCatalog(table: "templates" | "gimmicks", formData: FormData): Promise<FormState> {
   const adminUser = await requireAdmin();
   const admin = createAdminClient();
-  const { data: rows, error } = await admin.from(table).select("id, token_cost, is_public");
+  const { data: rows, error } = await (table === "templates"
+    ? admin.from("templates").select("id, token_cost, is_public, sort_order, name_reading")
+    : admin.from("gimmicks").select("id, token_cost, is_public, sort_order"));
   if (error) return { error: `読み込めませんでした: ${error.message}` };
 
-  const changes: { id: string; tokenCost: number; isPublic: boolean }[] = [];
+  const order = String(formData.get("order") ?? "").split(",").filter(Boolean);
+  const sortOrders = order.length ? catalogSortOrders(rows, order) : null;
+  const changes: { id: string; update: Record<string, string | number | boolean>; note: string }[] = [];
   for (const row of rows) {
     const raw = formData.get(`tokenCost:${row.id}`);
     if (raw === null) continue; // 画面を開いたあとに追加された行
     const tokenCost = costSchema(String(raw).trim());
     if (tokenCost === null) return { error: "トークン数は 0〜100 の整数で入力してください。保存していません。" };
     const isPublic = formData.get(`isPublic:${row.id}`) === "on";
-    if (tokenCost !== row.token_cost || isPublic !== row.is_public) changes.push({ id: row.id, tokenCost, isPublic });
+    const sortOrder = sortOrders?.get(row.id) ?? row.sort_order;
+    const update: Record<string, string | number | boolean> = {};
+    if (tokenCost !== row.token_cost) update.token_cost = tokenCost;
+    if (isPublic !== row.is_public) update.is_public = isPublic;
+    if (sortOrder !== row.sort_order) update.sort_order = sortOrder;
+    if ("name_reading" in row) {
+      const reading = field(formData, `nameReading:${row.id}`);
+      if (reading.length > 100) return { error: "読みは 100 文字以内で入力してください。保存していません。" };
+      if (reading !== row.name_reading) update.name_reading = reading;
+    }
+    if (Object.keys(update).length) changes.push({ id: row.id, update, note: Object.entries(update).map(([k, v]) => `${k}=${v}`).join(" ") });
   }
   if (!changes.length) return { message: "変更はありません。" };
 
   const action = table === "templates" ? "update_template" : "update_gimmick";
   let saved = 0;
   for (const c of changes) {
-    const { error: updateError } = await admin.from(table).update({ token_cost: c.tokenCost, is_public: c.isPublic }).eq("id", c.id);
+    const { error: updateError } = await admin.from(table).update(c.update).eq("id", c.id);
     if (updateError) {
       revalidatePath("/", "layout");
       return { error: `${changes.length} 件のうち ${saved} 件まで保存して失敗しました: ${updateError.message}` };
     }
-    await logAction(adminUser.id, action, c.id, `token_cost=${c.tokenCost} is_public=${c.isPublic}`);
+    await logAction(adminUser.id, action, c.id, c.note);
     saved++;
   }
   revalidatePath("/", "layout");
