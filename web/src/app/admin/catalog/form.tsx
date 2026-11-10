@@ -12,11 +12,13 @@ export function CatalogForm({
   action,
   previewBase,
   saveLabel,
+  orderNote,
 }: {
   rows: Row[];
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   previewBase?: string;
   saveLabel: string;
+  orderNote: string;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
   const rowKey = rows.map((r) => r.id).join(",");
@@ -43,7 +45,7 @@ export function CatalogForm({
   return (
     <form action={formAction} className="flex flex-col">
       <input type="hidden" name="order" value={ids.join(",")} />
-      <p className="pb-2 text-xs text-zinc-500">左の ⋮⋮ をドラッグするか ↑↓ で並べ替えられます。この順番がサイトの表示順（おすすめ順）になります。</p>
+      <p className="pb-2 text-xs text-zinc-500">左の ⋮⋮ をドラッグするか ▲▼ で並べ替えられます。{orderNote}</p>
       {sorted.map((row, i) => (
         <div
           key={row.id}

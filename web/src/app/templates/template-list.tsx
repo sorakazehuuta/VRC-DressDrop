@@ -34,7 +34,7 @@ export function TemplateList({ templates, initialSort, initialQuery }: { templat
           }}
           placeholder="名前で探す（例: 看板）"
           aria-label="テンプレートを名前で探す"
-          className="min-w-0 flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm sm:max-w-xs"
+          className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm sm:w-80"
         />
         <label className="ml-auto flex items-center gap-2 text-sm text-zinc-600">
           並び順
