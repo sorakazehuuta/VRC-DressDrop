@@ -1,0 +1,22 @@
+{
+  "slug": "brass-gallery",
+  "name": "ギャラリーパネル",
+  "category": "グッズ",
+  "description": "足付きの木のパネル。好きな画像をプリントできます。",
+  "tokenCost": 1,
+  "isPublic": false,
+  "sortOrder": 210,
+  "files": {
+    "package": "BrassGallery.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "print",
+      "type": "print",
+      "label": "プリント",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 1.33
+    }
+  ]
+}

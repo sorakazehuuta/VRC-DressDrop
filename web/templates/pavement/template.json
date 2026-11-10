@@ -1,0 +1,22 @@
+{
+  "slug": "pavement",
+  "name": "スタンド看板",
+  "category": "グッズ",
+  "description": "脚付きの立て看板。好きな画像をプリントできます。",
+  "tokenCost": 1,
+  "isPublic": false,
+  "sortOrder": 300,
+  "files": {
+    "package": "Pavement.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "print",
+      "type": "print",
+      "label": "プリント",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 0.75
+    }
+  ]
+}
