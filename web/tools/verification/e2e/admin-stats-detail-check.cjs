@@ -1,5 +1,5 @@
 // 管理画面の集計から月の詳細を開き、新規登録・支払い・ダウンロードの一覧（50 件ずつ）と内訳を確かめる。
-// テスト用に 52 人を登録し、1 件の支払いを入れる（最後に消す）
+// テスト用に 52 人を登録し、1 件の支払いと 1 人の退会を入れる（最後に消す）
 const { chromium } = require("playwright");
 const { createClient } = require("@supabase/supabase-js");
 const { cleanupUser } = require("./cleanup.cjs");
@@ -25,13 +25,19 @@ const month = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 7);
     const { data: pack } = await admin.from("token_packs").select("id, name, tokens, price_jpy").eq("is_active", true).order("sort_order").limit(1).single();
     const { error: payError } = await admin.from("payments").insert({ user_id: buyer, pack_id: pack.id, amount_jpy: pack.price_jpy, tokens: pack.tokens, status: "completed", completed_at: new Date().toISOString(), payment_method_type: "card" });
     if (payError) throw payError;
+    // 退会した人（ユーザー本体を消し、退会の記録を残す）
+    const leaver = await create("leaver");
+    await admin.auth.admin.deleteUser(leaver.id);
+    await admin.from("deleted_accounts").insert({ user_id: leaver.id });
 
     const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
     const errors = []; p.on("pageerror", (e) => errors.push(e.message));
     await p.goto(`${B}/login?next=/admin/stats`, { waitUntil: "networkidle" });
     await p.getByLabel("メールアドレス").fill(`${marker}-admin@example.com`); await p.getByLabel("パスワード").fill(password);
     await p.getByRole("button", { name: "ログイン", exact: true }).click(); await p.waitForURL((u) => u.pathname === "/admin/stats"); await p.waitForLoadState("networkidle");
-    const signups = Number(await p.locator("tr", { has: p.getByRole("link", { name: month, exact: true }) }).locator("td").last().innerText());
+    const monthRow = p.locator("tr", { has: p.getByRole("link", { name: month, exact: true }) }).locator("td");
+    const signups = Number(await monthRow.nth(-2).innerText());
+    ok("集計の表に退会の列", Number(await monthRow.last().innerText()) >= 1, await monthRow.last().innerText());
     ok("今月の新規登録にテスト用の 52 人が入る", signups >= 52, String(signups));
 
     await p.getByRole("link", { name: month, exact: true }).click(); await p.waitForURL(`**/admin/stats/${month}`); await p.waitForLoadState("networkidle");
@@ -39,10 +45,16 @@ const month = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 7);
     const rows = () => p.locator("tbody tr");
     ok("1 ページ目は 50 件", (await rows().count()) === 50);
     ok("新しい順で、メールアドレスが出る", (await rows().first().innerText()).includes(`${marker}-u50@example.com`));
+    ok("登録中の人は「退会済み」にならず、エラーも出ない", (await p.getByText("（退会済み）").count()) === 0 && (await p.getByRole("alert").count()) === 0);
     ok("件数の表示", await p.getByText(`${signups} 件中 1〜50 件`).isVisible());
     await p.getByRole("link", { name: "次の 50 件" }).click(); await p.waitForURL(/page=2/); await p.waitForLoadState("networkidle");
     ok("2 ページ目に残りが出る", (await rows().count()) === signups - 50 && (await p.getByText(`${signups} 件中 51〜${signups} 件`).isVisible()));
     await p.screenshot({ path: "tools/verification/e2e/shots/admin-stats-signups.png", fullPage: true });
+
+    await p.getByRole("tab", { name: /^退会/ }).click(); await p.waitForURL(/tab=withdrawals/); await p.waitForLoadState("networkidle");
+    ok("退会の一覧に退会した人のユーザー ID", (await rows().filter({ hasText: leaver.id }).count()) === 1);
+    ok("上部に退会の人数", Number((await p.locator("dl > div", { hasText: "退会" }).locator("dd").first().innerText()).replace(/\D/g, "")) >= 1);
+    await p.screenshot({ path: "tools/verification/e2e/shots/admin-stats-withdrawals.png", fullPage: true });
 
     await p.getByRole("tab", { name: /^支払い/ }).click(); await p.waitForURL(/tab=payments/); await p.waitForLoadState("networkidle");
     const payRow = rows().filter({ hasText: `${marker}-u00@example.com` });

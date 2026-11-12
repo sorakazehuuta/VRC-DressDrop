@@ -11,6 +11,7 @@ type MonthRow = {
   paid_downloads: number;
   tokens_spent: number;
   signups: number;
+  withdrawals: number;
 };
 type SharedCard = { card_fingerprint: string; user_ids: string[]; payments: number; blocked: boolean; last_used_at: string };
 
@@ -49,6 +50,7 @@ export default async function AdminStatsPage() {
                 <th className="py-1">うち有料</th>
                 <th className="py-1">使われたトークン</th>
                 <th className="py-1">新規登録</th>
+                <th className="py-1">退会</th>
               </tr>
             </thead>
             <tbody>
@@ -72,13 +74,16 @@ export default async function AdminStatsPage() {
                   <td className="py-1">
                     <CountLink month={r.month} tab="signups" count={r.signups} />
                   </td>
+                  <td className="py-1">
+                    <CountLink month={r.month} tab="withdrawals" count={r.withdrawals} />
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         <p className="text-xs text-zinc-500">
-          月を押すと、その月の新規登録・支払い・ダウンロードの一覧を見られます。売上は入金済みの支払い（日本時間の入金月）。返金・取り消しは、その後に返金・チャージバックになった支払いの金額。ダウンロードは、トークンを使ったダウンロード内容の数（同じ内容の再ダウンロードは含まない）。
+          月を押すと、その月の新規登録・退会・支払い・ダウンロードの一覧を見られます。新規登録は今も登録中の人数で、あとで退会した人は含みません。売上は入金済みの支払い（日本時間の入金月）。返金・取り消しは、その後に返金・チャージバックになった支払いの金額。ダウンロードは、トークンを使ったダウンロード内容の数（同じ内容の再ダウンロードは含まない）。
         </p>
       </Card>
 

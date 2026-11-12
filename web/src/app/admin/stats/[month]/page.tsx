@@ -8,7 +8,7 @@ const PAGE_SIZE = 50;
 const yen = (n: number) => `${Number(n).toLocaleString()} 円`;
 const dateTime = new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" });
 
-const TABS = { signups: "新規登録", payments: "支払い", downloads: "ダウンロード" } as const;
+const TABS = { signups: "新規登録", withdrawals: "退会", payments: "支払い", downloads: "ダウンロード" } as const;
 type Tab = keyof typeof TABS;
 
 const paymentStatus: Record<string, { label: string; className: string }> = {
@@ -18,7 +18,7 @@ const paymentStatus: Record<string, { label: string; className: string }> = {
 };
 const methodLabel: Record<string, string> = { card: "カード", konbini: "コンビニ" };
 
-type Summary = { sales_jpy: number; payments: number; refunded_jpy: number; downloads: number; paid_downloads: number; tokens_spent: number; signups: number };
+type Summary = { sales_jpy: number; payments: number; refunded_jpy: number; downloads: number; paid_downloads: number; tokens_spent: number; signups: number; withdrawals: number };
 
 export default async function AdminMonthPage({ params, searchParams }: PageProps<"/admin/stats/[month]">) {
   const range = monthRange((await params).month);
@@ -34,15 +34,20 @@ export default async function AdminMonthPage({ params, searchParams }: PageProps
   const { data: months } = await admin.rpc("admin_monthly_stats", { p_months: ago + 1 });
   const summary = ((months ?? []) as (Summary & { month: string })[]).find((m) => m.month === range.month);
   const list = await loadList(tab, range, from);
-  const { data: emails } = list.userIds.length ? await admin.rpc("admin_user_emails", { p_ids: [...new Set(list.userIds)] }) : { data: [] };
+  // メールアドレスは auth.users にあり、退会すると消える。「退会済み」は退会の記録があるときだけ出す
+  const ids = [...new Set(list.userIds)];
+  const [{ data: emails, error: emailError }, { data: deleted }] = ids.length
+    ? await Promise.all([admin.rpc("admin_user_emails", { p_ids: ids }), admin.from("deleted_accounts").select("user_id").in("user_id", ids)])
+    : [{ data: [], error: null }, { data: [] }];
   const emailOf = new Map(((emails ?? []) as { id: string; email: string }[]).map((e) => [e.id, e.email]));
+  const deletedIds = new Set((deleted ?? []).map((d) => d.user_id));
   const user = (id: string) => (
     <Link href={`/admin/users/${id}`} className="underline decoration-zinc-300 hover:decoration-zinc-600">
-      {emailOf.get(id) ?? "（退会済み）"}
+      {emailOf.get(id) ?? (deletedIds.has(id) ? "（退会済み）" : <span className="font-mono text-xs">{id}</span>)}
     </Link>
   );
   const tabHref = (t: Tab, p = 1) => `/admin/stats/${range.month}?tab=${t}${p > 1 ? `&page=${p}` : ""}`;
-  const tabCount: Record<Tab, number> = { signups: summary?.signups ?? 0, payments: summary?.payments ?? 0, downloads: summary?.downloads ?? 0 };
+  const tabCount: Record<Tab, number> = { signups: summary?.signups ?? 0, withdrawals: summary?.withdrawals ?? 0, payments: summary?.payments ?? 0, downloads: summary?.downloads ?? 0 };
 
   return (
     <main className="flex flex-col gap-6">
@@ -63,12 +68,13 @@ export default async function AdminMonthPage({ params, searchParams }: PageProps
       </nav>
       <h1 className="text-xl font-bold text-brand">{range.label}の詳細</h1>
 
-      <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-5">
         {[
           ["売上", yen(summary?.sales_jpy ?? 0), `支払い ${summary?.payments ?? 0} 件`],
           ["返金・取り消し", yen(summary?.refunded_jpy ?? 0), ""],
           ["ダウンロード", `${summary?.downloads ?? 0} 件`, `うち有料 ${summary?.paid_downloads ?? 0}・トークン ${summary?.tokens_spent ?? 0}`],
           ["新規登録", `${summary?.signups ?? 0} 人`, ""],
+          ["退会", `${summary?.withdrawals ?? 0} 人`, ""],
         ].map(([label, value, note]) => (
           <div key={label} className="rounded-xl border border-zinc-200 bg-white p-3">
             <dt className="text-xs text-zinc-500">{label}</dt>
@@ -93,6 +99,11 @@ export default async function AdminMonthPage({ params, searchParams }: PageProps
           ))}
         </div>
 
+        {emailError && (
+          <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+            メールアドレスを読めなかったため、ユーザー ID で表示しています（{emailError.message}）。マイグレーション 20261112000000_admin_month_detail.sql を実行したか確認してください。
+          </p>
+        )}
         {list.breakdown}
 
         {list.total === 0 ? (
@@ -178,6 +189,32 @@ async function loadList(tab: Tab, range: NonNullable<ReturnType<typeof monthRang
             {u.status === "suspended" && <span className="rounded bg-red-100 px-1.5 text-red-700">停止中</span>}
             {u.is_admin && <span className="rounded bg-zinc-100 px-1.5">管理者</span>}
           </span>,
+        ],
+      })),
+    };
+  }
+
+  if (tab === "withdrawals") {
+    // 退会するとメールアドレス・表示名は消えるため、ユーザー ID で表示する（詳細ページで支払い・ダウンロードの記録を見られる）
+    const { data, count } = await admin
+      .from("deleted_accounts")
+      .select("user_id, deleted_at", { count: "exact" })
+      .gte("deleted_at", range.start)
+      .lt("deleted_at", range.end)
+      .order("deleted_at", { ascending: false })
+      .range(from, to);
+    return {
+      total: count ?? 0,
+      userIds: [],
+      breakdown: null,
+      columns: ["退会日時", "ユーザー ID"],
+      rows: (data ?? []).map<Row>((d) => ({
+        key: d.user_id,
+        cells: () => [
+          dateTime.format(new Date(d.deleted_at)),
+          <Link key="id" href={`/admin/users/${d.user_id}`} className="font-mono text-xs underline decoration-zinc-300 hover:decoration-zinc-600">
+            {d.user_id}
+          </Link>,
         ],
       })),
     };

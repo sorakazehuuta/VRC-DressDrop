@@ -41,3 +41,6 @@ revoke execute on function public.admin_month_payments_by_pack(text) from public
 grant execute on function public.admin_user_emails(uuid[]) to service_role;
 grant execute on function public.admin_month_downloads_by_template(text) to service_role;
 grant execute on function public.admin_month_payments_by_pack(text) to service_role;
+
+-- PostgREST に新しい関数を知らせる
+notify pgrst, 'reload schema';
