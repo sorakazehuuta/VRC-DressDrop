@@ -29,6 +29,7 @@ node --env-file=.env.local tools/verification/e2e/catalog-order-check.cjs  # 管
 node tools/verification/e2e/orbit-center-check.cjs                       # 読み込み直後に操作しても、エディタのモデルが中心で回る
 node --env-file=.env.local tools/verification/e2e/admin-link-check.cjs   # ヘッダーの「管理画面」が管理者にだけ届く（HTML・JavaScript・RSC に含まれない）
 node --env-file=.env.local tools/verification/e2e/admin-nav-check.cjs    # 管理画面のタブで、開いているページのタブが選択中になる
+node --env-file=.env.local tools/verification/e2e/admin-stats-detail-check.cjs  # 集計の月の詳細（新規登録・支払い・ダウンロードの一覧と内訳、50 件ずつ）
 ```
 
 スクリーンショットは `tools/verification/e2e/shots/`（`SHOTS_DIR` で変更可）に保存されます。

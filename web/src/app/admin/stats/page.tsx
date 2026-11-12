@@ -17,6 +17,16 @@ type SharedCard = { card_fingerprint: string; user_ids: string[]; payments: numb
 const yen = (n: number) => `${Number(n).toLocaleString()} 円`;
 const dateFormat = new Intl.DateTimeFormat("ja-JP", { dateStyle: "medium", timeZone: "Asia/Tokyo" });
 
+// 0 件のときはリンクにしない
+function CountLink({ month, tab, count }: { month: string; tab: string; count: number }) {
+  if (!count) return <>{count}</>;
+  return (
+    <Link href={`/admin/stats/${month}?tab=${tab}`} className="underline decoration-zinc-300 hover:decoration-zinc-600">
+      {count}
+    </Link>
+  );
+}
+
 export default async function AdminStatsPage() {
   const admin = createAdminClient();
   const [{ data: months }, { data: cards }] = await Promise.all([admin.rpc("admin_monthly_stats", { p_months: 12 }), admin.rpc("admin_shared_cards")]);
@@ -44,21 +54,31 @@ export default async function AdminStatsPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.month} className="border-t border-zinc-100">
-                  <td className="py-1 text-left">{r.month}</td>
+                  <td className="py-1 text-left">
+                    <Link href={`/admin/stats/${r.month}`} className="underline">
+                      {r.month}
+                    </Link>
+                  </td>
                   <td className="py-1">{yen(r.sales_jpy)}</td>
-                  <td className="py-1">{r.payments}</td>
+                  <td className="py-1">
+                    <CountLink month={r.month} tab="payments" count={r.payments} />
+                  </td>
                   <td className="py-1">{yen(r.refunded_jpy)}</td>
-                  <td className="py-1">{r.downloads}</td>
+                  <td className="py-1">
+                    <CountLink month={r.month} tab="downloads" count={r.downloads} />
+                  </td>
                   <td className="py-1">{r.paid_downloads}</td>
                   <td className="py-1">{r.tokens_spent}</td>
-                  <td className="py-1">{r.signups}</td>
+                  <td className="py-1">
+                    <CountLink month={r.month} tab="signups" count={r.signups} />
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         <p className="text-xs text-zinc-500">
-          売上は入金済みの支払い（日本時間の入金月）。返金・取り消しは、その後に返金・チャージバックになった支払いの金額。ダウンロードは、トークンを使ったダウンロード内容の数（同じ内容の再ダウンロードは含まない）。
+          月を押すと、その月の新規登録・支払い・ダウンロードの一覧を見られます。売上は入金済みの支払い（日本時間の入金月）。返金・取り消しは、その後に返金・チャージバックになった支払いの金額。ダウンロードは、トークンを使ったダウンロード内容の数（同じ内容の再ダウンロードは含まない）。
         </p>
       </Card>
 
