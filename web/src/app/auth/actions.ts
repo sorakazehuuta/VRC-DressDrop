@@ -15,6 +15,11 @@ function str(formData: FormData, key: string) {
   return typeof v === "string" ? v.trim() : "";
 }
 
+// Turnstile のトークン（components/captcha.tsx）。検証は Supabase Auth が行う
+function captchaToken(formData: FormData) {
+  return str(formData, "captchaToken") || undefined;
+}
+
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
   const email = str(formData, "email");
   const password = formData.get("password");
@@ -23,7 +28,7 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken: captchaToken(formData) } });
   if (error) return { error: authErrorMessage(error) };
 
   revalidatePath("/", "layout");
@@ -53,6 +58,7 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
       // 同意した規約の版。新規登録のトリガーが profiles に記録する
       data: { name: displayName, terms_version: TERMS_VERSION },
       emailRedirectTo: `${await siteOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
+      captchaToken: captchaToken(formData),
     },
   });
   if (error) return { error: authErrorMessage(error) };
@@ -95,6 +101,7 @@ export async function requestPasswordReset(_prev: FormState, formData: FormData)
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${await siteOrigin()}/auth/callback?next=/account/password`,
+    captchaToken: captchaToken(formData),
   });
   // 登録の有無を推測されないよう、存在しないアドレスでも同じ案内を返す
   if (error && error.code !== "user_not_found") return { error: authErrorMessage(error) };

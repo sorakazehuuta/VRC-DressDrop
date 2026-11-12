@@ -42,9 +42,15 @@ const authErrorMessages: Record<string, string> = {
   over_request_rate_limit: "操作が集中しています。しばらく時間をおいてから再度お試しください。",
   signup_disabled: "現在、新規登録を受け付けていません。",
   otp_expired: "リンクの有効期限が切れています。もう一度やり直してください。",
+  captcha_failed: "ロボットでないことの確認に失敗しました。もう一度お試しください。",
 };
+
+// 使い捨てメールアドレスの拒否（DB の hook_before_user_created が返す文言に含まれる目印）
+export const DISPOSABLE_EMAIL_MARKER = "disposable_email_domain";
+export const DISPOSABLE_EMAIL_MESSAGE = "使い捨てメールアドレスでは登録できません。普段お使いのメールアドレスで登録してください。";
 
 export function authErrorMessage(error: { code?: string; message?: string } | null | undefined) {
   if (!error) return "エラーが発生しました。";
+  if (error.message?.includes(DISPOSABLE_EMAIL_MARKER)) return DISPOSABLE_EMAIL_MESSAGE;
   return (error.code && authErrorMessages[error.code]) || "エラーが発生しました。時間をおいて再度お試しください。";
 }

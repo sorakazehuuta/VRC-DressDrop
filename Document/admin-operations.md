@@ -59,3 +59,22 @@ update public.profiles set is_admin = true where id = (select id from auth.users
 
 - 並び順: 行の左の ⋮⋮ をドラッグするか ▲▼ で入れ替え、「テンプレートを保存」「ギミックを保存」で反映する。テンプレートはこの順番が一覧の「おすすめ順」（最初に表示される順）、ギミックはエディタでの並びになる。新しく登録したものは最後に並ぶ
 - 読み（テンプレートだけ）: 名前のひらがな読み。一覧の「名前順」に使う（漢字の名前もあいうえお順に並ぶように）。新しいテンプレートを登録したら入れておく。空のときは名前の文字で並ぶ
+
+## 登録の CAPTCHA と使い捨てメールアドレスの拒否
+
+新規登録・ログイン・パスワード再設定に Cloudflare Turnstile の CAPTCHA を出す。トークンの検証は Supabase Auth が行う。使い捨てメールアドレスのドメインでの登録は、Supabase Auth の Before User Created フック（DB 関数 `hook_before_user_created`）で拒否する。Google / Discord での登録にも効く。
+
+最初の設定（開発用）
+1. SQL Editor で `web/supabase/migrations/20261114000000_disposable_email_hook.sql` を実行する
+2. `web` フォルダで `npm run email-domains:sync` を実行し、ドメインの一覧（約 1 万件）を登録する
+3. Supabase の Authentication > Hooks で「Before User Created」を追加し、Postgres の `public.hook_before_user_created` を選んで有効にする
+4. CAPTCHA を試すときは、`web/.env.local` に `NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA`（テスト用のキー。必ず通る）を書き、Supabase の Authentication > Attack Protection で CAPTCHA を有効にして、Turnstile とテスト用のシークレットキー `1x0000000000000000000000000000000AA` を入れる。サイトキーとダッシュボードの設定は必ず一緒に変える（片方だけだとログインできなくなる）
+
+本番の設定
+- Cloudflare で Turnstile のウィジェットを作り（ホスト名は本番のドメイン）、サイトキーを Vercel の環境変数 `NEXT_PUBLIC_TURNSTILE_SITE_KEY` に、シークレットキーを Supabase の Attack Protection に入れる
+- 本番のキーではテスト用のダミーのトークンが通らないため、`npm run test:db` と `tools/verification/e2e` は CAPTCHA をテスト用のキーにした Supabase でだけ実行する
+
+運用
+- 一覧はときどき（月に 1 回くらい）`npm run email-domains:sync` で更新する。一覧から消えたドメインは削除される
+- 一覧にない使い捨てのドメインは、SQL Editor で `insert into public.disposable_email_domains (domain) values ('example-disposable.com');` のように足す（`source` が `manual` になり、同期で消えない）。サブドメインも拒否される
+- 誤って拒否されたドメインは `delete from public.disposable_email_domains where domain = '...';` で消す（`list` のものは次の同期で戻るので、一覧の提供元にも報告する）

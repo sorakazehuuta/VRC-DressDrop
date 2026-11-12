@@ -12,6 +12,8 @@ if (!url || !secret || !publishable) throw new Error(".env.local に Supabase �
 export const admin = createClient(url, secret, { auth: { persistSession: false } });
 
 const PASSWORD = "TestPass-12345";
+// Supabase の CAPTCHA を Turnstile のテスト用のシークレットキーで有効にしているとき、ダミーのトークンが通る（CAPTCHA が無効なら無視される）
+const TEST_CAPTCHA_TOKEN = "XXXX.DUMMY.TOKEN.XXXX";
 const created: string[] = [];
 const fingerprints: string[] = [];
 
@@ -25,7 +27,7 @@ export async function createUser(opts: { admin?: boolean } = {}): Promise<TestUs
   created.push(data.user.id);
   if (opts.admin) await admin.from("profiles").update({ is_admin: true }).eq("id", data.user.id);
   const client = createClient(url!, publishable!, { auth: { persistSession: false } });
-  const { error: signInError } = await client.auth.signInWithPassword({ email, password: PASSWORD });
+  const { error: signInError } = await client.auth.signInWithPassword({ email, password: PASSWORD, options: { captchaToken: TEST_CAPTCHA_TOKEN } });
   if (signInError) throw signInError;
   return { id: data.user.id, email, client };
 }

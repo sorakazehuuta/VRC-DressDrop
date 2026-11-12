@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { safeNextPath } from "@/lib/auth";
+import { DISPOSABLE_EMAIL_MARKER, safeNextPath } from "@/lib/auth";
 import { TERMS_VERSION } from "@/lib/legal";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 
@@ -25,5 +25,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=callback&next=${encodeURIComponent(next)}`);
+  // Google / Discord のメールアドレスが使い捨てのドメインで、登録を拒否されたとき
+  const reason = searchParams.get("error_description")?.includes(DISPOSABLE_EMAIL_MARKER) ? "disposable" : "callback";
+  return NextResponse.redirect(`${origin}/login?error=${reason}&next=${encodeURIComponent(next)}`);
 }

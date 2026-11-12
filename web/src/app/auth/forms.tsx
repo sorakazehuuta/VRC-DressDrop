@@ -2,18 +2,21 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
+import { useCaptcha } from "@/components/captcha";
 import { Button, Field, FormMessage } from "@/components/ui";
 import { requestPasswordReset, signIn, signInWithOAuth, signUp, updatePassword } from "./actions";
 
 export function LoginForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(signIn, null);
+  const captcha = useCaptcha(state);
   return (
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="next" value={next} />
       <Field label="メールアドレス" name="email" type="email" autoComplete="email" required />
       <Field label="パスワード" name="password" type="password" autoComplete="current-password" required />
+      {captcha.field}
       <FormMessage state={state} />
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending || !captcha.ready}>
         {pending ? "ログイン中…" : "ログイン"}
       </Button>
       <Link href="/forgot-password" className="text-center text-sm text-zinc-600 underline">
@@ -25,6 +28,7 @@ export function LoginForm({ next }: { next: string }) {
 
 export function SignupForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(signUp, null);
+  const captcha = useCaptcha(state);
   if (state?.message) return <FormMessage state={state} />;
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -41,8 +45,9 @@ export function SignupForm({ next }: { next: string }) {
         hint="8文字以上"
       />
       <Field label="パスワード（確認）" name="passwordConfirm" type="password" autoComplete="new-password" minLength={8} required />
+      {captcha.field}
       <FormMessage state={state} />
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending || !captcha.ready}>
         {pending ? "登録中…" : "登録する"}
       </Button>
     </form>
@@ -65,12 +70,14 @@ export function OAuthButtons({ next }: { next: string }) {
 
 export function ForgotPasswordForm() {
   const [state, action, pending] = useActionState(requestPasswordReset, null);
+  const captcha = useCaptcha(state);
   if (state?.message) return <FormMessage state={state} />;
   return (
     <form action={action} className="flex flex-col gap-4">
       <Field label="登録したメールアドレス" name="email" type="email" autoComplete="email" required />
+      {captcha.field}
       <FormMessage state={state} />
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending || !captcha.ready}>
         {pending ? "送信中…" : "再設定メールを送る"}
       </Button>
     </form>
