@@ -1,0 +1,151 @@
+// 導入ガイドの撮影用（一時的なスクリプト）。GUI の Unity で -executeMethod VRPLGuideShots.Run を実行する
+// 環境変数 VRPL_GUIDE_PKG（読み込むパッケージ）、VRPL_GUIDE_OUT（画像の保存先）、VRPL_GUIDE_NAME（パッケージの名前）
+using System;
+using System.IO;
+using System.Linq;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEditorInternal;
+using UnityEngine;
+
+[InitializeOnLoad]
+public static class VRPLGuideShots
+{
+    const string StateKey = "VRPLGuideShots.State";
+    const string TimeKey = "VRPLGuideShots.Time";
+    static string Pkg => Environment.GetEnvironmentVariable("VRPL_GUIDE_PKG");
+    static string Out => Environment.GetEnvironmentVariable("VRPL_GUIDE_OUT");
+    static string Name => Environment.GetEnvironmentVariable("VRPL_GUIDE_NAME");
+    static string PrefabPath => $"Assets/VRPrintLab/{Name}/{Name}.prefab";
+
+    static VRPLGuideShots()
+    {
+        if (!string.IsNullOrEmpty(SessionState.GetString(StateKey, ""))) EditorApplication.update += Tick;
+    }
+
+    public static void Run()
+    {
+        Log("start");
+        EditorGUIUtility.SetMainWindowPosition(new Rect(40, 40, 1600, 900));
+        SetState("import-dialog");
+        AssetDatabase.ImportPackage(Pkg, true);
+        EditorApplication.update -= Tick;
+        EditorApplication.update += Tick;
+    }
+
+    static void SetState(string state)
+    {
+        SessionState.SetString(StateKey, state);
+        SessionState.SetFloat(TimeKey, (float)EditorApplication.timeSinceStartup);
+        Log("state " + state);
+    }
+
+    static float Elapsed => (float)EditorApplication.timeSinceStartup - SessionState.GetFloat(TimeKey, 0);
+
+    static void Tick()
+    {
+        try
+        {
+            switch (SessionState.GetString(StateKey, ""))
+            {
+                case "import-dialog":
+                {
+                    var dialog = Resources.FindObjectsOfTypeAll<EditorWindow>().FirstOrDefault(w => w.GetType().Name == "PackageImport");
+                    if (dialog == null || Elapsed < 4) return;
+                    dialog.Focus();
+                    if (Elapsed < 7) return;
+                    Capture(dialog.position, "01-import.png");
+                    dialog.Close();
+                    SetState("importing");
+                    AssetDatabase.ImportPackage(Pkg, false);
+                    return;
+                }
+                case "importing":
+                {
+                    if (EditorApplication.isCompiling || EditorApplication.isUpdating || Elapsed < 5) return;
+                    var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+                    if (prefab == null)
+                    {
+                        if (Elapsed > 300) Fail("prefab not created: " + PrefabPath);
+                        return;
+                    }
+                    EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+                    var browser = Resources.FindObjectsOfTypeAll<EditorWindow>().FirstOrDefault(w => w.GetType().Name == "ProjectBrowser");
+                    if (browser != null) browser.Focus();
+                    ProjectWindowUtil.ShowCreatedAsset(prefab);
+                    ClearConsole();
+                    Selection.activeObject = prefab;
+                    EditorGUIUtility.PingObject(prefab);
+                    SetState("shot-prefab");
+                    return;
+                }
+                case "shot-prefab":
+                {
+                    if (Elapsed < 4) return;
+                    Capture(EditorGUIUtility.GetMainWindowPosition(), "02-prefab.png");
+                    var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+                    var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                    Selection.activeGameObject = instance;
+                    var view = SceneView.lastActiveSceneView ?? EditorWindow.GetWindow<SceneView>();
+                    view.Focus();
+                    var bounds = instance.GetComponentsInChildren<Renderer>().Select(r => r.bounds).Aggregate((a, b) => { a.Encapsulate(b); return a; });
+                    var rot = Environment.GetEnvironmentVariable("VRPL_GUIDE_ROT") ?? "10,200";
+                    var parts = rot.Split(',').Select(float.Parse).ToArray();
+                    view.LookAt(bounds.center, Quaternion.Euler(parts[0], parts[1], 0), bounds.extents.magnitude * 0.9f);
+                    ClearConsole();
+                    view.Repaint();
+                    SetState("shot-placed");
+                    return;
+                }
+                case "shot-placed":
+                {
+                    if (Elapsed < 4) return;
+                    Capture(EditorGUIUtility.GetMainWindowPosition(), "03-placed.png");
+                    SetState("");
+                    EditorApplication.update -= Tick;
+                    Log("done");
+                    if (Environment.GetEnvironmentVariable("VRPL_GUIDE_KEEP") != "1") EditorApplication.Exit(0);
+                    return;
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Fail(e.ToString());
+        }
+    }
+
+    // 画面の画素をそのまま読む（ウィンドウが前面に出ている必要がある）
+    static void Capture(Rect pointsRect, string file)
+    {
+        var ppp = EditorGUIUtility.pixelsPerPoint;
+        var x = Mathf.RoundToInt(pointsRect.x * ppp);
+        var y = Mathf.RoundToInt(pointsRect.y * ppp);
+        var w = Mathf.RoundToInt(pointsRect.width * ppp);
+        var h = Mathf.RoundToInt(pointsRect.height * ppp);
+        var colors = InternalEditorUtility.ReadScreenPixel(new Vector2(x, y), w, h);
+        var tex = new Texture2D(w, h, TextureFormat.RGB24, false);
+        tex.SetPixels(colors);
+        tex.Apply();
+        Directory.CreateDirectory(Out);
+        File.WriteAllBytes(Path.Combine(Out, file), tex.EncodeToPNG());
+        Log($"captured {file} {x},{y} {w}x{h} ppp={ppp}");
+    }
+
+    // VRChat 本体がない PC で UdonSharp が出すエラーを、画面の下の帯に写さない
+    static void ClearConsole()
+    {
+        var entries = Type.GetType("UnityEditor.LogEntries, UnityEditor");
+        entries?.GetMethod("Clear")?.Invoke(null, null);
+    }
+
+    static void Fail(string message)
+    {
+        Log("FAIL " + message);
+        SessionState.SetString(StateKey, "");
+        EditorApplication.update -= Tick;
+        if (Environment.GetEnvironmentVariable("VRPL_GUIDE_KEEP") != "1") EditorApplication.Exit(1);
+    }
+
+    static void Log(string message) => Debug.Log("VRPLGUIDE " + message);
+}

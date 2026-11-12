@@ -13,7 +13,7 @@
 | 5 | unitypackage のサーバー生成、トークン消費、購入済みの版の再ダウンロード、ダウンロード履歴 | 完了 |
 | 6 | ギミック 16 種、Prefab の自動組み立て、ギミック追加分だけの課金 | 完了（VRChat 上での同期は未確認） |
 | 7 | トークン購入・有効期限切れの記録 | 完了（Stripe のテスト環境で確認済み。本番の利用開始は規約類の公開と本番公開のあと。設定は [stripe-setup.md](stripe-setup.md)） |
-| 8 | 導入ガイド・規約類・管理画面 | 完了（main にマージ済み）。規約類の文面は確認用の下書き、導入ガイドの画像は未作成 |
+| 8 | 導入ガイド・規約類・管理画面 | 完了（main にマージ済み）。規約類の文面は確認用の下書き。導入ガイドの画像は 2026-11-12 に Unity で撮影して追加 |
 | 9 | テストの整備 | 完了（main にマージ済み）。単体テスト・DB 関数のテスト・Unity の手動確認の手順書・GitHub Actions |
 
 - サービス名は **VRPrintLab**（ロゴ・ファビコンは `web/images/common`）。リポジトリ名・フォルダ名は VRC-DressDrop のまま
@@ -26,7 +26,7 @@
   - エディタ: モデルの中心で回る、全ギミックが非公開ならギミックの欄を出さない
   - お知らせのページ（`web/content/news.md`）、導入ガイドを 3 手順に短縮、規約・画面の「版」を「ダウンロード内容」などに言い換え（規約の日付は `2026-11-12`）
   - テンプレートを 30 件まで追加・公開（下の「データ」）
-- 規約類の下書き: `web/content/terms.md` / `privacy.md` / `tokushoho.md`（【要確認】は未確定。共同開発者が直す予定）。FAQ は `faq.md`、導入ガイドは `guide.md`（画像は「画像準備中」の枠。`![説明](/パス)` に差し替える）
+- 規約類の下書き: `web/content/terms.md` / `privacy.md` / `tokushoho.md`（【要確認】は未確定。共同開発者が直す予定）。FAQ は `faq.md`、導入ガイドは `guide.md`（画像は `web/public/guide/`。撮り直しの手順は `web/tools/verification/README.md`。Unity の表示言語は日本語で撮影）
 - 規約の日付は `web/src/lib/legal.ts`（`TERMS_VERSION` / `TERMS_DRAFT`）。文面を変えたら日付を更新する。パッケージの LICENSE.txt、登録（profiles.terms_version）、購入（payments.terms_version）に記録する
 - 本番前に [production-check.md](production-check.md) の未確認の項目を確かめる。運営の手順は [admin-operations.md](admin-operations.md)
 - テンプレートは `templates` ブランチで管理（`main` の変更は templates 側で `git merge main` して取り込む）

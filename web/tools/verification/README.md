@@ -64,3 +64,29 @@ Unity 2022.3.22f1 と、VCC の TestProject（`%LOCALAPPDATA%\VRChatCreatorCompa
 - バッチモードと GUI では Unity の動きが違う（バッチモードで問題が出なくても GUI で固まった例がある）。最終確認は GUI で行う
 - バッチモードで読み込んだ直後は UdonSharp のコンパイルが走らないことがある（組み立てスクリプトは組み立て時に毎回コンパイルするので Prefab は正しくできる）
 - ClientSim は1人分しか動かないため、全員への同期は VRChat の Build & Test（クライアント2つ）で確認する
+
+## 導入ガイドの画像の撮り直し（unity/）
+
+`web/public/guide/` の 3 枚（Import の確認画面・Project ウィンドウ・シーンに置いた画面）は、GUI の Unity で自動で撮っています。Unity の画面が変わったときなどに撮り直します。
+
+1. TestProject をコピーし、コピーの `Assets/VRPrintLab` を消す（初めて読み込む状態にする）
+2. 撮影用のパッケージ（タペストリー・見本の画像）を作る
+
+   ```bash
+   cp tools/verification/unity/guide-package.mts scripts/tmp-guide-package.mts
+   npx tsx --conditions=react-server scripts/tmp-guide-package.mts <出力先>/VRPrintLab_tapestry_20261112143000.unitypackage
+   rm scripts/tmp-guide-package.mts
+   ```
+
+3. `VRPLGuideShots.cs.txt` を `<コピー>/Assets/Editor/VRPLGuideShots.cs` として置き、**GUI モード** で実行する。環境変数で、読み込むパッケージ（`VRPL_GUIDE_PKG`）、画像の保存先（`VRPL_GUIDE_OUT`）、パッケージの名前（`VRPL_GUIDE_NAME`）を渡す。終わると Unity が自動で閉じる
+
+   ```bash
+   VRPL_GUIDE_PKG=<パッケージ> VRPL_GUIDE_OUT=<保存先> VRPL_GUIDE_NAME=VRPrintLab_tapestry_20261112143000      "C:/Program Files/Unity/Hub/Editor/2022.3.22f1/Editor/Unity.exe" -projectPath <コピー> -executeMethod VRPLGuideShots.Run -logFile guide.log
+   ```
+
+4. 保存先の 3 枚を切り抜いて WebP にする（2026-11-12 の版: Import の画面は一覧の下の空白を詰める、Project ウィンドウは下の段の左 720px、シーンは上の段の左側）
+
+- 画面の画素をそのまま読むので、撮影中は Unity のウィンドウの上に別のウィンドウを重ねない
+- Import の画面の位置や大きさをスクリプトから変えると、描き直しの途中が写る。大きさは Unity が前回の値を覚えているので、手で調整してから撮る
+- VRChat 本体のない PC で UdonSharp が出すエラーは、撮影の前に Console を消去して画面に写さない
+

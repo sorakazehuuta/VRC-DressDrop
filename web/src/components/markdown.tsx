@@ -96,7 +96,7 @@ export function Markdown({ source }: { source: string }) {
                 </div>
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={b.src} alt={b.alt} className="rounded-lg border border-zinc-200" />
+                <img src={b.src} alt={b.alt} className="max-w-full self-start rounded-lg border border-zinc-200" />
               )}
               {b.src !== "placeholder" && <figcaption className="text-xs text-zinc-500">{b.alt}</figcaption>}
             </figure>

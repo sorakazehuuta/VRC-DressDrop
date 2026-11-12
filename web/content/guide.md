@@ -6,9 +6,9 @@ VRPrintLab でダウンロードしたパッケージ（.unitypackage）は、�
 
 1. 使いたいワールドまたはアバターの Unity プロジェクトを開きます。
 2. ダウンロードした .unitypackage を、Unity の画面にドラッグ＆ドロップします。
-3. 確認画面が出たら「Import」を押します。
+3. 確認画面（Import Unity Package）が出たら、右下の「Import」（日本語表示では「インポート」）を押します。
 
-![Import の確認画面](placeholder)
+![Import Unity Package の確認画面。右下の「インポート」を押す](/guide/import.webp)
 
 ## 2. Prefab を確かめる
 
@@ -17,13 +17,13 @@ VRPrintLab でダウンロードしたパッケージ（.unitypackage）は、�
 - 場所: `Assets/VRPrintLab/` の中の、ダウンロードしたファイルと同じ名前のフォルダ
 - 名前: `VRPrintLab_<テンプレート>_<日時>.prefab`
 
-![Project ウィンドウで Prefab を選んだ画面](placeholder)
+![Project ウィンドウで、作品のフォルダの中の Prefab を選んだ画面](/guide/prefab.webp)
 
 ## 3. シーンやアバターに置く
 
 Prefab をシーン（Hierarchy）やアバターの中にドラッグ＆ドロップし、位置・向き・大きさを調整すれば完了です。
 
-![Prefab を置いた画面](placeholder)
+![Prefab をシーンに置いた画面。Hierarchy にも同じ名前で表示される](/guide/placed.webp)
 
 ## うまくいかないとき
 
