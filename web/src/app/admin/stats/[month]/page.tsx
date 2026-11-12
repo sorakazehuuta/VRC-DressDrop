@@ -124,7 +124,7 @@ export default async function AdminMonthPage({ params, searchParams }: PageProps
                 {list.rows.map((r) => (
                   <tr key={r.key} className="border-t border-zinc-100 align-top">
                     {r.cells(user).map((cell, i) => (
-                      <td key={i} className={`py-1.5 pr-4 ${i === 0 ? "whitespace-nowrap tabular-nums text-zinc-500" : ""}`}>
+                      <td key={i} className={`whitespace-nowrap py-1.5 pr-4 ${i === 0 ? "tabular-nums text-zinc-500" : ""}`}>
                         {cell}
                       </td>
                     ))}

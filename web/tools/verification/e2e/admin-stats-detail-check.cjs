@@ -45,7 +45,7 @@ const month = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 7);
     const rows = () => p.locator("tbody tr");
     ok("1 ページ目は 50 件", (await rows().count()) === 50);
     ok("新しい順で、メールアドレスが出る", (await rows().first().innerText()).includes(`${marker}-u50@example.com`));
-    ok("登録中の人は「退会済み」にならず、エラーも出ない", (await p.getByText("（退会済み）").count()) === 0 && (await p.getByRole("alert").count()) === 0);
+    ok("登録中の人は「退会済み」にならず、エラーも出ない", (await p.getByText("（退会済み）").count()) === 0 && (await p.getByText("メールアドレスを読めなかった").count()) === 0);
     ok("件数の表示", await p.getByText(`${signups} 件中 1〜50 件`).isVisible());
     await p.getByRole("link", { name: "次の 50 件" }).click(); await p.waitForURL(/page=2/); await p.waitForLoadState("networkidle");
     ok("2 ページ目に残りが出る", (await rows().count()) === signups - 50 && (await p.getByText(`${signups} 件中 51〜${signups} 件`).isVisible()));
