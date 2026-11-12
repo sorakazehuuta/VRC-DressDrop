@@ -17,7 +17,7 @@
 | 9 | テストの整備 | 完了（main にマージ済み）。単体テスト・DB 関数のテスト・Unity の手動確認の手順書・GitHub Actions |
 
 - サービス名は **VRPrintLab**（ロゴ・ファビコンは `web/images/common`）。リポジトリ名・フォルダ名は VRC-DressDrop のまま
-- **ブランチ**: Phase 1〜9 とその後の改修はすべて `main` にマージ済み。`templates` も main に取り込み済み（main と同じ位置）。GitHub の main は `77a28d6` まで push 済みで、ローカルの main はその 8 コミット先、templates は 1 コミット先（未 push）。この資料は `docs/handoff-20261112` ブランチ
+- **ブランチ**: Phase 1〜9 とその後の改修はすべて `main` にマージ済み。`templates`（`9c5da8c`）も main に取り込み済み（templates 側は main より古いので、次にテンプレートを追加するときは templates で `git merge main` してから）。GitHub の main は `77a28d6` まで push 済みで、ローカルの main はその 8 コミット先、templates は 1 コミット先（未 push）。この資料は `docs/handoff-20261112` ブランチ
 - **2026-11-03〜11-12 に入れた主な変更**（すべて main）
   - 通報の機能を削除（`reports` テーブルも削除）。認証メールの文面を作成（`web/supabase/email-templates`。ダッシュボードへの貼り付けは利用者）
   - 管理画面: テンプレート・ギミックの保存ボタンを 1 つずつに、ドラッグ・▲▼ での並べ替え（`sort_order`）、テンプレートの読み（`name_reading`）、開いているタブの表示、集計の月ごとの詳細（新規登録・退会・支払い・ダウンロードの一覧と内訳、50 件ずつ）と退会数
