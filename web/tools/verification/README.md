@@ -28,6 +28,7 @@ node --env-file=.env.local tools/verification/e2e/tab-return-check.cjs   # 管�
 node --env-file=.env.local tools/verification/e2e/catalog-order-check.cjs  # 管理画面の並べ替えが一覧に反映される・一覧の並べ替えと検索
 node tools/verification/e2e/orbit-center-check.cjs                       # 読み込み直後に操作しても、エディタのモデルが中心で回る
 node --env-file=.env.local tools/verification/e2e/admin-link-check.cjs   # ヘッダーの「管理画面」が管理者にだけ届く（HTML・JavaScript・RSC に含まれない）
+node --env-file=.env.local tools/verification/e2e/admin-nav-check.cjs    # 管理画面のタブで、開いているページのタブが選択中になる
 ```
 
 スクリーンショットは `tools/verification/e2e/shots/`（`SHOTS_DIR` で変更可）に保存されます。
