@@ -124,11 +124,11 @@ export function WorkCard({ work, canDuplicate }: { work: WorkCardData; canDuplic
           <div className="flex flex-col gap-2 text-sm leading-relaxed text-zinc-600">
             <p>作品と、編集用にアップロードした画像を削除します。元に戻せません。</p>
             <p>
-              ダウンロードした版の控え（パッケージと元画像のコピー）は削除されず、
+              ダウンロードした内容の控え（パッケージと元画像のコピー）は削除されず、
               <Link href="/downloads" className="underline">
                 ダウンロード履歴
               </Link>
-              から再ダウンロードできます。控えも消したい場合は、ダウンロード履歴の版の詳細から削除してください。
+              から再ダウンロードできます。控えも消したい場合は、ダウンロード履歴の詳細から削除してください。
             </p>
           </div>
           <div className="flex justify-end gap-2">

@@ -83,12 +83,12 @@ export default async function AccountPage() {
       <Card className="flex flex-col gap-3 border-red-200">
         <h2 className="text-lg font-semibold text-red-700">退会</h2>
         <div className="flex flex-col gap-2 text-sm leading-relaxed text-zinc-600">
-          <p>退会すると元に戻せません。ダウンロードした版も、再ダウンロードできなくなります。</p>
+          <p>退会すると元に戻せません。ダウンロードした作品も、再ダウンロードできなくなります。</p>
           <div>
             <p className="font-semibold text-zinc-800">削除されるもの</p>
             <ul className="list-disc pl-5">
               <li>保存した作品と、アップロードした画像</li>
-              <li>ダウンロードした版の控え（パッケージ・元画像のコピー・プレビュー画像）</li>
+              <li>ダウンロードした内容の控え（パッケージ・元画像のコピー・プレビュー画像）</li>
               <li>残っているトークン（購入したトークンも払い戻しされません）</li>
             </ul>
           </div>

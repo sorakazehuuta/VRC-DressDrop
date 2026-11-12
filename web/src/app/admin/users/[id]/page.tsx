@@ -63,7 +63,7 @@ export default async function AdminUserPage({ params }: PageProps<"/admin/users/
         </p>
         {profile && (
           <p className="text-xs text-zinc-500">
-            同意した規約: {profile.terms_version ? `${profile.terms_version} 版（${dateFormat.format(new Date(profile.terms_agreed_at))}）` : "記録なし"}
+            同意した規約: {profile.terms_version ? `${profile.terms_version} 改定（${dateFormat.format(new Date(profile.terms_agreed_at))}）` : "記録なし"}
           </p>
         )}
         {profile && !profile.is_admin && (
@@ -141,7 +141,7 @@ export default async function AdminUserPage({ params }: PageProps<"/admin/users/
       </Card>
 
       <Card className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">ダウンロード（購入した版）</h2>
+        <h2 className="text-lg font-semibold">ダウンロード履歴</h2>
         <table className="w-full text-left text-xs">
           <tbody>
             {(purchases ?? []).map((p) => (

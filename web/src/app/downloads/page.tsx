@@ -30,7 +30,7 @@ export default async function DownloadsPage() {
         <div>
           <h1 className="text-2xl font-bold text-brand">ダウンロード履歴</h1>
           <p className="text-sm text-zinc-500">
-            購入した版は、作品を編集・削除したあとでも何度でも無料でダウンロードできます（控えを削除した版を除く）。
+            一度ダウンロードした内容は、作品を編集・削除したあとでも何度でも無料でダウンロードできます（控えを削除したものを除く）。
           </p>
         </div>
         <Link href="/works" className={buttonClassName("secondary")}>

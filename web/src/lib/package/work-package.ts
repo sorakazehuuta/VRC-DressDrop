@@ -88,10 +88,10 @@ function license(input: WorkPackageInput) {
 テンプレート: ${input.template.name}
 取得 ID     : ${input.purchaseId}
 利用規約    : ${termsUrl()}
-規約の版    : ${termsVersionLabel()}
+規約の改定日: ${termsVersionLabel()}
 
 このパッケージは VRPrintLab（${siteUrl()}）で作成されたものです。
-ここに書いていないことは、上記の版の利用規約に従います。
+ここに書いていないことは、上記の改定日の利用規約に従います。
 
 ■ 作成した人（VRPrintLab でこのパッケージをダウンロードした人）
 - 完成品を VRChat の内外で利用できます。

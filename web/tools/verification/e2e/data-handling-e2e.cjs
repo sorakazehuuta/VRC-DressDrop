@@ -124,10 +124,10 @@ async function filesUnder(bucket, prefix) {
     ok("LICENSE.txt を同梱", Boolean(license), license?.[0]);
     ok(
       "LICENSE.txt に利用条件・規約の版・URL",
-      licenseText.includes("BOOTH") && licenseText.includes("再配布・再販売") && /規約の版\s*:\s*\d{4}-\d{2}-\d{2} 版/.test(licenseText) && licenseText.includes("/terms"),
+      licenseText.includes("BOOTH") && licenseText.includes("再配布・再販売") && /規約の改定日\s*:\s*\d{4}-\d{2}-\d{2} 改定/.test(licenseText) && licenseText.includes("/terms"),
     );
     ok("README から LICENSE.txt を案内", readme && readme[1].toString("utf8").includes("LICENSE.txt"));
-    await panel().getByText("この版は取得済みです").waitFor({ timeout: 15000 });
+    await panel().getByText("この内容はダウンロード済みです").waitFor({ timeout: 15000 });
     await page.waitForFunction(() => document.querySelector("header").innerText.includes("2 トークン"), null, { timeout: 15000 });
     ok("1トークン消費", true);
 
@@ -150,12 +150,12 @@ async function filesUnder(bucket, prefix) {
     // ---- 控えの削除 ----
     const { data: purchase } = await admin.from("purchases").select("id, package_path").eq("user_id", uid).single();
     await page.goto(`${BASE}/downloads/${purchase.id}`, { waitUntil: "networkidle" });
-    await page.getByRole("button", { name: "この版の控えを削除" }).click();
+    await page.getByRole("button", { name: "控えを削除" }).click();
     const sd = page.getByRole("dialog");
     ok("控えの削除の確認に「再ダウンロードできなくなります」", (await sd.innerText()).includes("再ダウンロードできなくなります"));
     await page.screenshot({ path: `${DIR}/snapshot-delete-dialog.png` });
     await sd.getByRole("button", { name: "削除する" }).click();
-    await page.getByText(/この版の控えは .* に削除したため/).waitFor({ timeout: 15000 });
+    await page.getByText(/控えは .* に削除したため/).waitFor({ timeout: 15000 });
     await page.screenshot({ path: `${DIR}/snapshot-deleted.png` });
     const { data: p2 } = await admin.from("purchases").select("package_path, thumbnail_path, snapshot, snapshot_deleted_at, token_spent").eq("id", purchase.id).single();
     ok("控えを消しても購入の記録は残る", p2.token_spent === 1 && p2.snapshot_deleted_at && !p2.package_path && !p2.thumbnail_path && p2.snapshot && !p2.snapshot.images);
@@ -168,7 +168,7 @@ async function filesUnder(bucket, prefix) {
 
     // ---- 控えを消した版を作品から作り直す（無料） ----
     await page.goto(`${BASE}/editor/${TEMPLATE.slug}?work=${workRow.id}`, { waitUntil: "networkidle" });
-    await panel().getByText("この版は取得済みです").waitFor({ timeout: 30000 });
+    await panel().getByText("この内容はダウンロード済みです").waitFor({ timeout: 30000 });
     const [d3] = await Promise.all([page.waitForEvent("download", { timeout: 60000 }), page.getByRole("button", { name: "ダウンロード", exact: true }).click()]);
     ok("控えを消した版を作品から同じ名前で作り直せる", d3.suggestedFilename() === d1.suggestedFilename(), d3.suggestedFilename());
     await page.waitForTimeout(1000);
@@ -179,12 +179,12 @@ async function filesUnder(bucket, prefix) {
     await page.getByLabel("色 #16a34a").click();
     await page.getByRole("button", { name: "保存してダウンロード" }).click();
     await page.getByRole("dialog").waitFor({ timeout: 30000 });
-    ok("見た目を変えると「新しい版として」", (await page.getByRole("dialog").innerText()).includes("新しい版としてトークンを使います"));
+    ok("見た目を変えると「新しい版として」", (await page.getByRole("dialog").innerText()).includes("新しいダウンロードとしてトークンを使います"));
     await page.screenshot({ path: `${DIR}/changed-version-dialog.png` });
     await page.getByRole("dialog").getByRole("button", { name: "キャンセル" }).click();
     // 取得済みかどうかの確認は保存のあとに非同期で返ってくる
     const shown = await panel()
-      .getByText("新しい版としてトークンを使います")
+      .getByText("新しいダウンロードとしてトークンを使います")
       .waitFor({ timeout: 15000 })
       .then(() => true)
       .catch(() => false);
@@ -194,7 +194,7 @@ async function filesUnder(bucket, prefix) {
     await page.goto(`${BASE}/works`, { waitUntil: "networkidle" });
     await page.getByRole("button", { name: "削除", exact: true }).click();
     const wd = page.getByRole("dialog");
-    ok("作品の削除の確認に控えが残る説明", (await wd.innerText()).includes("ダウンロードした版の控え"));
+    ok("作品の削除の確認に控えが残る説明", (await wd.innerText()).includes("ダウンロードした内容の控え"));
     await page.screenshot({ path: `${DIR}/work-delete-dialog.png` });
     await wd.getByRole("button", { name: "削除する" }).click();
     await page.waitForFunction(() => document.querySelectorAll("article").length === 0, null, { timeout: 15000 });

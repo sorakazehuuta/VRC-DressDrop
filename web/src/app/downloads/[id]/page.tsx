@@ -11,7 +11,7 @@ import { parseSnapshot } from "../snapshot";
 import { gimmickMap, listGimmicks } from "@/lib/gimmicks/queries";
 import type { GimmickDefinition, GimmickParamValue } from "@/lib/gimmicks/schema";
 
-export const metadata: Metadata = { title: "購入した版の内容 | VRPrintLab" };
+export const metadata: Metadata = { title: "ダウンロード内容 | VRPrintLab" };
 
 const dateFormat = new Intl.DateTimeFormat("ja-JP", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Tokyo" });
 const pct = (v: number) => `${Math.round(v * 100)}%`;
@@ -85,7 +85,7 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
             <span className="text-sm text-zinc-500">作品は削除済みです</span>
           )}
           {purchase.suspended_at ? (
-            <span className="text-sm text-red-700">この版は運営により停止されています</span>
+            <span className="text-sm text-red-700">このダウンロード内容は運営により停止されています</span>
           ) : (
             purchase.package_path && <RedownloadButton purchaseId={purchase.id} />
           )}
@@ -94,13 +94,13 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
 
       {purchase.package_path ? (
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
-          この版の控え（パッケージ・元画像のコピー）を保存しています。
+          このダウンロード内容の控え（パッケージ・元画像のコピー）を保存しています。
           <DeleteSnapshotButton purchaseId={purchase.id} />
         </p>
       ) : (
         purchase.snapshot_deleted_at && (
           <p className="rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-600">
-            この版の控えは {dateFormat.format(new Date(purchase.snapshot_deleted_at))} に削除したため、ダウンロード履歴からは再ダウンロードできません。
+            控えは {dateFormat.format(new Date(purchase.snapshot_deleted_at))} に削除したため、ダウンロード履歴からは再ダウンロードできません。
             作品が残っていて内容が同じ場合は、エディタから無料でダウンロードできます。
           </p>
         )
@@ -195,7 +195,7 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
           </div>
         ) : (
           <p className="rounded-lg bg-zinc-50 p-4 text-sm text-zinc-600">
-            この版は、編集内容を記録する機能を追加する前に購入されたため、詳しい内容を表示できません。
+            このダウンロード内容は、編集内容を記録する機能を追加する前にダウンロードされたため、詳しい内容を表示できません。
           </p>
         )}
       </div>

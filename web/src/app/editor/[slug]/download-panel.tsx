@@ -12,7 +12,7 @@ type Confirm = { workId: string; cost: number; balance: number; breakdown: CostL
 
 const versionMessages: Record<VersionKind, string> = {
   first: "この作品はまだ取得していません。",
-  changed: "取得済みの版から見た目が変わっているため、新しい版としてトークンを使います。",
+  changed: "前回ダウンロードしたときから見た目が変わっているため、新しいダウンロードとしてトークンを使います。",
   gimmicks: "見た目は取得済みです。追加したギミックの分だけトークンを使います。",
 };
 
@@ -100,7 +100,7 @@ export function DownloadPanel({
   return (
     <div className="mt-auto flex flex-col gap-3 rounded-lg bg-zinc-100 p-4 text-sm">
       {purchased ? (
-        <p className="font-medium text-accent-dark">この版は取得済みです。何度でも無料でダウンロードできます。</p>
+        <p className="font-medium text-accent-dark">この内容はダウンロード済みです。何度でも無料でダウンロードできます。</p>
       ) : (
         <div className="flex flex-col gap-1">
           <p>
@@ -114,7 +114,7 @@ export function DownloadPanel({
           {!dirty && quote?.ok && !quote.purchased && (
             <p className="text-xs text-zinc-600">{quote.cost === 0 ? "ギミックの設定値の変更や取り外しだけなので、トークンは使いません。" : versionMessages[quote.versionKind]}</p>
           )}
-          {dirty && workId && <p className="text-xs text-zinc-500">保存すると、取得済みの版かどうかを確認します。</p>}
+          {dirty && workId && <p className="text-xs text-zinc-500">保存すると、ダウンロード済みの内容かどうかを確認します。</p>}
         </div>
       )}
       <Button type="button" onClick={() => void onClick()} disabled={disabled || busy}>
@@ -167,7 +167,7 @@ export function DownloadPanel({
               <p className="text-sm text-red-700">トークンが足りません。</p>
             ) : (
               <p className="text-xs text-zinc-500">
-                一度ダウンロードした版は、あとから何度でも無料でダウンロードできます。見た目を変えると新しい版になり、トークンが必要です。
+                一度ダウンロードした内容は、あとから何度でも無料でダウンロードできます。見た目を変えると新しいダウンロードになり、トークンが必要です。
               </p>
             )}
             <div className="flex justify-end gap-2">

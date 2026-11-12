@@ -170,7 +170,7 @@ describe("README と LICENSE", () => {
   it("LICENSE に利用条件・取得 ID・規約の版と URL が入る", () => {
     const license = text(`${base}/LICENSE.txt`);
     expect(license).toContain(`取得 ID     : ${PURCHASE}`);
-    expect(license).toContain(`規約の版    : ${termsVersionLabel()}`);
+    expect(license).toContain(`規約の改定日: ${termsVersionLabel()}`);
     expect(license).toMatch(/利用規約 {4}: https?:\/\/.+\/terms/);
     expect(license).toContain("BOOTH などで販売・無料配布できます");
     expect(license).toContain("再配布・再販売することはできません");

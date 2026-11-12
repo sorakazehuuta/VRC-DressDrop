@@ -20,7 +20,7 @@ export async function deleteSnapshot(purchaseId: string): Promise<{ ok: true } |
     .eq("id", purchaseId)
     .eq("user_id", userId)
     .maybeSingle();
-  if (!purchase) return { ok: false, error: "購入した版が見つかりません。" };
+  if (!purchase) return { ok: false, error: "ダウンロード履歴が見つかりません。" };
 
   // 控えのファイルは "<user_id>/<purchase_id>/..." と "<user_id>/<purchase_id>.unitypackage"（作り直した場合は別名）
   const targets = [

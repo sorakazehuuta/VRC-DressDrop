@@ -26,7 +26,7 @@ export type DownloadResult =
   | { ok: false; error: string; code?: "insufficient" };
 
 const SUSPENDED_ACCOUNT = "このアカウントは停止されているため、ダウンロードできません。";
-const SUSPENDED_PURCHASE = "この版は運営により停止されているため、ダウンロードできません。";
+const SUSPENDED_PURCHASE = "このダウンロード内容は運営により停止されているため、ダウンロードできません。";
 
 async function accountSuspended(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data } = await supabase.from("profiles").select("status").eq("id", userId).maybeSingle();

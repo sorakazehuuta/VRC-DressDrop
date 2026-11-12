@@ -61,7 +61,7 @@ const cleanup = (uid) => cleanupUser(admin, uid);
     await download1.saveAs(file1);
     const head = fs.readFileSync(file1).subarray(0, 2);
     ok("中身が gzip（unitypackage）", head[0] === 0x1f && head[1] === 0x8b, `${(fs.statSync(file1).size / 1024).toFixed(0)} KB`);
-    await page.getByText("この版は取得済みです").waitFor({ timeout: 15000 });
+    await page.getByText("この内容はダウンロード済みです").waitFor({ timeout: 15000 });
     await page.waitForFunction(() => document.querySelector("header").innerText.includes("2 トークン"), null, { timeout: 15000 });
     ok("1トークン消費され、ヘッダーの残高が2になる", true);
 
@@ -73,7 +73,7 @@ const cleanup = (uid) => cleanupUser(admin, uid);
 
     // 3回目: 編集して内容を変える → 再びトークンが必要
     await page.getByLabel("色 #16a34a").click();
-    ok("編集すると購入済み表示が消える", !(await page.getByText("この版は取得済みです").isVisible()));
+    ok("編集すると購入済み表示が消える", !(await page.getByText("この内容はダウンロード済みです").isVisible()));
     await page.getByRole("button", { name: "保存してダウンロード" }).click();
     await page.getByRole("dialog").waitFor({ timeout: 30000 });
     const [newVersion] = await Promise.all([page.waitForEvent("download", { timeout: 60000 }), page.getByRole("dialog").getByRole("button", { name: "ダウンロードする" }).click()]);
