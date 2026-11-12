@@ -121,7 +121,7 @@ export function DownloadPanel({
         {busy ? "準備中…" : loggedIn ? (dirty || !workId ? "保存してダウンロード" : "ダウンロード") : "ログインしてダウンロード"}
       </Button>
       <p className="text-xs text-zinc-500">
-        VRChat 用の unitypackage（PC / Quest 対応）をダウンロードします。ワールドへの置き方は
+        VRChat 用の unitypackage（PC / Quest 対応）をダウンロードします。ワールドやアバターへの置き方は
         <Link href="/guide" target="_blank" className="underline">
           導入ガイド
         </Link>
