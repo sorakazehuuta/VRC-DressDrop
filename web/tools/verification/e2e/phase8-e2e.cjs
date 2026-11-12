@@ -25,7 +25,7 @@ async function login(page, email) {
     email: ownerEmail,
     password,
     email_confirm: true,
-    user_metadata: { terms_version: "2026-11-03" },
+    user_metadata: { terms_version: "2026-11-12" },
   });
   if (oe) throw oe;
   const { data: a, error: ae } = await admin.auth.admin.createUser({ email: adminEmail, password, email_confirm: true });
@@ -55,7 +55,7 @@ async function login(page, email) {
   };
   try {
     const { data: profile } = await admin.from("profiles").select("terms_version, terms_agreed_at").eq("id", ownerId).single();
-    ok("メールでの登録で同意した規約の版を記録", profile.terms_version === "2026-11-03" && profile.terms_agreed_at);
+    ok("メールでの登録で同意した規約の版を記録", profile.terms_version === "2026-11-12" && profile.terms_agreed_at);
 
     // ---- 管理者でも非公開のテンプレートは出ない ----
     const adminPage = await newPage();

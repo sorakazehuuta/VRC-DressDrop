@@ -1,5 +1,5 @@
 // 利用規約の版。文面を変えたら日付を更新する（パッケージの LICENSE.txt にも書き込まれる）
-export const TERMS_VERSION = "2026-11-03";
+export const TERMS_VERSION = "2026-11-12";
 // 共同開発者の確認が終わるまでは true。ページと LICENSE.txt に「確認用」と表示する
 export const TERMS_DRAFT = true;
 
