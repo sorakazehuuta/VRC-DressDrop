@@ -68,6 +68,8 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     revalidatePath("/", "layout");
     redirect(next);
   }
+  // 登録済みのアドレスでも Supabase はエラーを返さずメールも送らない（登録の有無を推測されないため）。
+  // どちらの場合にも当てはまる案内にし、届かないときの案内はフォーム側（SignupForm）で出す
   return {
     message: `${email} に確認メールを送信しました。メール内のリンクを開くと登録が完了します。`,
   };

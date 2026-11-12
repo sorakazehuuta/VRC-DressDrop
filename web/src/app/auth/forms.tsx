@@ -29,7 +29,24 @@ export function LoginForm({ next }: { next: string }) {
 export function SignupForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(signUp, null);
   const captcha = useCaptcha(state);
-  if (state?.message) return <FormMessage state={state} />;
+  if (state?.message) {
+    return (
+      <div className="flex flex-col gap-3">
+        <FormMessage state={state} />
+        <p className="text-sm leading-relaxed text-zinc-600">
+          メールが届かない場合は、このメールアドレスがすでに登録されている可能性があります。
+          <Link href={`/login?next=${encodeURIComponent(next)}`} className="underline">
+            ログイン
+          </Link>
+          か
+          <Link href="/forgot-password" className="underline">
+            パスワードの再設定
+          </Link>
+          をお試しください。迷惑メールのフォルダも確認してください。
+        </p>
+      </div>
+    );
+  }
   return (
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="next" value={next} />
