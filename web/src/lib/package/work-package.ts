@@ -7,7 +7,7 @@ import { setCutout, setMainTexture, setMaterialColor, templateFiles } from "./te
 import { buildEdgeMesh, printFaces } from "@/lib/templates/acrylic-edge";
 import { renderPrint } from "./texture";
 import { readUnityMesh, writeUnityMesh } from "./unity-mesh";
-import { buildUnityPackage, deterministicGuid, textAssetMeta, textureMeta, type PackageAsset } from "./unitypackage";
+import { buildUnityPackage, clampedTextureMeta, deterministicGuid, textAssetMeta, textureMeta, type PackageAsset } from "./unitypackage";
 
 export type WorkPackageInput = {
   purchaseId: string;
@@ -231,7 +231,7 @@ export async function buildWorkPackage(input: WorkPackageInput) {
       const image = slotParams.imageId ? (input.images.get(slotParams.imageId) ?? null) : null;
       const texturePath = `${base}/Tex_${slot.key}.png`;
       const rendered = await renderPrint(slot, slotParams, image, backgroundColor(slot, input.params));
-      assets.push({ path: texturePath, data: rendered.png, meta: textureMeta });
+      assets.push({ path: texturePath, data: rendered.png, meta: slot.outline ? clampedTextureMeta : textureMeta });
       // アクリルの板の厚み: 側面のメッシュを、板の外周に合わせて作り直す
       const edge = slot.outline?.edge;
       if (edge) {

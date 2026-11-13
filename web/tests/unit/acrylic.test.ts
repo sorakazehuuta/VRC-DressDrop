@@ -268,3 +268,13 @@ MeshFilter:
     expect(() => prefabObjectMeshGuid(prefab, "Print")).toThrow();
   });
 });
+
+describe("アクリルの板のテクスチャの設定", () => {
+  it("端を繰り返さない（Clamp）設定が入る", async () => {
+    const { clampedTextureMeta, textureMeta } = await import("@/lib/package/unitypackage");
+    const meta = clampedTextureMeta("0123456789abcdef0123456789abcdef");
+    expect(meta).toMatch(/textureSettings:\n {4}serializedVersion: 2\n[\s\S]*wrapU: 1\n {4}wrapV: 1\n/);
+    expect(meta.replace(/ {2}textureSettings:\n( {4}.*\n)+/, "")).toBe(textureMeta("0123456789abcdef0123456789abcdef"));
+    expect(textureMeta("0123456789abcdef0123456789abcdef")).not.toContain("wrapU");
+  });
+});

@@ -85,6 +85,14 @@ TextureImporter:
   assetBundleVariant:
 `;
 
+// 端を繰り返さない（Clamp）プリントのテクスチャ。アクリルの板のように、面の下端まで描いた絵（差し込む帯）が
+// 上端ににじまないようにする（ブラウザのプレビューの CanvasTexture も Clamp）
+export const clampedTextureMeta = (guid: string) =>
+  textureMeta(guid).replace(
+    "  textureShape: 1\n",
+    "  textureShape: 1\n  textureSettings:\n    serializedVersion: 2\n    filterMode: 1\n    aniso: 1\n    mipBias: 0\n    wrapU: 1\n    wrapV: 1\n    wrapW: 1\n",
+  );
+
 export const textAssetMeta = (guid: string) => `fileFormatVersion: 2
 guid: ${guid}
 TextScriptImporter:
