@@ -1,7 +1,7 @@
 {
   "slug": "menu-pedestal",
   "name": "メニュースタンド",
-  "category": "グッズ",
+  "category": "看板",
   "description": "支柱付きのメニュー立て。好きな画像をプリントできます。",
   "tokenCost": 1,
   "isPublic": false,

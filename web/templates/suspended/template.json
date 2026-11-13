@@ -1,7 +1,7 @@
 {
   "slug": "suspended",
   "name": "フレームパネル",
-  "category": "グッズ",
+  "category": "パネル・ディスプレイ",
   "description": "枠に吊るしたパネル。好きな画像をプリントできます。",
   "tokenCost": 1,
   "isPublic": false,

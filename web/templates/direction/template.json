@@ -1,7 +1,7 @@
 {
   "slug": "direction",
   "name": "道しるべ看板",
-  "category": "グッズ",
+  "category": "看板",
   "description": "矢印の形をした2枚の看板。それぞれに好きな画像をプリントできます。",
   "tokenCost": 1,
   "isPublic": false,

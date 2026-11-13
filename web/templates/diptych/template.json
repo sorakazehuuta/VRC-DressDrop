@@ -1,7 +1,7 @@
 {
   "slug": "diptych",
   "name": "二つ折りパネル",
-  "category": "グッズ",
+  "category": "パネル・ディスプレイ",
   "description": "二つ折りのパネル。左右に別々の画像をプリントできます。",
   "tokenCost": 1,
   "isPublic": false,

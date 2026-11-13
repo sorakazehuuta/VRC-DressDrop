@@ -1,7 +1,7 @@
 {
   "slug": "blade",
   "name": "突き出し看板",
-  "category": "グッズ",
+  "category": "看板",
   "description": "壁から突き出す看板。好きな画像をプリントできます。",
   "tokenCost": 1,
   "isPublic": false,

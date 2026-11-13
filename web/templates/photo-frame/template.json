@@ -1,7 +1,7 @@
 {
   "slug": "photo-frame",
   "name": "フォトボード",
-  "category": "グッズ",
+  "category": "パネル・ディスプレイ",
   "description": "15枚の写真を吊るせるボード。1枚ずつ好きな画像をプリントできます。",
   "tokenCost": 1,
   "isPublic": false,

@@ -1,7 +1,7 @@
 {
   "slug": "cake",
   "name": "ケーキ",
-  "category": "フード",
+  "category": "フード・ドリンク",
   "description": "ろうそくの灯るバースデーケーキ。チョコプレートに好きな画像をのせられます。",
   "tokenCost": 1,
   "isPublic": true,

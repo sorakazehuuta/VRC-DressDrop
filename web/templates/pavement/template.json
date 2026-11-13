@@ -1,7 +1,7 @@
 {
   "slug": "pavement",
   "name": "スタンド看板",
-  "category": "グッズ",
+  "category": "看板",
   "description": "脚付きの立て看板。好きな画像をプリントできます。",
   "tokenCost": 1,
   "isPublic": false,

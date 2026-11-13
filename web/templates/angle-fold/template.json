@@ -1,7 +1,7 @@
 {
   "slug": "angle-fold",
   "name": "チェンジングパネル",
-  "category": "グッズ",
+  "category": "パネル・ディスプレイ",
   "description": "見る角度で2枚の画像が切り替わる卓上パネル。",
   "tokenCost": 1,
   "isPublic": true,
