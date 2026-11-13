@@ -18,15 +18,19 @@ export const viewport: Viewport = { themeColor: "#031e42", colorScheme: "light" 
 // 日本語版と英語版の対応を検索エンジンに伝える（hreflang）。どちらの言語でもないときは日本語版
 export async function generateMetadata(): Promise<Metadata> {
   const [locale, path] = await Promise.all([getLocale(), getPathname()]);
+  const isAdmin = path === "/admin" || path.startsWith("/admin/");
   return {
     metadataBase: new URL(siteUrl()),
     title: "VRPrintLab",
     applicationName: "VRPrintLab",
     description: pick(commonMessages, locale).siteDescription,
-    alternates: {
-      canonical: localePath(locale, path),
-      languages: { ja: path, en: localePath("en", path), "x-default": path },
-    },
+    // 管理画面は日本語だけなので、言語の対応を出さない
+    alternates: isAdmin
+      ? { canonical: path }
+      : {
+          canonical: localePath(locale, path),
+          languages: { ja: path, en: localePath("en", path), "x-default": path },
+        },
   };
 }
 

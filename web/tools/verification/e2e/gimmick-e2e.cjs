@@ -30,6 +30,9 @@ function readPackage(file) {
 const cleanup = (uid) => cleanupUser(admin, uid);
 
 (async () => {
+  // ギミックがすべて非公開だとエディタにギミックの欄が出ないため、確認の間だけ公開し、最後に元の公開状態へ戻す
+  const { data: gimmickStates, error: ge } = await admin.from("gimmicks").select("id, is_public");
+  if (ge) throw ge;
   const { data: created, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
   if (error) throw error;
   const uid = created.user.id;
@@ -43,6 +46,7 @@ const cleanup = (uid) => cleanupUser(admin, uid);
   const item = (name) => page.locator("aside [data-gimmick-item]").filter({ has: page.locator("span.text-sm.font-medium", { hasText: new RegExp("^" + esc(name) + "$") }) }).first();
   const check = (name) => item(name).getByRole("checkbox").first();
   try {
+    await admin.from("gimmicks").update({ is_public: true }).in("id", gimmickStates.map((g) => g.id));
     await page.goto(`${BASE}/login?next=/editor/${TEMPLATE.slug}`, { waitUntil: "networkidle" });
     await page.getByLabel("メールアドレス").fill(email);
     await page.getByLabel("パスワード").fill(password);
@@ -52,7 +56,7 @@ const cleanup = (uid) => cleanupUser(admin, uid);
 
     // ---- ギミックの選択（ギミック欄は最初から開いている） ----
     ok("ギミック欄が最初から開いている", (await page.getByRole("button", { name: /ギミック（動き・演出）/ }).getAttribute("aria-expanded")) === "true");
-    ok("ギミックが16種表示される", (await page.locator("aside div.rounded-lg input[type=checkbox]").count()) === 16);
+    ok("ギミックが16種表示される", (await page.locator("aside [data-gimmick-item] input[type=checkbox]").count()) === 16);
     ok("軌跡は動くギミックがないと選べない", await check("動いたあとに軌跡").isDisabled());
     await check("ずっと回転する").check();
     ok("回転を選ぶと段階回転は選べない", await check("触るたびに段階的に回転").isDisabled());
@@ -86,7 +90,10 @@ const cleanup = (uid) => cleanupUser(admin, uid);
     const config = JSON.parse(files.get(configPath).toString("utf8"));
     ok("パッケージに組み立て設定（回転・ライト）", config.gimmicks.map((g) => g.slug).join(",") === "toggle-light,spin" || config.gimmicks.map((g) => g.slug).join(",") === "spin,toggle-light", config.gimmicks.map((g) => g.slug).join(","));
     ok("回転の速さ 90 が設定に入る", config.gimmicks.find((g) => g.slug === "spin").params.find((p) => p.key === "speed").value === "90");
-    ok("スクリプト一式と Editor スクリプトが入る", [...files.keys()].filter((p) => p.startsWith("Assets/VRPrintLab/_Runtime/")).length >= 11);
+    // 選んだギミック（ライト・回転）のスクリプトと、Prefab の組み立てスクリプトだけが入る
+    const scripts = [...files.keys()].filter((p) => p.startsWith("Assets/VRPrintLab/_Runtime/") && p.endsWith(".cs")).sort();
+    const expected = ["Assets/VRPrintLab/_Runtime/Editor/VRPrintLabPrefabBuilder.cs", "Assets/VRPrintLab/_Runtime/Scripts/VRPLSpin.cs", "Assets/VRPrintLab/_Runtime/Scripts/VRPLToggleLight.cs"];
+    ok("選んだギミックのスクリプトと Editor スクリプトだけが入る", JSON.stringify(scripts) === JSON.stringify(expected), scripts.map((p) => p.split("/").pop()).join(", "));
     await page.waitForFunction(() => document.querySelector("header").innerText.includes("0 トークン"), null, { timeout: 15000 });
     ok("3トークン消費", true);
 
@@ -135,6 +142,8 @@ const cleanup = (uid) => cleanupUser(admin, uid);
     await browser.close();
     const { error: de } = await cleanup(uid);
     console.log("テストユーザーの削除:", de ? "失敗 " + de.message : "OK");
+    for (const g of gimmickStates) await admin.from("gimmicks").update({ is_public: g.is_public }).eq("id", g.id);
+    console.log("ギミックの公開状態を元に戻した:", `公開 ${gimmickStates.filter((g) => g.is_public).length} 件`);
   }
 })().catch((e) => {
   console.error("ERROR:", e.message);

@@ -16,6 +16,9 @@ function withLocale(locale: Locale, path: string, rewrite: boolean) {
   };
 }
 
+// 管理画面は日本語だけ（言語を付けない）。URL はブラウザに届くファイルに書かないため、ここでだけ判定する
+const isAdminPath = (path: string) => path === "/admin" || path.startsWith("/admin/");
+
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const redirectTo = (path: string) => NextResponse.redirect(new URL(`${path}${search}`, request.url));
@@ -24,8 +27,13 @@ export async function proxy(request: NextRequest) {
   if (pathname === "/ja" || pathname.startsWith("/ja/")) return redirectTo(pathname.slice(3) || "/");
 
   const { locale, path } = splitLocale(pathname);
+  if (isAdminPath(path)) {
+    // 管理画面は言語を付けない（英語の URL は日本語の URL へ）。ページには日本語とパスを伝える
+    if (locale === "en") return redirectTo(path);
+    return updateSession(request, withLocale("ja", path, false));
+  }
   if (!isLocalizable(path)) {
-    // 管理画面・API・認証の受け口は言語を付けない
+    // API・認証の受け口は言語を付けない
     if (locale === "en") return redirectTo(path);
     return updateSession(request);
   }

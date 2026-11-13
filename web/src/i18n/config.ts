@@ -11,8 +11,9 @@ export const PATH_HEADER = "x-pathname";
 
 export const isLocale = (value: unknown): value is Locale => typeof value === "string" && (LOCALES as readonly string[]).includes(value);
 
-// 言語を付けないパス（管理画面・API・認証の受け口）
-const UNLOCALIZED = ["/admin", "/api", "/auth"];
+// 言語を付けないパス（API・認証の受け口）。このファイルはブラウザ側でも読み込むので、
+// 管理画面の URL はここに書かない（管理画面に言語を付けない扱いは proxy.ts だけで行う）
+const UNLOCALIZED = ["/api", "/auth"];
 export const isLocalizable = (path: string) => !UNLOCALIZED.some((p) => path === p || path.startsWith(`${p}/`) || path.startsWith(`${p}?`));
 
 // /en/works → { locale: "en", path: "/works" }、/works → { locale: "ja", path: "/works" }

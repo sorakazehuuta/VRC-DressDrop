@@ -21,7 +21,7 @@ npx next start -p 3002
 node --env-file=.env.local tools/verification/e2e/works-e2e.cjs     # 保存・再編集・マイ作品・ログイン前の編集の引き継ぎ
 node --env-file=.env.local tools/verification/e2e/download-e2e.cjs  # ダウンロード・トークン消費・再ダウンロード・履歴
 node --env-file=.env.local tools/verification/e2e/versions-e2e.cjs  # 数値入力・前回の内容を残す確認・履歴の詳細
-node --env-file=.env.local tools/verification/e2e/gimmick-e2e.cjs   # ギミックの選択・内訳・差額の課金
+node --env-file=.env.local tools/verification/e2e/gimmick-e2e.cjs   # ギミックの選択・内訳・差額の課金（確認の間だけ全ギミックを公開し、最後に元に戻す）
 node --env-file=.env.local tools/verification/e2e/data-handling-e2e.cjs  # 下書きの期限・LICENSE.txt・同じ画像の貼り直し・控えの削除・作品の削除・管理画面・退会
 node --env-file=.env.local tools/verification/e2e/phase8-e2e.cjs         # 非公開テンプレート・規約類のページ・管理画面での停止と設定・集計
 node --env-file=.env.local tools/verification/e2e/tab-return-check.cjs   # 管理画面で変えたトークン数が、開いたままのタブにも反映される

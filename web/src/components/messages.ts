@@ -13,7 +13,6 @@ export const commonMessages = defineMessages({
       signup: "新規登録",
       tokens: (n: number) => `${n} トークン`,
       menu: "メニュー",
-      admin: "管理画面",
     },
     logout: {
       button: "ログアウト",
@@ -53,7 +52,6 @@ export const commonMessages = defineMessages({
       signup: "Sign up",
       tokens: (n: number) => `${n} ${Math.abs(n) === 1 ? "token" : "tokens"}`,
       menu: "Menu",
-      admin: "Admin",
     },
     logout: {
       button: "Log out",

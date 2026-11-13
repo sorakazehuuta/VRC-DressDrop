@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { getMessages } from "@/i18n/server";
-import { commonMessages } from "./messages";
+import { adminNavMessages } from "./admin-nav-messages";
 
 // 管理画面へのリンク。サーバーで管理者と確かめたときだけ描画し、ヘッダーのメニュー（クライアント）には
 // 描画済みの要素として渡す。管理者以外のページの HTML・JavaScript には URL も文字も含まれない
 export async function AdminNavLink({ variant }: { variant: "tab" | "menu" }) {
-  const m = await getMessages(commonMessages);
+  const m = await getMessages(adminNavMessages);
   return (
     <Link
       href="/admin"
@@ -15,7 +15,7 @@ export async function AdminNavLink({ variant }: { variant: "tab" | "menu" }) {
           : "block border-l-4 border-transparent px-4 py-3 text-zinc-700 hover:bg-zinc-50"
       }
     >
-      {m.nav.admin}
+      {m.label}
     </Link>
   );
 }
