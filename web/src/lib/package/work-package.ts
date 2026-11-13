@@ -123,11 +123,12 @@ Finished works with images you own the rights to (or have permission to use) can
 and can be sold or distributed for free on BOOTH and similar platforms (no commercial license or revenue share required).
 Templates without images, models with the images removed, and models where only the colors were changed can't be redistributed or sold.
 People who receive a finished work can use, place, and adjust it, but can't redistribute or resell this package
-or any models or textures extracted from it. For details, see LICENSE.txt and the Terms of Service (${termsUrl()}).
+or any models or textures extracted from it. For details, see LICENSE.txt and the Terms of Service (${termsUrl("en")}).
 `;
 }
 
-const termsUrl = () => `${siteUrl()}/terms`;
+// 英語の部分には英語版の規約の URL を載せる
+const termsUrl = (locale: "ja" | "en" = "ja") => `${siteUrl()}${locale === "en" ? "/en" : ""}/terms`;
 
 // 完成品を販売・配布したときに受け取った人も読めるよう、利用条件をパッケージに同梱する
 function license(input: WorkPackageInput) {
@@ -177,7 +178,7 @@ VRPrintLab Terms of Use
 Work name     : ${input.workName}
 Template      : ${input.template.nameEn || input.template.name}
 Purchase ID   : ${input.purchaseId}
-Terms         : ${termsUrl()}
+Terms         : ${termsUrl("en")}
 Terms revised : ${termsVersionLabel("en")}
 
 This package was created with VRPrintLab (${siteUrl()}).
