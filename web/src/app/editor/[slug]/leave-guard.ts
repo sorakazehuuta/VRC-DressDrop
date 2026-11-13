@@ -3,7 +3,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 // 未保存の変更があるまま、ブラウザの「戻る」やサイト内のリンクでエディタを離れようとしたときに確認する。
 // サイト内の移動では beforeunload が働かないため、未保存の間だけ履歴に目印（同じ URL）を1つ積み、
-// 「戻る」でその目印が外れたら確認を出す。目印は Next.js の履歴の情報（history.state）をそのまま引き継ぐ
+// 「戻る」でその目印が外れたら確認を出す。
+// 目印が外れたときの popstate は Next.js より先に受け取って止める（Next.js が前の履歴のページを描き直して、
+// 編集中のエディタが作り直されないように）。そのときアドレスバーは前の履歴の URL になるので、今の URL に戻す
 const MARK = "__vrplGuard";
 
 type Pending = { kind: "back" } | { kind: "link"; href: string };
@@ -12,37 +14,44 @@ export function useLeaveGuard(dirty: boolean) {
   const router = useRouter();
   const guarded = useRef(false); // 目印が履歴の一番上にある
   const dirtyRef = useRef(dirty);
-  // 目印を外すために自分で戻ったあと、続けて行うこと（URL の書き換え・リンク先への移動）
+  const currentUrl = useRef<string | null>(null); // エディタの今の URL（目印を積んだあとに作品 ID が付いたときも追う）
+  // 目印を外すために自分で戻ったあと、続けて行うこと（リンク先への移動）
   const afterPop = useRef<(() => void) | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
 
+  const pushMark = useCallback(() => {
+    currentUrl.current = window.location.href;
+    window.history.pushState({ ...window.history.state, [MARK]: true }, "", window.location.href);
+    guarded.current = true;
+  }, []);
+
   useEffect(() => {
     dirtyRef.current = dirty;
-    if (dirty && !guarded.current) {
-      window.history.pushState({ ...window.history.state, [MARK]: true }, "", window.location.href);
-      guarded.current = true;
-    }
-  }, [dirty]);
+    if (dirty && !guarded.current) pushMark();
+  }, [dirty, pushMark]);
 
   // 目印を外す（自分で1つ戻る）。外したあとに then を行う
   const dropMark = useCallback((then: () => void) => {
     if (!guarded.current) return then();
-    guarded.current = false;
     afterPop.current = then;
     window.history.back();
   }, []);
 
   useEffect(() => {
-    const onPopState = () => {
+    const onPopState = (e: PopStateEvent) => {
+      if (!guarded.current) return;
+      // 目印が外れた（利用者の「戻る」か、dropMark）。Next.js には渡さず、アドレスバーを今の URL に戻す
+      e.stopImmediatePropagation();
+      guarded.current = false;
+      if (currentUrl.current && window.location.href !== currentUrl.current) {
+        window.history.replaceState(window.history.state, "", currentUrl.current);
+      }
       const then = afterPop.current;
       if (then) {
         afterPop.current = null;
         then();
         return;
       }
-      if (!guarded.current || (window.history.state as Record<string, unknown> | null)?.[MARK]) return;
-      // 利用者の「戻る」で目印が外れた
-      guarded.current = false;
       if (dirtyRef.current) setPending({ kind: "back" });
       else window.history.back(); // 保存済みなら、そのまま前のページへ
     };
@@ -57,19 +66,20 @@ export function useLeaveGuard(dirty: boolean) {
       e.stopPropagation();
       setPending({ kind: "link", href: url.pathname + url.search + url.hash });
     };
-    window.addEventListener("popstate", onPopState);
+    // capture で登録して、Next.js の popstate の処理より先に受け取る
+    window.addEventListener("popstate", onPopState, true);
     document.addEventListener("click", onClick, true);
     return () => {
-      window.removeEventListener("popstate", onPopState);
+      window.removeEventListener("popstate", onPopState, true);
       document.removeEventListener("click", onClick, true);
     };
   }, []);
 
-  // 初回の保存で URL に作品 ID を付ける。目印があるときは外してから書き換える（戻ったときに作品 ID のない URL に戻らないように）
-  const replaceUrl = useCallback(
-    (url: string) => dropMark(() => window.history.replaceState({ ...window.history.state }, "", url)),
-    [dropMark],
-  );
+  // 初回の保存で URL に作品 ID を付ける（Next.js にも URL の変化を伝えるため、state は null で渡す）
+  const replaceUrl = useCallback((url: string) => {
+    window.history.replaceState(null, "", url);
+    if (guarded.current) currentUrl.current = window.location.href;
+  }, []);
 
   const go = useCallback(
     (p: Pending) => {
@@ -81,11 +91,8 @@ export function useLeaveGuard(dirty: boolean) {
 
   // 編集を続ける。「戻る」で外れた目印を積み直す（リンクのときは目印が残っている）
   const keepEditing = useCallback(() => {
-    if (dirtyRef.current && !guarded.current) {
-      window.history.pushState({ ...window.history.state, [MARK]: true }, "", window.location.href);
-      guarded.current = true;
-    }
-  }, []);
+    if (dirtyRef.current && !guarded.current) pushMark();
+  }, [pushMark]);
 
   // 確認ダイアログの答え
   const leave = useCallback(() => {
@@ -107,8 +114,6 @@ export function useLeaveGuard(dirty: boolean) {
       if (!p) return;
       const saved = await save();
       if (!saved) return keepEditing();
-      // 初回の保存で URL を書き換えている途中なら、終わるまで待つ
-      for (let i = 0; i < 40 && afterPop.current; i++) await new Promise((r) => setTimeout(r, 25));
       go(p);
     },
     [pending, go, keepEditing],
