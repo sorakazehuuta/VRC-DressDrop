@@ -6,7 +6,8 @@ import { pick } from "@/i18n/messages";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { parseEditorParams } from "@/lib/templates/params";
-import { getTemplate } from "@/lib/templates/queries";
+import { getTemplate, listTemplates } from "@/lib/templates/queries";
+import { sortTemplates } from "@/lib/templates/sort";
 import { gimmickMap, listGimmicks } from "@/lib/gimmicks/queries";
 import { localizeGimmick, parseGimmickSelection } from "@/lib/gimmicks/schema";
 import { WORK_IMAGES_BUCKET } from "@/lib/works/constants";
@@ -87,6 +88,9 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
           previewModelUrl: template.previewModelUrl,
           slots: template.slots,
         }}
+        otherTemplates={sortTemplates(await listTemplates(), "recommended")
+          .filter((t) => t.slug !== template.slug)
+          .map((t) => ({ slug: t.slug, name: t.name, tokenCost: t.tokenCost, thumbnailUrl: t.thumbnailUrl }))}
         gimmickDefs={gimmickDefs.map((d) => localizeGimmick(d, locale))}
         userId={user?.id ?? null}
         initialWork={initialWork}

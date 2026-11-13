@@ -1,13 +1,17 @@
 import type { GimmickSelection } from "@/lib/gimmicks/schema";
 import type { EditorParams } from "@/lib/templates/params";
+import type { PrintText } from "@/lib/templates/text";
 
 // ログイン前の編集内容を、ログイン画面から戻るまでブラウザ内（IndexedDB）に一時保存する。
 // 画像は数MBになるため sessionStorage ではなく IndexedDB に Blob のまま入れる。
 // 引き継ぎ期限は保存から24時間。期限切れのものはエディタを開いたときに消す
 
+// carry: 「この画像でほかのグッズも作る」で持ち越す画像と文字。開いたテンプレートの最初の印刷面に貼る
+// （このときは params を持たず、開いた側のテンプレートの定義で編集内容を組み立てる）
 export type Draft = {
   name: string;
-  params: EditorParams;
+  params?: EditorParams;
+  carry?: { imageId: string | null; text?: PrintText };
   gimmicks?: GimmickSelection[];
   images: { id: string; file: File }[];
   savedAt: number;

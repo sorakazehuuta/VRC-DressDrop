@@ -119,6 +119,7 @@ export function PrintControls({
   fileBase,
   onRemoveBackground,
   onRestoreBackground,
+  onReuse,
 }: {
   slot: PrintSlot;
   params: PrintParams;
@@ -132,6 +133,8 @@ export function PrintControls({
   // 背景を消した画像に差し替える（結果の種類を返す）。元の画像に戻す
   onRemoveBackground: (options: BackgroundOptions) => Promise<"done" | "already-transparent" | "nothing">;
   onRestoreBackground: () => void;
+  // この画像（と文字）でほかのグッズも作る。画像も文字もなければ undefined
+  onReuse?: () => void;
 }) {
   const locale = useLocale();
   const m = pick(editorMessages, locale);
@@ -311,6 +314,12 @@ export function PrintControls({
       </fieldset>
 
       <TextControls text={params.text} onChange={onChange} onCommit={onCommit} />
+
+      {onReuse && (
+        <Button type="button" variant="secondary" className="self-start" onClick={onReuse}>
+          {c.reuse}
+        </Button>
+      )}
     </section>
   );
 }
