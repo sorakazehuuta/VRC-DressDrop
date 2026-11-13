@@ -100,7 +100,7 @@ npm run typecheck                # ルートの型を作ってから型チェッ
 ## 3. 環境
 
 - **Supabase**: 作成済み。URL・キーは `web/.env.local`（git 管理外）。無料プラン（1週間使わないと一時停止）
-- **マイグレーション**: `web/supabase/migrations` の 17 ファイルはすべて SQL Editor で実行済み（最新は `20261114000000_disposable_email_hook.sql`）。関数を足したときは最後に `notify pgrst, 'reload schema';` を入れる（入れないと API から「関数が見つからない」になることがある）。新しく作ったら利用者に実行を依頼する（Supabase CLI・Docker は入っていない）
+- **マイグレーション**: `web/supabase/migrations` の 18 ファイルはすべて SQL Editor で実行済み（最新は `20261115000000_template_english.sql`。2026-11-13 に実行し、templates:sync で英語の名前・スロット名を登録済み）。関数を足したときは最後に `notify pgrst, 'reload schema';` を入れる（入れないと API から「関数が見つからない」になることがある）。新しく作ったら利用者に実行を依頼する（Supabase CLI・Docker は入っていない）
 - **Storage バケット**: `work-images`（非公開・作品の画像とサムネイル）、`template-assets`（公開・glb とサムネイル）、`template-packages`（非公開・テンプレートの unitypackage）、`packages`（非公開・生成した unitypackage と購入した版の控え）
 - **データ**: ギミック 16 件（すべて非公開）。テンプレートは unitypackage 形式で 30 件を公開（ケーキ・缶バッジ・マグカップ・タペストリー・デスクマット・うちわ・抱き枕カバー・スケートボード・本・缶・コースター・ロールバナー・チェンジングパネル・ドロップ缶・カクテルシェイカー・ダブルジガー・バーマット・サービストレイ・突き出し看板・ギャラリーパネル・カウンターカード・二つ折りパネル・道しるべ看板・吊り下げ看板・フォトスタンド・メニュースタンド・イーゼルボード・スタンド看板・フォトボード・フレームパネル）。Frame_A は印刷面が FBX 埋め込みのマテリアル（Mat_Print1・Mat_Print2）のため登録を見送り（2026-11-12 の再書き出し版も同じ。Mat_Print.mat は入っているが未使用）。フォトボードは 2026-11-12 にテクスチャを縮小した版へ更新（unitypackage 38MB → 1MB）。旧形式の Tシャツは DB の行だけ非公開で残っている（他の利用者の作品が参照）
 - **Unity**: 2022.3.22f1（`C:\Program Files\Unity\Hub\Editor\2022.3.22f1`）。VCC の TestProject に UdonSharp・ClientSim あり。この PC には VRChat 本体が入っていない
@@ -145,7 +145,7 @@ npm run typecheck                # ルートの型を作ってから型チェッ
 - **決済**: Stripe（Checkout + Webhook）で実装済み（2026-11-03）。トークン画面は `/tokens`、Webhook は `/api/stripe/webhook`、DB 関数は `complete_token_payment` / `revoke_token_payment` / `expire_token_lots`。パックの価格は仮（5/12/30 トークンで 1,000/2,200/5,000 円）。1か月あたりの購入上限は利用者の判断で今回は作っていない。PayPay は後で検討
 - **不正対策**: 要件定義書 6.11。電話番号の確認は「予定している作業 A」。CAPTCHA（Turnstile）と使い捨てメールの拒否（Before User Created フック、有効化済み。一覧は 10,181 件を登録済み）は実装済みで、設定と運用は [admin-operations.md](admin-operations.md)。CAPTCHA は Supabase 側をまだ有効にしていない（本番の準備で設定）。管理者の権限での作成（`auth.admin.createUser`）にはフックが効かない。チャージバックのカードのブロック（`blocked_cards`）と同じカードのアカウントの表示は実装済み
 - **Supabase の一時停止**: 無料プランは1週間使わないと止まる（2026-10-27 に停止、利用者が再開）。止まると templates:sync やサイト全体が `fetch failed` になる
-- **認証メール**: 「予定している作業 B」
+- **認証メール**: 「予定している作業 B」。**残タスク: 日英併記にした件名と本文（`web/supabase/email-templates`、2026-11-13 更新）を Supabase の Authentication → Email Templates に貼り直す（利用者が行う）**。今のダッシュボードは日本語だけの古い文面のまま
 - **未決事項**: トークンの価格・各テンプレート/ギミックの消費量、ドメイン、SMS の送信サービス
 - **集計の新規登録**: 今も登録中の人数（あとで退会した人は登録月の数から外れる。`deleted_accounts` に登録日がないため）
 - **確認スクリプトの起動**: 本番モードのサーバーを `npx next start -p 3002` で起動する。止めるときは node の `next start` のプロセスを止める（ポートの一覧からは見つからないことがある）
