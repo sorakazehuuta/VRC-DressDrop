@@ -1,6 +1,7 @@
 import "server-only";
 import { isMaterial, isScript, readUnityPackage, unityMaterialName, type UnityPackageEntry } from "./read-unitypackage";
 import type { PackageAsset } from "./unitypackage";
+import { prefabObjectMeshGuid } from "./unity-mesh";
 
 // テンプレートの unitypackage の中身（モデル・マテリアル・Prefab など）を、作品のフォルダの下に複製する。
 // 作品ごとに GUID を振り直し、ファイル間の参照（Prefab → FBX、FBX → マテリアルなど）もすべて新しい GUID に書き換える。
@@ -12,6 +13,9 @@ export type TemplateFiles = {
   prefabPath: string;
   // スロットのマテリアルを書き換える（変更後の YAML を返す関数を渡す）
   editMaterial: (materialName: string, edit: (yaml: string) => string) => void;
+  // Prefab の中の、指定した名前のオブジェクトが使うメッシュ（.asset の YAML）を読む・書き換える
+  readObjectMesh: (objectName: string) => string;
+  editObjectMesh: (objectName: string, edit: (yaml: string) => string) => void;
 };
 
 const GUID_PATTERN = /guid: ([0-9a-f]{32})/g;
@@ -57,8 +61,21 @@ export function templateFiles(opts: {
   const prefab = entries.find((e) => e.path === opts.prefabPath);
   if (!prefab) throw new Error(`テンプレートに Prefab がありません: ${opts.prefabPath}`);
 
+  const prefabAsset = assets.get(prefab.guid)!;
+  const objectMesh = (objectName: string) => {
+    const guid = prefabObjectMeshGuid(prefabAsset.data.toString("utf8"), objectName);
+    const target = [...assets.values()].find((a) => new RegExp(`^guid: ${guid}\\s*$`, "m").test(a.meta));
+    if (!target || !target.path.endsWith(".asset") || !isYaml(target.data)) throw new Error(`「${objectName}」のメッシュはテキスト形式の .asset にしてください`);
+    return target;
+  };
+
   return {
     prefabPath: relocate(prefab.path),
+    readObjectMesh: (objectName) => objectMesh(objectName).data.toString("utf8"),
+    editObjectMesh(objectName, edit) {
+      const target = objectMesh(objectName);
+      target.data = Buffer.from(edit(target.data.toString("utf8")), "utf8");
+    },
     editMaterial(materialName, edit) {
       const target = [...assets.values()].find((a) => isMaterial(a.entry) && unityMaterialName(a.entry) === materialName);
       if (!target) throw new Error(`テンプレートにマテリアルがありません: ${materialName}`);

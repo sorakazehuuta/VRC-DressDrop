@@ -67,6 +67,7 @@ export function readGlbJson(file: string) {
   return JSON.parse(buf.toString("utf8", 20, 20 + jsonLength)) as {
     asset: { extras?: { vrprintlab?: PreviewExtras } };
     materials?: { name?: string }[];
+    nodes?: { name?: string; mesh?: number }[];
     meshes?: { primitives: { material?: number; indices?: number; attributes: Record<string, number> }[] }[];
     accessors: { count: number }[];
   };

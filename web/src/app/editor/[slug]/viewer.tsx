@@ -7,6 +7,7 @@ import type { OrbitControls as OrbitControlsImpl } from "three/examples/jsm/cont
 import * as THREE from "three";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import type { GimmickSelection } from "@/lib/gimmicks/schema";
+import { buildEdgeMesh, printFaces, type FaceMap } from "@/lib/templates/acrylic-edge";
 import { backgroundColor, textureDimensions, type EditorParams } from "@/lib/templates/params";
 import type { PrintSlot, Slot } from "@/lib/templates/schema";
 import { cameraDirection, type PreviewExtras } from "@/lib/templates/view";
@@ -267,7 +268,33 @@ type Rig = {
   scene: THREE.Object3D;
   materials: Map<string, THREE.MeshStandardMaterial>;
   prints: Map<string, { canvas: HTMLCanvasElement; texture: THREE.CanvasTexture }>;
+  // アクリルの板の側面（印刷面ごと）。プリントの面（表と裏）の位置から、外周に沿った側面を作り直す
+  edges: Map<string, { mesh: THREE.Mesh; faces: [FaceMap, FaceMap] }>;
 };
+
+// glb のノード（Unity の GameObject の名前）から、メッシュを 1 つ探す
+function findMesh(scene: THREE.Object3D, name: string) {
+  let found: THREE.Mesh | null = null;
+  scene.traverse((obj) => {
+    if (found || obj.name !== name) return;
+    obj.traverse((child) => {
+      if (!found && (child as THREE.Mesh).isMesh) found = child as THREE.Mesh;
+    });
+  });
+  return found as THREE.Mesh | null;
+}
+
+// プリントの面のメッシュから、表と裏の面の対応を求める（glTF の UV は画像の上が 0 なので、そのまま (u, t) になる）
+function meshFaces(mesh: THREE.Mesh) {
+  const geometry = mesh.geometry;
+  const position = geometry.getAttribute("position");
+  const uv = geometry.getAttribute("uv");
+  if (!position || !uv) return null;
+  const index = geometry.getIndex();
+  const indices = index ? Array.from(index.array) : Array.from({ length: position.count }, (_, i) => i);
+  // ノードに位置・向きがあっても、側面はプリントと同じノードの座標で作る
+  return printFaces(position.array, uv.array, indices);
+}
 
 // glTF のキャッシュを書き換えないよう、シーン・マテリアル・テクスチャを毎回まとめて新しく作る。
 // 開発時の React は useMemo を2回実行することがあるため、作ったものの外側を書き換えてはいけない
@@ -323,7 +350,34 @@ function buildRig(source: THREE.Object3D, slots: Slot[]): Rig {
       material.needsUpdate = true;
     }
   }
-  return { scene, materials, prints };
+
+  const edges = new Map<string, { mesh: THREE.Mesh; faces: [FaceMap, FaceMap] }>();
+  for (const slot of slots) {
+    const edge = slot.type === "print" ? slot.outline?.edge : undefined;
+    if (!edge) continue;
+    const print = findMesh(scene, edge.printObject);
+    const edgeMesh = findMesh(scene, edge.edgeObject);
+    const faces = print && meshFaces(print);
+    if (!print || !edgeMesh || !faces) continue;
+    // 側面はプリントの面と同じ位置に置く（glb のノードは Prefab のルートからの位置で、どちらも同じ）
+    edgeMesh.position.copy(print.position);
+    edgeMesh.quaternion.copy(print.quaternion);
+    edgeMesh.scale.copy(print.scale);
+    edgeMesh.geometry = new THREE.BufferGeometry();
+    edges.set(slot.key, { mesh: edgeMesh, faces });
+  }
+  return { scene, materials, prints, edges };
+}
+
+// 板の外周の線から側面の形を作り、メッシュに入れる
+function updateEdge(target: { mesh: THREE.Mesh; faces: [FaceMap, FaceMap] }, loops: [number, number][][]) {
+  const built = buildEdgeMesh(loops, target.faces[0], target.faces[1]);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(built.positions, 3));
+  geometry.setAttribute("normal", new THREE.BufferAttribute(built.normals, 3));
+  geometry.setIndex(new THREE.BufferAttribute(built.indices, 1));
+  target.mesh.geometry.dispose();
+  target.mesh.geometry = geometry;
 }
 
 function Model({
@@ -345,7 +399,7 @@ function Model({
     camera.position.copy(viewDirRef.current).multiplyScalar(camera.position.length() || 2.5);
     camera.lookAt(0, 0, 0);
   }, [gltf, camera, viewDirRef]);
-  const { scene, materials, prints: printTextures } = useMemo(() => buildRig(gltf.scene, slots), [gltf.scene, slots]);
+  const { scene, materials, prints: printTextures, edges } = useMemo(() => buildRig(gltf.scene, slots), [gltf.scene, slots]);
   const textFonts = useTextFonts(Object.values(params.slots).flatMap((p) => (p.kind === "print" && p.text ? [p.text.font] : [])));
 
   // ギミックの発光・半透明を毎フレーム反映し、サムネイルの撮影中だけ元に戻す
@@ -366,8 +420,9 @@ function Model({
     () => () => {
       printTextures.forEach(({ texture }) => texture.dispose());
       materials.forEach((m) => m.dispose());
+      edges.forEach(({ mesh }) => mesh.geometry.dispose());
     },
-    [printTextures, materials],
+    [printTextures, materials, edges],
   );
 
   useEffect(() => {
@@ -380,7 +435,7 @@ function Model({
         const target = printTextures.get(slot.key);
         if (!target) continue;
         const image = slotParams.imageId ? images[slotParams.imageId] : undefined;
-        drawPrint(
+        const loops = drawPrint(
           target.canvas,
           slotParams,
           image ?? null,
@@ -389,9 +444,11 @@ function Model({
           (slot as PrintSlot).outline,
         );
         target.texture.needsUpdate = true;
+        const edge = edges.get(slot.key);
+        if (edge) updateEdge(edge, loops);
       }
     }
-  }, [slots, params, images, materials, printTextures, textFonts]);
+  }, [slots, params, images, materials, printTextures, textFonts, edges]);
 
   return <primitive object={scene} />;
 }

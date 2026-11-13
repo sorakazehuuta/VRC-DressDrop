@@ -37,6 +37,16 @@ export const printSlotSchema = z.object({
       opacity: z.number().min(0).max(1).default(0.3),
       edgeOpacity: z.number().min(0).max(1).default(0.7),
       tab: z.number().min(0).max(1).default(0),
+      // 利用者が「四角のまま」を選んだときの、四角の下端の位置（印刷面の下端からの高さ。印刷面の高さに対する割合）と、
+      // 角を丸めるときの半径（印刷面の短い辺に対する割合）。四角の下から面の下端までは差し込む帯でつなぐ
+      rectBottom: z.number().min(0).max(0.5).default(0.05),
+      cornerRadius: z.number().min(0).max(0.5).default(0.06),
+      // 印刷面の実寸（mm）。あれば縁取りの幅・四角の大きさを mm で表示する
+      sizeMm: z.object({ width: z.number().positive(), height: z.number().positive() }).optional(),
+      // 板の厚み（側面）。Prefab の中の、プリントの面（表と裏の2枚）のオブジェクトと、側面を描くオブジェクトの名前。
+      // 側面のメッシュは作品ごとに、板の外周に合わせて作り直す（lib/templates/acrylic-edge.ts）。
+      // 両方のオブジェクトは同じ位置・向き・大きさ（Prefab のルートからの変換が同じ）に置くこと
+      edge: z.object({ printObject: z.string().min(1), edgeObject: z.string().min(1) }).optional(),
     })
     .optional(),
 });

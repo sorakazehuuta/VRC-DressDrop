@@ -9,7 +9,9 @@ import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import { isMaterial, isScript, resolveTemplatePrefab, unityMaterialName } from "../src/lib/package/read-unitypackage";
 import { TEMPLATE_CATEGORIES } from "../src/lib/templates/categories";
+import { printFaces } from "../src/lib/templates/acrylic-edge";
 import type { TemplateManifest } from "../src/lib/templates/schema";
+import { prefabObjectMeshGuid, readUnityMesh } from "../src/lib/package/unity-mesh";
 import { readGlbJson, readTemplateFolder, sha256, templateSlugs } from "./template-bake/template-files";
 
 const QUEST_TRIANGLE_LIMIT = 10_000;
@@ -63,6 +65,29 @@ function load(slug: string): Loaded {
     }
   }
 
+  // アクリルの板の厚み: 購入時に、側面のオブジェクトのメッシュを、プリントの面の位置から作り直す
+  const prefabEntry = entries.find((e) => e.path === prefab);
+  for (const slot of manifest.slots) {
+    const edge = slot.type === "print" ? slot.outline?.edge : undefined;
+    if (!edge || !prefabEntry?.asset) continue;
+    const meshYaml = (objectName: string) => {
+      const guid = prefabObjectMeshGuid(prefabEntry.asset!.toString("utf8"), objectName);
+      const entry = entries.find((e) => e.guid === guid);
+      if (!entry?.asset || !entry.path.endsWith(".asset") || !entry.asset.subarray(0, 5).toString("ascii").startsWith("%YAML")) {
+        throw new Error(`「${objectName}」のメッシュはテキスト形式の .asset にしてください（Project Settings > Editor > Asset Serialization を Force Text に）`);
+      }
+      return entry.asset.toString("utf8");
+    };
+    try {
+      const print = readUnityMesh(meshYaml(edge.printObject));
+      const uvT = print.uvs.map((v, i) => (i % 2 === 1 ? 1 - v : v));
+      if (!printFaces(print.positions, uvT, print.indices)) errors.push(`スロット "${slot.key}": 「${edge.printObject}」のメッシュに、向きが逆の 2 つの面（表と裏）がありません`);
+      meshYaml(edge.edgeObject);
+    } catch (e) {
+      errors.push(`スロット "${slot.key}" の outline.edge: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
   const previewFile = path.join(dir, manifest.files.preview);
   if (!existsSync(previewFile)) {
     errors.push(`プレビュー用モデル "${manifest.files.preview}" がありません。npm run templates:prepare -- ${slug} で作ってください`);
@@ -96,6 +121,15 @@ function load(slug: string): Loaded {
       if (prims.some((p) => p.attributes.TEXCOORD_0 === undefined)) {
         errors.push(`プリントスロット "${slot.key}" の面に UV がありません。UV 展開したモデルを使ってください`);
       }
+    }
+  }
+  // エディタのプレビューは、glb のノードの名前（Unity の GameObject の名前）でプリントの面と側面を探す
+  const nodeNames = new Set((glb.nodes ?? []).map((n) => n.name ?? ""));
+  for (const slot of manifest.slots) {
+    const edge = slot.type === "print" ? slot.outline?.edge : undefined;
+    if (!edge) continue;
+    for (const name of [edge.printObject, edge.edgeObject]) {
+      if (!nodeNames.has(name)) errors.push(`スロット "${slot.key}" の outline.edge: プレビュー用モデルに「${name}」がありません（表示されているメッシュにしてください）`);
     }
   }
   if (triangles > QUEST_TRIANGLE_LIMIT) {
