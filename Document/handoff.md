@@ -30,6 +30,7 @@
   - **文字を入れる**（印刷面ごとに 1 つ。価格札・お品書き・「新刊」など。画像なしでも使える。書体はゴシック（M PLUS 1p Bold）と丸ゴシック（M PLUS Rounded 1c Bold）、ライセンスは SIL OFL で `web/public/fonts`。文字は opentype.js でパスに変えて、ブラウザ（canvas）とサーバー（SVG を sharp で描く）で同じ形に描く。共通の処理は `lib/templates/text.ts`。編集内容の `text` は文字があるときだけ持つので、以前の作品の版のハッシュは変わらない）
   - **この画像でほかのグッズも作る**（印刷面の画像と文字を下書き（IndexedDB）に「持ち越すもの」として保存し、選んだテンプレートのエディタを新しいタブで開いて最初の印刷面に貼る。`editor/[slug]/reuse-dialog.tsx`、`draft.ts` の `carry`）
   - **エディタを離れるときの確認**（未保存の変更があるとき、ブラウザの「戻る」とサイト内のリンクで「保存して移動／保存せずに移動／編集を続ける」を聞く。未保存の間だけ履歴に目印を1つ積む。`editor/[slug]/leave-guard.ts`）
+  - **アクリルスタンドのテンプレート**（`templates` ブランチ。板のメッシュは持たず、プリントの面に `outline` で絵の形の板を描く。モデルは Unity のエディタのスクリプトで作った。作り直し方は `templates/acrylic-stand/AcrylicStandBuilder.cs.txt`）
   - **アクリルの縁取り**（印刷面の定義の `outline`。絵の周りを半透明の板にし、台座に差し込む帯も付ける。ブラウザとサーバーで同じ処理。`lib/templates/outline.ts`）
 - **サービスの選定（2026-11-12 に比較。未決）**: おすすめの構成は Vercel Pro（$20/月。Hobby は商用不可）＋ Supabase Pro（$25/月。本番用プロジェクトを東京で新しく作る）＋ Resend の無料プラン（メール送信）＋ Cloudflare（.com ドメイン・DNS・問い合わせメールの転送・Turnstile）。立ち上げ時は月 7,000 円前後。国内では さくらの AppRun 共用型（約 4,000 円〜、要 Docker 化）か Xserver / KAGOYA の VPS（保守が必要）が次点。ドメイン名・契約は利用者が決める
 - 規約類の下書き: `web/content/terms.md` / `privacy.md` / `tokushoho.md`（【要確認】は未確定。共同開発者が直す予定）。英語版は `web/content/en/`（参考訳）。FAQ は `faq.md`、導入ガイドは `guide.md`（画像は `web/public/guide/`。撮り直しの手順は `web/tools/verification/README.md`。Unity の表示言語は日本語で撮影）
@@ -52,6 +53,15 @@
 
 - **残タスク（利用者）**: 日英併記にした件名と本文（`web/supabase/email-templates`）を Supabase の Authentication → Email Templates に貼り直す
 - 差出人の名前とアドレスは Supabase の標準のまま。変えるには独自の SMTP（おすすめは Resend。ドメインが必要）を Authentication → SMTP Settings に設定する。Supabase 標準の送信は 1 時間に数通までなので、本番では必須
+
+### C. ギミックの公開と、アバター・ワールドそれぞれの導入ガイド（2026-11-13 に残タスクにした）
+
+ギミック 16 種は実装済みだが、すべて非公開。公開するには導入ガイドが要る（アバターとワールドで付け方が違うため）。2026-11-13 に調べた内容:
+
+- ギミックは UdonSharp（ワールド用の仕組み）で作っているので、**ワールドでだけ動く**。VRChat のアバターでは Udon が動かないため、アバターに付けられるのはギミックのない見た目だけ
+- アバターに付ける場合（例: 缶バッジを胸のボーンの下に置く）、**Quest 向けのアバターでは Standard シェーダーが使えない**見込み（VRChat/Mobile 系だけ）。対応するならパッケージのシェーダーを切り替える仕組みが要る。実装の前に VRChat の公式資料で確かめる
+- 進め方の案: A. ワールドでのギミックの導入ガイド（画像付き。TestProject と GUI の Unity で撮れる。公開の前に VRChat での全員への同期の確認が必要。この PC には VRChat がない）→ B. アバターに付けるガイド（VCC で Avatars SDK を入れた新しいプロジェクトと、撮影用の人型のモデルが要る。この PC には Avatars SDK もモデルもない）
+- 再開するときは、A から始めるか、B のためのプロジェクト・モデルをどうするかを利用者に確認する
 
 ### 本番公開までの順番（2026-11-12 に整理）
 
@@ -174,7 +184,7 @@ Claude の Skill「frontend-design」（決まりきった作りに見えない 
   - 画面の要素は、見た目のクラス名ではなく文言・ラベル・`data-*` 属性（`data-download-panel`、`data-gimmick-item`、`data-template`）で探す
 - **確認スクリプトの起動**: 本番モードのサーバーを `npx next start -p 3002` で起動する。止めるときは node の `next start` のプロセスを止める（ポートの一覧からは見つからないことがある）
 - **テンプレート（unitypackage 形式）**: 購入時はテンプレートの中身を作品フォルダの `Template/` に複製し、GUID を振り直してスロットの .mat の色・テクスチャだけを書き換える。プレビューの glb は `templates:prepare` が Unity のバッチモードで Prefab から作る（登録する PC に Unity 2022.3 が必要）。エディタの最初の視点は、1つ目のプリント面の UV の中心を正面から見る向き（`src/lib/templates/view.ts`）。ケーキは 6.7 万・缶は 1.32 万・スケートボードは 1.06 万三角形で Quest の目安（1万）を超えている。チェンジングパネル（`angle-fold`）は短冊が 45 度なので、`aspect` 1.03 は斜めから見たときの比。本はエディタのプレビューで、表紙のプリントの上に背の溝が細かい点で透ける（Unity では出ない）
-- **ギミック**: VRChat 上での全員への同期は未確認。直近の修正版（光る・触れる・振る）は利用者の Unity での再確認待ち
+- **ギミック**: VRChat 上での全員への同期は未確認。直近の修正版（光る・触れる・振る）は利用者の Unity での再確認待ち。公開と導入ガイドは「保留・残っている予定の作業」の C
 - **利用者の TestProject**: G01 の Prefab からオブジェクトが消えていた。修正版パッケージを読み込み、Tools > VRPrintLab > Prefab をすべて作り直す で復旧する手順を案内済み
 - **本番公開**: Vercel へのデプロイ、ドメイン、確認メールの送信サービス（Supabase 標準は 1 時間に数通まで）、Supabase の有料プラン検討
 - **共同開発者のブランチ**: `add-cake-model` は不要（利用者が判断）。ローカルのブランチは削除済み、GitHub 上のブランチは利用者の指示で残している
