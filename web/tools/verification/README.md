@@ -31,6 +31,7 @@ node --env-file=.env.local tools/verification/e2e/admin-link-check.cjs   # ヘ�
 node --env-file=.env.local tools/verification/e2e/admin-nav-check.cjs    # 管理画面のタブで、開いているページのタブが選択中になる
 node --env-file=.env.local tools/verification/e2e/admin-stats-detail-check.cjs  # 集計の月の詳細（新規登録・支払い・ダウンロードの一覧と内訳、50 件ずつ）
 node --env-file=.env.local tools/verification/e2e/acrylic-shape-check.cjs  # アクリルスタンドの形（切り抜き・四角）と厚み、日英・スマホ幅、ダウンロードした側面のメッシュ（BASE_URL でサーバーを変えられる）
+node tools/verification/e2e/home-upload-check.cjs                          # トップページで画像を選ぶと、その画像を貼ったアクリルスタンドのエディタが開く（日英・スマホ幅。BASE_URL でサーバーを変えられる）
 ```
 
 スクリーンショットは `tools/verification/e2e/shots/`（`SHOTS_DIR` で変更可）に保存されます。
