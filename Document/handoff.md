@@ -17,7 +17,7 @@
 | 9 | テストの整備 | 完了（main にマージ済み）。単体テスト・DB 関数のテスト・Unity の手動確認の手順書・GitHub Actions |
 
 - サービス名は **VRPrintLab**（ロゴ・ファビコンは `web/images/common`）。リポジトリ名・フォルダ名は VRC-DressDrop のまま
-- **ブランチ**（2026-11-13 夜の時点）: 機能の作業はすべて `main` にマージ済み（最新は `7a998cc`）。この資料は `docs/handoff-20261113b` ブランチ。`templates` は main の `cb9e5e4` までを取り込み、アクリルスタンドを追加（`b1053c5`）。templates に main の最新（`7a998cc` 以降）はまだ取り込んでいない（次にテンプレートを触るときに `git merge main`）。**GitHub への push は 11-13 の昼以降していない**（push は利用者が行う）
+- **ブランチ**（2026-11-13 夜の時点）: 機能の作業はすべて `main` にマージ済み（最新は `266020e`、アクリルスタンドの厚みと形）。この資料は `docs/handoff-20261113c` ブランチ。`templates` は main の `266020e` まで取り込み済みで、アクリルスタンドの側面を追加（`030ccf6`）。templates:sync でアクリルスタンドを登録し直した（非公開のまま）。**GitHub への push は 11-13 の昼以降していない**（push は利用者が行う）
 - **2026-11-12〜11-13 に入れた主な変更**（すべて main）
   - 新規登録・ログイン・パスワード再設定に CAPTCHA（Cloudflare Turnstile。Supabase 側の CAPTCHA はまだ無効）、使い捨てメールアドレスでの登録の拒否（Before User Created フック、有効化済み）
   - 導入ガイドに Unity の画面の画像 3 枚（`web/public/guide/`）
@@ -38,32 +38,19 @@
 - 本番前に [production-check.md](production-check.md) の未確認の項目を確かめる。運営の手順は [admin-operations.md](admin-operations.md)
 - テンプレートは `templates` ブランチで管理（`main` の変更は templates 側で `git merge main` して取り込む）
 
-## 次に行う作業（2026-11-13 に利用者が指定）
+## アクリルスタンドの改良（2026-11-13 夜に完了）
 
-### アクリルスタンドの改良
+利用者が指定した「板の厚み」と「形を選べる」を実装した（`feature/acrylic-shape-thickness` → main、テンプレートは `templates`）。次の作業は利用者に確認する。
 
-1. **絵の部分に厚みを付ける**（実物のアクリルスタンドと同じくらい。一般的なアクスタの板は 3mm 前後）
-2. **形を選べるようにする**: 「絵の形に切り抜く」か「四角のまま」か。四角のときは大きさを調整でき、角を丸めるかも選べる。切り抜くときは縁取りの幅を調整できる
-
-今の作り（設計を変えるときの前提）:
-
-- テンプレートは `templates` ブランチの `web/templates/acrylic-stand/`。モデルは Unity のエディタのスクリプト（`AcrylicStandBuilder.cs.txt`）で作った。メッシュは「プリントの面（表と裏の2枚の四角。3mm 離して置き、裏は左右反転して見える）」と「台座」だけ。**板のメッシュはない**
-- 板の形は、テクスチャに描いている。印刷面の定義の `outline`（template.json。幅・色・不透明度・外周の濃さ・台座に差し込む帯の幅）を見て、絵の不透明な部分の周りを半透明の板にする。処理は `web/src/lib/templates/outline.ts` の `applyOutline` で、ブラウザ（`editor/[slug]/print-canvas.ts`）とサーバー（`lib/package/texture.ts`）で同じものを使う。距離の計算は長辺 512px に縮小して行う（スライダー操作で重くならないように）
-- プリントのマテリアルは Fade（半透明）。テンプレートの処理（`setCutout`）は Fade のマテリアルをそのままにする
-- そのため今は、横から見ると「薄い板が 2 枚」に見え、切り口（厚みの側面）がない。形は template.json で決まっていて、利用者は変えられない
-
-考えられるやり方（どれにするかは検討する）:
-
-- 厚み: (a) 絵の形の側面のメッシュを作品ごとにサーバーで作る（unitypackage にメッシュを足す。Prefab の組み立て・GUID・ブラウザのプレビューも対応が要る）、(b) 同じテクスチャの薄い面を厚みの方向に何枚も重ねて側面に見せる（メッシュは固定のまま。Quest の負荷とプレビューの見え方を確かめる）、(c) シェーダーで描く（Quest・VRChat の制約に注意）。四角（角丸）のときは、固定の形なのでメッシュで厚みを作りやすい
-- 形の選択: 利用者が変える値なので、作品の編集内容（`PrintParams`）に持たせることになる。**以前の作品の版のハッシュを変えない**よう、文字（`text`）と同じく「既定と違うときだけ項目を持つ」形にする（`lib/templates/params.ts` の `parsePrintText` と `tests/unit/print-text.test.ts` を参照）。四角の大きさ・角の丸み・縁取りの幅を変えると見た目が変わるので、新しいダウンロード（トークンが必要）になる
-- 画面: エディタの印刷面の欄に、アクリルの形の欄を足す（`outline` がある印刷面だけに出す）。文言は日英の両方
-- 確認: ブラウザ（日英・PC とスマホ幅）、ダウンロードしたパッケージのテクスチャ、Unity での見え方（下の「確認のやり方」）、既存の確認スクリプト 12 本
-
-確認のやり方（アクリルスタンドで使ったもの）:
-
-- エディタ: 管理者の確認用ユーザーを作ってログインし、白い背景の画像を貼って「背景の色を消す」→ 斜めからも撮る。保存してダウンロードし、unitypackage を展開して `Tex_print.png` のアルファ（不透明・半透明・透明の割合、下端の中央の帯）を調べる。確認用ユーザーは `tools/verification/e2e/cleanup.cjs` の `cleanupUser` で消す
-- Unity: 新しい Unity 2022.3 のプロジェクトを `-createProject` で作り、ダウンロードした unitypackage を `-importPackage` で読み込み、`tools/verification/unity/VRPLBatchTest.cs.txt` で Prefab を組み立てる。カメラで撮るには、シーンに Prefab とライトを置いて `Camera.Render` → `RenderTexture` を PNG に書き出すエディタのスクリプトを、`-nographics` を付けずに `-batchmode` で実行する（裏から撮るときは、ライトを裏側にも向ける）
-- テンプレートを作り直したら: unitypackage を差し替え → `templates:prepare` → `templates:check` → サムネイル → `templates:sync`。アクリルスタンドのサムネイルは自動のものではなく、背景を消した見本のアイコンをエディタで貼って撮ったもの（3D 表示を 4:3 に切り出して 800×600）
+- **厚み**: プリントの面（表と裏の 2 枚、3mm 離れている）はそのままで、その間をつなぐ**側面のメッシュを作品ごとに作る**。板の外周の線は縁取りの距離の計算から取り出し（マーチングスクエア＋間引き、`lib/templates/outline.ts`）、側面は `lib/templates/acrylic-edge.ts`（ブラウザとサーバーで共通）。三角形は切り抜きで 120 前後、四角で 16〜80
+  - テンプレートの Prefab に側面のオブジェクト `Edge`（仮のメッシュ）と不透明の `Mat_Edge` を置き、購入時にサーバーが `Edge` のメッシュ（.asset の YAML）の中身を差し替える（`lib/package/unity-mesh.ts`）。どのオブジェクトかは template.json の `outline.edge`（`printObject` / `edgeObject`）。Prefab の組み立てのスクリプトは変えていない
+  - 側面の位置は、プリントの面のメッシュの UV から求める（Unity は .asset、ブラウザは glb のノード）。templates:check が、オブジェクト・メッシュの形式・glb のノードを確かめる
+  - 縁取りのある印刷面のテクスチャは Clamp で書き出す（Repeat だと、下端まで描く差し込む帯が板の上端ににじむ）
+- **形**: 編集内容の印刷面の `acrylic`（`lib/templates/acrylic.ts`）。`{ shape: "cutout", border }` か `{ shape: "rect", width, height, rounded }`。**テンプレートの既定（切り抜き・既定の縁の幅）のときは項目を持たない**ので、以前の作品の版のハッシュは変わらない。四角は左右中央・下端は `outline.rectBottom`（差し込む帯の上）、角の丸みは `outline.cornerRadius`。`outline.sizeMm` があれば mm で表示する（アクリルスタンドは 110×160mm）
+- **画面**: エディタの印刷面の欄の「アクリルの形」（`outline` があり背景が透明な印刷面だけ）、ダウンロード内容の詳細の「アクリルの形」。日英
+- **確認**: 単体テスト（`tests/unit/acrylic.test.ts`）、`tools/verification/e2e/acrylic-shape-check.cjs`（23 項目）、既存の確認スクリプト 12 本、Unity 2022.3 に読み込んで撮影（切り抜き・広い縁・角丸の四角・角のある四角、ブラウザでダウンロードしたもの）
+- すでに購入した版の再ダウンロードは控えを使うので、厚みは付かない（アクリルスタンドは非公開のまま）
+- 確認スクリプトの起動の注意: `npx next start` をツールの停止で止めても、子の node が 3002 番に残ることがある。そのときは別の番号で起動し、`acrylic-shape-check.cjs` は `BASE_URL` で指定する（ほかのスクリプトは 3002 番に固定）
 
 ## 保留・残っている予定の作業
 
