@@ -128,19 +128,17 @@ public static class AcrylicStandBuilder
         if (!AssetDatabase.IsValidFolder("Assets/VRPrintLab")) AssetDatabase.CreateFolder("Assets", "VRPrintLab");
         AssetDatabase.CreateFolder("Assets/VRPrintLab", "AcrylicStand");
 
+        // 板の大きさ（絵の面＋余白）。板そのものの形は、サイトがプリントのテクスチャに描く（絵の周りを半透明にする縁取りと、
+        // 台座に差し込む帯。template.json の outline）。そのため板のメッシュは作らず、プリントの面を板の大きさにする
         float plateW = ArtW + Margin * 2, plateH = ArtH + Margin * 2;
-        float plateBottom = BaseH - Insert;
-        float plateCy = plateBottom + plateH / 2;
+        float plateBottom = BaseH - Insert; // 下端は台座に差し込む
+        float plateTop = plateBottom + plateH;
 
-        // アクリルの板（角丸、厚さ 3mm）
-        var plate = new MeshBuilder();
-        Prism(plate, RoundedRect(0, plateCy, plateW, plateH, PlateR), -PlateT / 2, PlateT / 2, false);
-
-        // プリント（板の表と裏。裏は実物と同じく左右反転して見える）
+        // プリント（板の表と裏。裏は実物と同じく左右反転して見える。片面ずつ描くので、見えるのはいつも手前の面だけ）
         var print = new MeshBuilder();
         // 表は +Z 向き（サイトのプレビューの照明が当たる向き）。+Z から見ると -X が右なので、画像の左（u=0）を +X に置く
-        float x0 = ArtW / 2, x1 = -ArtW / 2, y0 = plateCy - ArtH / 2, y1 = plateCy + ArtH / 2;
-        foreach (var z in new[] { PlateT / 2 + 0.0002f, -PlateT / 2 - 0.0002f })
+        float x0 = plateW / 2, x1 = -plateW / 2, y0 = plateBottom, y1 = plateTop;
+        foreach (var z in new[] { PlateT / 2, -PlateT / 2 })
         {
             var n = z > 0 ? Vector3.forward : Vector3.back;
             // UV は画像の上が v=1（Unity の UV）
@@ -155,14 +153,13 @@ public static class AcrylicStandBuilder
 
         var meshes = new Dictionary<string, Mesh>
         {
-            ["AcrylicStand_Plate"] = plate.Build("AcrylicStand_Plate"),
             ["AcrylicStand_Print"] = print.Build("AcrylicStand_Print"),
             ["AcrylicStand_Base"] = stand.Build("AcrylicStand_Base"),
         };
         foreach (var kv in meshes) AssetDatabase.CreateAsset(kv.Value, $"{Folder}/{kv.Key}.asset");
 
-        var matPrint = MakeMaterial("Mat_Print", Color.white, 0.6f, "cutout");
-        var matAcrylic = MakeMaterial("Mat_Acrylic", new Color(0.92f, 0.96f, 1f, 0.18f), 0.95f, "fade");
+        // プリントは半透明（Fade）。絵は不透明、縁取り（アクリル）は半透明、その外は透明になる
+        var matPrint = MakeMaterial("Mat_Print", Color.white, 0.85f, "fade");
         var matBase = MakeMaterial("Mat_Base", new Color(0.93f, 0.95f, 0.97f, 1f), 0.85f, "opaque");
 
         var root = new GameObject("AcrylicStand");
@@ -174,7 +171,6 @@ public static class AcrylicStandBuilder
             go.AddComponent<MeshRenderer>().sharedMaterial = mat;
         }
         Part("Print", meshes["AcrylicStand_Print"], matPrint);
-        Part("Plate", meshes["AcrylicStand_Plate"], matAcrylic);
         Part("Base", meshes["AcrylicStand_Base"], matBase);
         PrefabUtility.SaveAsPrefabAsset(root, $"{Folder}/AcrylicStand.prefab");
         Object.DestroyImmediate(root);
