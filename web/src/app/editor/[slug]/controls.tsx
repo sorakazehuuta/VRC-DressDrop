@@ -39,6 +39,7 @@ export function Slider({
   onCommit: () => void;
 }) {
   const id = useId();
+  const locale = useLocale();
   // 入力中だけ文字列を持つ（「-」や空欄などの途中の状態を許すため）
   const [text, setText] = useState<string | null>(null);
   const round = (v: number) => Number(v.toFixed(decimals));
@@ -66,7 +67,7 @@ export function Slider({
           <input
             type="number"
             inputMode="numeric"
-            aria-label={`${label}（${display.unit}）`}
+            aria-label={locale === "en" ? `${label} (${display.unit})` : `${label}（${display.unit}）`}
             min={min}
             max={max}
             step={10 ** -decimals}
