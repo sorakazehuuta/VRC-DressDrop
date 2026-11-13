@@ -9,8 +9,7 @@ export const homeMessages = defineMessages({
     upload: "アップロード",
     opening: "開いています…",
     dropHint: "ここに画像をドロップしても使えます",
-    sampleAlt: "アップロードする画像の例（イラスト）",
-    goodsAlt: "同じイラストを貼ったアクリルスタンド・マグカップ・缶バッジ・ケーキ",
+    goodsAlt: "同じ画像を貼ったアクリルスタンド・マグカップ・缶バッジ・ケーキ",
     openError: "エディタを開けませんでした。もう一度お試しください。",
     steps: [
       { title: "テンプレートを選ぶ", body: "ケーキなど、展示したいグッズの形を選びます。" },
@@ -29,8 +28,7 @@ export const homeMessages = defineMessages({
     upload: "Upload",
     opening: "Opening…",
     dropHint: "You can also drop an image here",
-    sampleAlt: "Example of an image to upload (an illustration)",
-    goodsAlt: "An acrylic stand, mug, button badge, and cake with the same illustration",
+    goodsAlt: "An acrylic stand, mug, button badge, and cake with the same image",
     openError: "We couldn't open the editor. Please try again.",
     steps: [
       { title: "Choose a template", body: "Pick the item you want to display, like a cake or a tapestry." },

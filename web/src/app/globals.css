@@ -104,14 +104,13 @@ h3 {
   }
 }
 
-/* トップページの見出しの背景（方眼紙。青緑の淡い色から白へ） */
+/* トップページの見出しの背景（方眼紙。青緑の淡い色から、下の「作り方」の灰色に近い色へ） */
 .hero-grid {
-  background-color: #fff;
+  background-color: #f4fbfa;
   background-image:
-    linear-gradient(to bottom, transparent 55%, #fff),
     linear-gradient(color-mix(in srgb, var(--color-accent) 10%, transparent) 1px, transparent 1px),
     linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 10%, transparent) 1px, transparent 1px),
-    linear-gradient(160deg, #dff4f2, #f2fbfa 60%, #fff);
-  background-size: 100% 100%, 28px 28px, 28px 28px, 100% 100%;
-  background-position: 0 0, -1px -1px, -1px -1px, 0 0;
+    linear-gradient(170deg, #dcf3f1, #effaf9 55%, #f3f8f9);
+  background-size: 28px 28px, 28px 28px, 100% 100%;
+  background-position: -1px -1px, -1px -1px, 0 0;
 }

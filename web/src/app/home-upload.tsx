@@ -61,7 +61,7 @@ export function HomeUpload({ templateSlug }: { templateSlug: string }) {
       onDrop={onDrop}
       aria-labelledby={titleId}
       role="group"
-      className={`relative flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed px-5 pt-7 pb-9 text-center transition-colors ${
+      className={`relative flex flex-col items-center justify-center gap-4 rounded-2xl md:mb-7 border-2 border-dashed px-5 pt-7 pb-9 text-center transition-colors ${
         dragging ? "border-accent bg-accent-soft" : "border-brand/55 bg-white/60"
       }`}
     >
@@ -101,7 +101,7 @@ export function HomeUpload({ templateSlug }: { templateSlug: string }) {
       <div aria-hidden="true" className="pointer-events-none absolute -right-5 -bottom-7 hidden w-28 rotate-[7deg] sm:block md:hidden lg:block">
         <div className="rounded-lg bg-white p-1.5 shadow-lg shadow-brand/20 ring-1 ring-zinc-200">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/home/sample-art.webp" alt="" width={363} height={640} className="aspect-[5/6] w-full rounded object-cover object-top" />
+          <img src="/home/sample-art.webp" alt="" width={320} height={320} className="aspect-square w-full rounded bg-white object-contain p-1" />
         </div>
         <PointerIcon className="absolute -right-3 -bottom-4 w-9 -rotate-[7deg] drop-shadow" />
       </div>

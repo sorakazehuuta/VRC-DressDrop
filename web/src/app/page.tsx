@@ -44,9 +44,9 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         </div>
       )}
 
-      {/* 見出しと、画像を1枚選んで試す欄 → 同じ画像を貼ったグッズの写真（Unity で撮ったもの） */}
+      {/* 見出しと、画像を1枚選んで試す欄 → 同じ画像を貼ったグッズの写真（Unity で撮ったもの）。方眼は下の「作り方」まで続ける */}
       <section className="hero-grid border-b border-zinc-200">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 pt-10 pb-12 md:gap-10 md:pt-14 md:pb-16">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 pt-10 pb-10 md:gap-10 md:pt-14 md:pb-12">
           <h1 className="text-center text-[1.75rem] font-extrabold leading-[1.3] tracking-tight text-balance text-brand [word-break:auto-phrase] sm:text-[2.25rem] lg:text-[2.6rem]">
             {m.headline.map((phrase) => (
               <span key={phrase} className="inline-block">
@@ -54,7 +54,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
               </span>
             ))}
           </h1>
-          <div className="grid items-center gap-6 md:grid-cols-[minmax(0,5fr)_auto_minmax(0,7fr)] md:gap-5">
+          <div className="grid items-center gap-6 md:grid-cols-[minmax(0,11fr)_auto_minmax(0,15fr)] md:gap-5">
             <HomeUpload templateSlug={trySlug} />
             <RainbowArrow />
             <figure className="flex flex-col gap-2">
@@ -64,7 +64,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
                 srcSet="/home/goods-820.webp 820w, /home/goods.webp 1640w"
                 sizes="(min-width: 1152px) 640px, (min-width: 768px) 55vw, 100vw"
                 width={1640}
-                height={680}
+                height={740}
                 alt={m.goodsAlt}
                 className="w-full rounded-2xl bg-zinc-100 ring-1 ring-zinc-200"
               />
