@@ -18,8 +18,9 @@ import { GimmickPanel } from "./gimmick-panel";
 import { PreviewOverlay } from "./gimmick-preview/preview-overlay";
 import { initialPreviewState, looksBetterInDark, primaryAction, type PreviewState } from "./gimmick-preview/spec";
 import { removeExpiredDrafts, saveDraft, takeDraft } from "./draft";
-import { loadImage, type LoadedImage } from "./images";
+import { IMAGE_LIMITS, loadImage, type LoadedImage } from "./images";
 import { formatSavedAt, useKeepPreviousDialog } from "./keep-previous-dialog";
+import { removeBackground } from "./background";
 import { editorMessages } from "./messages";
 import { imageExt, uploadImages, uploadThumbnail } from "./save";
 import { useHistory } from "./use-history";
@@ -418,6 +419,25 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
                       const loaded = await loadImage(file, m.errors);
                       setImages((prev) => ({ ...prev, [loaded.id]: loaded }));
                       changeSlot<PrintParams>(slot.key)((p) => ({ ...p, imageId: loaded.id }));
+                    }}
+                    onRemoveBackground={async (options) => {
+                      const current = slotParams.imageId ? images[slotParams.imageId] : undefined;
+                      if (!current) return "nothing";
+                      // つまみを動かしたときも、いつも元の画像から作り直す
+                      const original = (current.background && images[current.background.originalId]) || current;
+                      const result = await removeBackground(original.source, options, IMAGE_LIMITS.maxBytes);
+                      if (result.kind !== "done") return result.kind;
+                      const name = `${original.name.replace(/\.[^.]+$/, "")}_nobg.png`;
+                      const loaded = await loadImage(new File([result.blob], name, { type: "image/png" }), m.errors);
+                      loaded.background = { originalId: original.id, options };
+                      setImages((prev) => ({ ...prev, [loaded.id]: loaded }));
+                      changeSlot<PrintParams>(slot.key)((p) => ({ ...p, imageId: loaded.id }));
+                      return "done";
+                    }}
+                    onRestoreBackground={() => {
+                      const current = slotParams.imageId ? images[slotParams.imageId] : undefined;
+                      const originalId = current?.background?.originalId;
+                      if (originalId && images[originalId]) changeSlot<PrintParams>(slot.key)((p) => ({ ...p, imageId: originalId }));
                     }}
                   />
                 );

@@ -1,4 +1,6 @@
 // アップロード画像の検証と、プレビュー用の縮小
+import type { BackgroundOptions } from "./background";
+
 export const IMAGE_LIMITS = {
   maxBytes: 10 * 1024 * 1024,
   maxSide: 4096,
@@ -14,6 +16,8 @@ export type LoadedImage = {
   height: number;
   // プレビュー描画用（長辺 2048px 以下に縮小済み）
   source: ImageBitmap;
+  // 背景を消して作った画像のとき: 元の画像の ID と、消したときの設定（つまみを動かすと元の画像から作り直す。保存はしない）
+  background?: { originalId: string; options: BackgroundOptions };
 };
 
 // errors: 表示している言語のエラー文（messages.ts の editorMessages の errors）

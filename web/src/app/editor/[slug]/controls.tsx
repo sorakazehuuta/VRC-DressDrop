@@ -9,6 +9,7 @@ import { slotLabel, type ColorSlot, type PrintSlot } from "@/lib/templates/schem
 import { IMAGE_LIMITS, type LoadedImage } from "./images";
 import { editorMessages } from "./messages";
 import { createPrintGuide, downloadBlob } from "./print-guide";
+import { DEFAULT_BACKGROUND_OPTIONS, type BackgroundOptions } from "./background";
 
 type Change<T> = (update: (prev: T) => T, commit?: boolean) => void;
 
@@ -115,6 +116,8 @@ export function PrintControls({
   onImage,
   modelUrl,
   fileBase,
+  onRemoveBackground,
+  onRestoreBackground,
 }: {
   slot: PrintSlot;
   params: PrintParams;
@@ -125,6 +128,9 @@ export function PrintControls({
   // 下絵を作るためのプレビュー用モデルと、下絵のファイル名の先頭（テンプレートの slug）
   modelUrl: string;
   fileBase: string;
+  // 背景を消した画像に差し替える（結果の種類を返す）。元の画像に戻す
+  onRemoveBackground: (options: BackgroundOptions) => Promise<"done" | "already-transparent" | "nothing">;
+  onRestoreBackground: () => void;
 }) {
   const locale = useLocale();
   const m = pick(editorMessages, locale);
@@ -234,6 +240,8 @@ export function PrintControls({
           </p>
         )}
       </div>
+
+      {image && <BackgroundRemover image={image} onApply={onRemoveBackground} onRestore={onRestoreBackground} />}
 
       <div className="flex flex-col gap-1.5 text-xs text-zinc-600">
         <p>
@@ -355,5 +363,98 @@ export function ColorControls({
         <span className="font-mono text-zinc-500">{params.color}</span>
       </label>
     </section>
+  );
+}
+
+// 背景の色を消す欄。消したあとは「消す範囲」と「内側も消す」を変えると、元の画像から作り直す
+function BackgroundRemover({
+  image,
+  onApply,
+  onRestore,
+}: {
+  image: LoadedImage;
+  onApply: (options: BackgroundOptions) => Promise<"done" | "already-transparent" | "nothing">;
+  onRestore: () => void;
+}) {
+  const locale = useLocale();
+  const c = pick(editorMessages, locale).controls;
+  const applied = image.background;
+  const [options, setOptions] = useState<BackgroundOptions>(applied?.options ?? DEFAULT_BACKGROUND_OPTIONS);
+  // 数値欄に打ち込んで確定したときも最新の値で作り直すよう、参照でも持つ
+  // （描画中は書き換えず、操作のときだけ書き換える）
+  const latest = useRef(options);
+  const [state, setState] = useState<{ kind: "idle" | "working" | "done" | "already-transparent" | "nothing" | "error"; ratio?: number }>({ kind: "idle" });
+
+  // 別の画像に替わったら（元に戻す・やり直すを含む）、その画像の設定を表示する
+  const [shownId, setShownId] = useState(image.id);
+  if (shownId !== image.id) {
+    setShownId(image.id);
+    setOptions(image.background?.options ?? DEFAULT_BACKGROUND_OPTIONS);
+    if (state.kind !== "working") setState({ kind: "idle" });
+  }
+
+  async function apply(next: BackgroundOptions) {
+    latest.current = next;
+    setOptions(next);
+    setState({ kind: "working" });
+    try {
+      const kind = await onApply(next);
+      setState({ kind });
+    } catch {
+      setState({ kind: "error" });
+    }
+  }
+
+  const message =
+    state.kind === "already-transparent" ? c.bgAlready : state.kind === "nothing" ? c.bgNothing : state.kind === "error" ? c.bgError : null;
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-3" data-background-remover>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-sm font-bold text-zinc-900">{c.bgHeading}</h3>
+        {applied && (
+          <button type="button" onClick={onRestore} className="cursor-pointer text-xs font-semibold text-accent-dark hover:underline">
+            {c.bgRestore}
+          </button>
+        )}
+      </div>
+      {!applied ? (
+        <>
+          <p className="text-xs text-zinc-600">{c.bgHint}</p>
+          <Button type="button" variant="secondary" className="self-start" disabled={state.kind === "working"} onClick={() => void apply(options)}>
+            {state.kind === "working" ? c.bgApplying : c.bgApply}
+          </Button>
+        </>
+      ) : (
+        <>
+          <Slider
+            label={c.bgTolerance}
+            value={options.tolerance}
+            limits={{ min: 1, max: 100, step: 1 }}
+            display={{ scale: 1, unit: "" }}
+            onChange={(v) => {
+              latest.current = { ...options, tolerance: v };
+              setOptions(latest.current);
+            }}
+            onCommit={() => void apply(latest.current)}
+          />
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={!options.contiguous}
+              onChange={(e) => void apply({ ...options, contiguous: !e.target.checked })}
+              className="accent-brand"
+            />
+            {c.bgInside}
+          </label>
+          {state.kind === "working" && <p className="text-xs text-zinc-500">{c.bgApplying}</p>}
+        </>
+      )}
+      {message && (
+        <p role={state.kind === "error" ? "alert" : "status"} className={`text-xs ${state.kind === "error" ? "text-red-700" : "text-zinc-600"}`}>
+          {message}
+        </p>
+      )}
+    </div>
   );
 }
