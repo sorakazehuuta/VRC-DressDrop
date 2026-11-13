@@ -1,0 +1,47 @@
+{
+  "slug": "acrylic-stand",
+  "name": "アクリルスタンド",
+  "nameReading": "あくりるすたんど",
+  "category": "グッズ",
+  "description": "厚さ 3mm のアクリル板のスタンド。板は絵の形に切り抜くか、四角（角を丸めることもできます）のままにするかを選べます。背景を透明にした画像を貼ると、絵の周りに透明な縁を付けた形になります。台座の色も変えられます。",
+  "en": {
+    "name": "Acrylic Stand",
+    "description": "An acrylic stand with a 3mm plate. Cut the plate to the shape of your artwork, or keep it as a rectangle with square or rounded corners. With a transparent-background image, the plate gets a clear border around the art. You can also change the base color."
+  },
+  "tokenCost": 1,
+  "isPublic": false,
+  "sortOrder": 330,
+  "files": {
+    "package": "acrylic-stand.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "print",
+      "type": "print",
+      "label": "絵",
+      "labelEn": "Artwork",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 0.6875,
+      "outline": {
+        "width": 0.04,
+        "color": "#f4f8fc",
+        "opacity": 0.35,
+        "edgeOpacity": 0.8,
+        "tab": 0.3,
+        "rectBottom": 0.05,
+        "cornerRadius": 0.06,
+        "sizeMm": { "width": 110, "height": 160 },
+        "edge": { "printObject": "Print", "edgeObject": "Edge" }
+      }
+    },
+    {
+      "key": "base",
+      "type": "color",
+      "label": "台座の色",
+      "labelEn": "Base color",
+      "material": "Mat_Base",
+      "defaultColor": "#edf2f7"
+    }
+  ]
+}
