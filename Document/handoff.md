@@ -1,4 +1,4 @@
-# 引継ぎ資料（2026-11-12 時点）
+# 引継ぎ資料（2026-11-13 時点）
 
 次のチャット（または別の担当者）が作業を続けるための資料です。要件は [project.md](project.md)、実装の進め方は [build-prompt.md](build-prompt.md) を参照してください。
 
@@ -7,53 +7,63 @@
 | フェーズ | 内容 | 状態 |
 |---|---|---|
 | 1 | Next.js + Supabase の雛形、DB スキーマ・RLS | 完了 |
-| 2 | ログイン（メール / Google / Discord）、新規登録で 3 トークン付与 | 完了（Google / Discord の OAuth 設定は未確認） |
+| 2 | ログイン（メール / Google / Discord）、新規登録で 3 トークン付与 | 完了（Google / Discord の OAuth 設定は未確認）。CAPTCHA（Turnstile）と使い捨てメールの拒否を 2026-11-12 に追加 |
 | 3 | テンプレート一覧・エディタ（3D プレビュー、画像・色・拡大縮小・位置・回転・明るさ・彩度、元に戻す） | 完了 |
 | 4 | 作品の保存・再編集・マイ作品、ログイン前の編集内容の引き継ぎ | 完了 |
 | 5 | unitypackage のサーバー生成、トークン消費、購入済みの版の再ダウンロード、ダウンロード履歴 | 完了 |
 | 6 | ギミック 16 種、Prefab の自動組み立て、ギミック追加分だけの課金 | 完了（VRChat 上での同期は未確認） |
 | 7 | トークン購入・有効期限切れの記録 | 完了（Stripe のテスト環境で確認済み。本番の利用開始は規約類の公開と本番公開のあと。設定は [stripe-setup.md](stripe-setup.md)） |
 | 8 | 導入ガイド・規約類・管理画面 | 完了（main にマージ済み）。規約類の文面は確認用の下書き。導入ガイドの画像は 2026-11-12 に Unity で撮影して追加 |
-| 9 | テストの整備 | 完了（main にマージ済み）。単体テスト・DB 関数のテスト・Unity の手動確認の手順書・GitHub Actions |
-
-- サービス名は **VRPrintLab**（ロゴ・ファビコンは `web/images/common`）。リポジトリ名・フォルダ名は VRC-DressDrop のまま
-- **ブランチ**: Phase 1〜9 とその後の改修はすべて `main` にマージ済み。`templates`（`9c5da8c`）も main に取り込み済み（templates 側は main より古いので、次にテンプレートを追加するときは templates で `git merge main` してから）。GitHub の main は `77a28d6` まで push 済みで、ローカルの main はその 8 コミット先、templates は 1 コミット先（未 push）。この資料は `docs/handoff-20261112` ブランチ
-- **2026-11-03〜11-12 に入れた主な変更**（すべて main）
-  - 通報の機能を削除（`reports` テーブルも削除）。認証メールの文面を作成（`web/supabase/email-templates`。ダッシュボードへの貼り付けは利用者）
-  - 管理画面: テンプレート・ギミックの保存ボタンを 1 つずつに、ドラッグ・▲▼ での並べ替え（`sort_order`）、テンプレートの読み（`name_reading`）、開いているタブの表示、集計の月ごとの詳細（新規登録・退会・支払い・ダウンロードの一覧と内訳、50 件ずつ）と退会数
-  - テンプレート一覧: 並べ替え（おすすめ・新しい・トークンの少ない/多い・名前）と名前検索（URL の `?sort=` `?q=` に残す）。開いたままのタブに戻ると、管理画面で変えたトークン数を読み直す
-  - パッケージ: 名前を `VRPrintLab_<slug>_<日時>` に、非公開・未選択のギミックのスクリプトを入れない、コライダーは必要なときだけ
-  - エディタ: モデルの中心で回る、全ギミックが非公開ならギミックの欄を出さない
-  - お知らせのページ（`web/content/news.md`）、導入ガイドを 3 手順に短縮、規約・画面の「版」を「ダウンロード内容」などに言い換え（規約の日付は `2026-11-12`）
-  - テンプレートを 30 件まで追加・公開（下の「データ」）
-- 規約類の下書き: `web/content/terms.md` / `privacy.md` / `tokushoho.md`（【要確認】は未確定。共同開発者が直す予定）。FAQ は `faq.md`、導入ガイドは `guide.md`（画像は `web/public/guide/`。撮り直しの手順は `web/tools/verification/README.md`。Unity の表示言語は日本語で撮影）
+| 9 | テストの整備 | 完了（main にマージ済み）。単体テス- サービス名は **VRPrintLab**（ロゴ・ファビコンは `web/images/common`）。リポジトリ名・フォルダ名は VRC-DressDrop のまま
+- **ブランチ**: すべての作業は `main` にマージ済み。`templates` は main と同じ位置（`de3e3f9` 以降の main の変更は、次にテンプレートを追加するときに templates で `git merge main` して取り込む）。GitHub の main・templates はローカルと同じ位置まで push 済み（2026-11-13 時点。push は利用者が行う）。この資料は `docs/handoff-20261113` ブランチ
+- **2026-11-12〜11-13 に入れた主な変更**（すべて main）
+  - 新規登録・ログイン・パスワード再設定に CAPTCHA（Cloudflare Turnstile。Supabase 側の CAPTCHA はまだ無効）、使い捨てメールアドレスでの登録の拒否（Before User Created フック、有効化済み）
+  - 導入ガイドに Unity の画面の画像 3 枚（`web/public/guide/`）
+  - 新規登録のあと「確認メールが届かない場合」の案内。ログイン・登録のあとはトップページを開く（他のページから来たときは元のページ）
+  - テンプレートのカテゴリを 5 つに整理（グッズ・パネル・ディスプレイ・看板・カフェ・バー用品・フード・ドリンク）、一覧のカテゴリの絞り込み、管理画面でカテゴリをプルダウンで変更（同期で上書きしない）
+  - **サイト全体の英語版**（`/en/...`。仕組みは「4. 主な設計」の「多言語」）。管理画面は日本語のみ
+- **サービスの選定（2026-11-12 に比較。未決）**: おすすめの構成は Vercel Pro（$20/月。Hobby は商用不可）＋ Supabase Pro（$25/月。本番用プロジェクトを東京で新しく作る）＋ Resend の無料プラン（メール送信）＋ Cloudflare（.com ドメイン・DNS・問い合わせメールの転送・Turnstile）。立ち上げ時は月 7,000 円前後。国内では さくらの AppRun 共用型（約 4,000 円〜、要 Docker 化）か Xserver / KAGOYA の VPS（保守が必要）が次点。ドメイン名・契約は利用者が決める
+- 規約類の下書き: `web/content/terms.md` / `privacy.md` / `tokushoho.md`（【要確認】は未確定。共同開発者が直す予定）。英語版は `web/content/en/`（参考訳）。FAQ は `faq.md`、導入ガイドは `guide.md`（画像は `web/public/guide/`。撮り直しの手順は `web/tools/verification/README.md`。Unity の表示言語は日本語で撮影）
 - 規約の日付は `web/src/lib/legal.ts`（`TERMS_VERSION` / `TERMS_DRAFT`）。文面を変えたら日付を更新する。パッケージの LICENSE.txt、登録（profiles.terms_version）、購入（payments.terms_version）に記録する
 - 本番前に [production-check.md](production-check.md) の未確認の項目を確かめる。運営の手順は [admin-operations.md](admin-operations.md)
 - テンプレートは `templates` ブランチで管理（`main` の変更は templates 側で `git merge main` して取り込む）
 
-## 予定している作業（2026-11-12 に利用者が追加）
+## 次に行う作業（2026-11-13 に利用者が指定）
 
-すぐに着手するものではなく、全体の残課題（「5. 残課題・既知の問題」、[production-check.md](production-check.md)、[project.md](project.md)）と合わせて順番を決め、適切なタイミングで行う。たとえば A は本番公開・決済の利用開始より前、B は独自ドメインと SMTP が決まったあと、など。
+### サイトのデザインの見直し
+
+今のデザインは「AI が作った感じ」があるため、Claude の Skill を使って見直す。
+
+1. 本サイトに適用するのに最適な Skill を探す（候補の例: frontend-design、ui-designer、artifact-design など。利用できる Skill の一覧から、Web アプリの UI の見直しに合うものを選び、選んだ理由を利用者に伝える）
+2. 選んだ Skill を使って、サイト全体（利用者向けのページ。管理画面は後回しでよいか利用者に確認）に適用する
+- 守ること: 日本語版と英語版の両方で確認する（英語は文が長くなるので、ボタンや見出しの折り返しに注意）、スマホ幅（375px）で横にはみ出さない、ロゴ・ブランドの色（`globals.css` の brand / accent）は利用者と相談せずに変えない、エディタの 3D 表示と操作を壊さない
+- 変更はブラウザで確かめてから報告する。既存の確認スクリプト（`web/tools/verification/e2e`）は画面の文言やラベルで要素を探しているので、デザインの変更後に通るか確かめる
+
+## 保留・残っている予定の作業
 
 ### A. 新規登録で電話番号の確認をし、アカウントを大量に作ってトークンを得られないようにする
 
 **2026-11-12 に保留**（SMS の送信に費用がかかるため。登録特典は今までどおり登録時に付与する）。再開するときは送信サービス（Twilio か、国内のサービスを Send SMS フックで使うか）から決める。Supabase の資料では、ホストされたプロジェクトはテスト用の電話番号を使う場合も SMS の送信サービスの設定が必要。Phone の設定を有効にすると電話番号だけでの新規登録もできるようになるので、先に Before User Created フックで拒否する。`updateUser({ phone })` には CAPTCHA のトークンを渡せないので、Turnstile はサーバー側で検証する
 
-- 要件は [project.md](project.md) の 6.6 の末尾と 6.11。登録特典（今は 3 トークン）は、登録しただけでは付与せず、SMS で日本の携帯電話番号を確認した時点で、1 つの番号につき 1 回だけ付与する。確認しなくてもサービスは使える（購入もできる）
-- 今の付与: DB のトリガー関数 `handle_new_user`（最新の定義は `20261105000000_phase8.sql`）が登録時に `token_lots`（source `signup_grant`）と `token_transactions` を作っている。これを電話番号の確認後に付与する DB 関数（service_role だけが実行、二重付与防止）に移す
-- 電話番号の確認は Supabase Auth の電話番号の変更（`updateUser({ phone })` → SMS のワンタイムパスワード → `verifyOtp({ type: "phone_change" })`）で行う想定。Supabase に SMS の送信サービス（Twilio など）の設定が必要で、費用がかかる。開発中はダッシュボードの「テスト用の電話番号と OTP」を使えば SMS を送らずに試せる。**どの送信サービスを使うかは利用者に確認する**
-- 退会後に同じ番号で再び受け取れないよう、特典を受け取った番号はハッシュ値（元に戻せない形。例: 秘密の値を混ぜた HMAC）で退会後も残す。`deleted_accounts` と同じく auth.users への外部キーを付けない
-- SMS ポンピング対策: 送信先は日本の携帯番号（+81 70/80/90）に限る、送信前に CAPTCHA（Cloudflare Turnstile。Supabase Auth の標準機能）、アカウント・IP ごとの送信回数の制限
-- 管理画面で、同じ電話番号（ハッシュ値）のアカウントをまとめて確認できるようにする（今は同じカードのアカウントを `/admin/stats` に表示している）
-- 既存のユーザーは登録時に付与済み。規約（第2条第3項・登録特典の記述）、プライバシーポリシー（電話番号の取得と利用目的）、FAQ も合わせて直す。規約を変えたら `TERMS_VERSION` を更新する
+- 要件は [project.md](project.md) の 6.6 の末尾と 6.11。登録特典（今は 3 トークン）は、SMS で日本の携帯電話番号を確認した時点で、1 つの番号につき 1 回だけ付与する
+- 今の付与: DB のトリガー関数 `handle_new_user`（最新の定義は `20261105000000_phase8.sql`）。これを電話番号の確認後に付与する DB 関数（service_role だけが実行、二重付与防止）に移す
+- 特典を受け取った番号はハッシュ値（例: 秘密の値を混ぜた HMAC）で退会後も残す。SMS ポンピング対策（日本の携帯番号に限る・CAPTCHA・送信回数の制限）。管理画面で同じ番号のアカウントをまとめて確認。規約・プライバシーポリシー・FAQ（日英）も直す
 - 影響する確認: `tests/db`（登録時の付与を前提にしたテスト）、`tools/verification/e2e`（テスト用ユーザーが 3 トークンを持つ前提のもの）
 
 ### B. メールテンプレートの設定
 
-- 文面は `web/supabase/email-templates`（確認メール・パスワード再設定の 2 種類）。Supabase のダッシュボード（Authentication → Email Templates）に貼り付けて反映する。コードからは反映されない
-- 差出人の名前とアドレスは Supabase の標準のまま。変えるには独自の SMTP（例: Resend・SendGrid。ドメインが必要）を Authentication → SMTP Settings に設定する。Supabase 標準の送信は 1 時間に数通までなので、本番では必須
-- 電話番号の確認を入れる場合、メールアドレスの変更などのテンプレートが増えるか確認する
-- **何をするか（貼り付けの手順の案内か、SMTP の設定か、文面の見直しか）は利用者に確認する**
+- **残タスク（利用者）**: 日英併記にした件名と本文（`web/supabase/email-templates`）を Supabase の Authentication → Email Templates に貼り直す
+- 差出人の名前とアドレスは Supabase の標準のまま。変えるには独自の SMTP（おすすめは Resend。ドメインが必要）を Authentication → SMTP Settings に設定する。Supabase 標準の送信は 1 時間に数通までなので、本番では必須
+
+### 本番公開までの順番（2026-11-12 に整理）
+
+1. 規約類の【要確認】の確定（共同開発者）
+2. ドメイン・Supabase Pro・Vercel Pro・Resend の契約（利用者）
+3. Vercel へのデプロイ（関数の地域を東京 hnd1 に）、本番用の Supabase、production-check の確認
+4. 独自ドメイン・OAuth・Webhook・Turnstile の本番キー・独自 SMTP の設定
+5. 本番公開 → Stripe の本番申し込み → 決済の利用開始
+
+るか（貼り付けの手順の案内か、SMTP の設定か、文面の見直しか）は利用者に確認する**
 
 ## 2. 構成
 
@@ -143,9 +153,9 @@ npm run typecheck                # ルートの型を作ってから型チェッ
 ## 5. 残課題・既知の問題
 
 - **決済**: Stripe（Checkout + Webhook）で実装済み（2026-11-03）。トークン画面は `/tokens`、Webhook は `/api/stripe/webhook`、DB 関数は `complete_token_payment` / `revoke_token_payment` / `expire_token_lots`。パックの価格は仮（5/12/30 トークンで 1,000/2,200/5,000 円）。1か月あたりの購入上限は利用者の判断で今回は作っていない。PayPay は後で検討
-- **不正対策**: 要件定義書 6.11。電話番号の確認は「予定している作業 A」。CAPTCHA（Turnstile）と使い捨てメールの拒否（Before User Created フック、有効化済み。一覧は 10,181 件を登録済み）は実装済みで、設定と運用は [admin-operations.md](admin-operations.md)。CAPTCHA は Supabase 側をまだ有効にしていない（本番の準備で設定）。管理者の権限での作成（`auth.admin.createUser`）にはフックが効かない。チャージバックのカードのブロック（`blocked_cards`）と同じカードのアカウントの表示は実装済み
+- **不正対策**: 要件定義書 6.11。電話番号の確認は「保留・残っている予定の作業」の A（保留中）。CAPTCHA（Turnstile）と使い捨てメールの拒否（Before User Created フック、有効化済み。一覧は 10,181 件を登録済み）は実装済みで、設定と運用は [admin-operations.md](admin-operations.md)。CAPTCHA は Supabase 側をまだ有効にしていない（本番の準備で設定）。管理者の権限での作成（`auth.admin.createUser`）にはフックが効かない。チャージバックのカードのブロック（`blocked_cards`）と同じカードのアカウントの表示は実装済み
 - **Supabase の一時停止**: 無料プランは1週間使わないと止まる（2026-10-27 に停止、利用者が再開）。止まると templates:sync やサイト全体が `fetch failed` になる
-- **認証メール**: 「予定している作業 B」。**残タスク: 日英併記にした件名と本文（`web/supabase/email-templates`、2026-11-13 更新）を Supabase の Authentication → Email Templates に貼り直す（利用者が行う）**。今のダッシュボードは日本語だけの古い文面のまま
+- **認証メール**: 「保留・残っている予定の作業」の B。**残タスク: 日英併記にした件名と本文（`web/supabase/email-templates`、2026-11-13 更新）を Supabase の Authentication → Email Templates に貼り直す（利用者が行う）**。今のダッシュボードは日本語だけの古い文面のまま
 - **未決事項**: トークンの価格・各テンプレート/ギミックの消費量、ドメイン、SMS の送信サービス
 - **集計の新規登録**: 今も登録中の人数（あとで退会した人は登録月の数から外れる。`deleted_accounts` に登録日がないため）
 - **確認スクリプトの起動**: 本番モードのサーバーを `npx next start -p 3002` で起動する。止めるときは node の `next start` のプロセスを止める（ポートの一覧からは見つからないことがある）
