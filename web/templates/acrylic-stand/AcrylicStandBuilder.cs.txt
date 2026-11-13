@@ -1,0 +1,188 @@
+// アクリルスタンドのテンプレート（acrylic-stand.unitypackage）を作った Unity のエディタのスクリプト。
+// 作り直すとき: 新しい Unity 2022.3 のプロジェクトの Assets/Editor/AcrylicStandBuilder.cs として置き、
+// 環境変数 ACRYLIC_OUT に出力先を指定して -batchmode -executeMethod AcrylicStandBuilder.Build -quit を実行する
+// アクリルスタンドのテンプレート（Prefab・メッシュ・マテリアル）を作り、unitypackage に書き出す。
+// バッチモードで -executeMethod AcrylicStandBuilder.Build を実行する。出力先は環境変数 ACRYLIC_OUT
+using System.Collections.Generic;
+using System.IO;
+using UnityEditor;
+using UnityEngine;
+
+public static class AcrylicStandBuilder
+{
+    const string Folder = "Assets/VRPrintLab/AcrylicStand";
+
+    // 寸法（メートル）。絵の面 10×15cm、板の余白 5mm、厚さ 3mm
+    const float ArtW = 0.10f, ArtH = 0.15f;
+    const float Margin = 0.005f;
+    const float PlateT = 0.003f;
+    const float PlateR = 0.008f;
+    const float BaseW = 0.075f, BaseH = 0.006f, BaseD = 0.045f, BaseR = 0.008f;
+    const float Insert = 0.003f; // 板が台座に差し込まれる深さ
+
+    class MeshBuilder
+    {
+        public readonly List<Vector3> V = new List<Vector3>();
+        public readonly List<Vector2> UV = new List<Vector2>();
+        public readonly List<int> T = new List<int>();
+
+        // 面の向き（外向きの法線）に合わせて三角形の巡回を決める（Unity は時計回りが表）
+        public void Tri(Vector3 a, Vector3 b, Vector3 c, Vector3 outward, Vector2 ua = default, Vector2 ub = default, Vector2 uc = default)
+        {
+            if (Vector3.Dot(Vector3.Cross(b - a, c - a), outward) < 0)
+            {
+                (b, c) = (c, b);
+                (ub, uc) = (uc, ub);
+            }
+            int i = V.Count;
+            V.Add(a); V.Add(b); V.Add(c);
+            UV.Add(ua); UV.Add(ub); UV.Add(uc);
+            T.Add(i); T.Add(i + 1); T.Add(i + 2);
+        }
+
+        public Mesh Build(string name)
+        {
+            var mesh = new Mesh { name = name };
+            mesh.SetVertices(V);
+            mesh.SetUVs(0, UV);
+            mesh.SetTriangles(T, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+    }
+
+    // 角丸の長方形の外周（中心 (cx, cy)、反時計回り）
+    static List<Vector2> RoundedRect(float cx, float cy, float w, float h, float r, int seg = 6)
+    {
+        var pts = new List<Vector2>();
+        var corners = new[] {
+            new Vector2(cx + w / 2 - r, cy + h / 2 - r), new Vector2(cx - w / 2 + r, cy + h / 2 - r),
+            new Vector2(cx - w / 2 + r, cy - h / 2 + r), new Vector2(cx + w / 2 - r, cy - h / 2 + r),
+        };
+        for (int c = 0; c < 4; c++)
+            for (int s = 0; s <= seg; s++)
+            {
+                float a = Mathf.PI / 2 * (c + (float)s / seg);
+                pts.Add(corners[c] + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r);
+            }
+        return pts;
+    }
+
+    // 外周を押し出した板。axis: 板の厚みの向き（"z" なら XY 平面の外周を Z 方向に、"y" なら XZ 平面の外周を Y 方向に）
+    static void Prism(MeshBuilder mb, List<Vector2> outline, float from, float to, bool horizontal)
+    {
+        Vector3 P(Vector2 p, float d) => horizontal ? new Vector3(p.x, d, p.y) : new Vector3(p.x, p.y, d);
+        Vector3 axis = horizontal ? Vector3.up : Vector3.forward;
+        Vector2 center = Vector2.zero;
+        foreach (var p in outline) center += p;
+        center /= outline.Count;
+        for (int i = 0; i < outline.Count; i++)
+        {
+            var a = outline[i];
+            var b = outline[(i + 1) % outline.Count];
+            mb.Tri(P(center, to), P(a, to), P(b, to), axis);
+            mb.Tri(P(center, from), P(a, from), P(b, from), -axis);
+            var mid = (a + b) / 2 - center;
+            var outward = horizontal ? new Vector3(mid.x, 0, mid.y) : new Vector3(mid.x, mid.y, 0);
+            mb.Tri(P(a, from), P(b, from), P(b, to), outward);
+            mb.Tri(P(a, from), P(b, to), P(a, to), outward);
+        }
+    }
+
+    static Material MakeMaterial(string name, Color color, float smoothness, string mode)
+    {
+        var m = new Material(Shader.Find("Standard")) { name = name, color = color };
+        m.SetFloat("_Glossiness", smoothness);
+        if (mode == "fade")
+        {
+            m.SetFloat("_Mode", 2);
+            m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.SetInt("_ZWrite", 0);
+            m.DisableKeyword("_ALPHATEST_ON");
+            m.EnableKeyword("_ALPHABLEND_ON");
+            m.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            m.renderQueue = 3000;
+            m.SetOverrideTag("RenderType", "Transparent");
+        }
+        else if (mode == "cutout")
+        {
+            m.SetFloat("_Mode", 1);
+            m.SetFloat("_Cutoff", 0.5f);
+            m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+            m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
+            m.SetInt("_ZWrite", 1);
+            m.EnableKeyword("_ALPHATEST_ON");
+            m.renderQueue = 2450;
+            m.SetOverrideTag("RenderType", "TransparentCutout");
+        }
+        AssetDatabase.CreateAsset(m, $"{Folder}/{name}.mat");
+        return m;
+    }
+
+    public static void Build()
+    {
+        if (AssetDatabase.IsValidFolder(Folder)) AssetDatabase.DeleteAsset(Folder);
+        if (!AssetDatabase.IsValidFolder("Assets/VRPrintLab")) AssetDatabase.CreateFolder("Assets", "VRPrintLab");
+        AssetDatabase.CreateFolder("Assets/VRPrintLab", "AcrylicStand");
+
+        float plateW = ArtW + Margin * 2, plateH = ArtH + Margin * 2;
+        float plateBottom = BaseH - Insert;
+        float plateCy = plateBottom + plateH / 2;
+
+        // アクリルの板（角丸、厚さ 3mm）
+        var plate = new MeshBuilder();
+        Prism(plate, RoundedRect(0, plateCy, plateW, plateH, PlateR), -PlateT / 2, PlateT / 2, false);
+
+        // プリント（板の表と裏。裏は実物と同じく左右反転して見える）
+        var print = new MeshBuilder();
+        // 表は +Z 向き（サイトのプレビューの照明が当たる向き）。+Z から見ると -X が右なので、画像の左（u=0）を +X に置く
+        float x0 = ArtW / 2, x1 = -ArtW / 2, y0 = plateCy - ArtH / 2, y1 = plateCy + ArtH / 2;
+        foreach (var z in new[] { PlateT / 2 + 0.0002f, -PlateT / 2 - 0.0002f })
+        {
+            var n = z > 0 ? Vector3.forward : Vector3.back;
+            // UV は画像の上が v=1（Unity の UV）
+            Vector3 bl = new Vector3(x0, y0, z), br = new Vector3(x1, y0, z), tl = new Vector3(x0, y1, z), tr = new Vector3(x1, y1, z);
+            print.Tri(bl, tl, tr, n, new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1));
+            print.Tri(bl, tr, br, n, new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0));
+        }
+
+        // 台座（角丸の板）
+        var stand = new MeshBuilder();
+        Prism(stand, RoundedRect(0, 0, BaseW, BaseD, BaseR), 0, BaseH, true);
+
+        var meshes = new Dictionary<string, Mesh>
+        {
+            ["AcrylicStand_Plate"] = plate.Build("AcrylicStand_Plate"),
+            ["AcrylicStand_Print"] = print.Build("AcrylicStand_Print"),
+            ["AcrylicStand_Base"] = stand.Build("AcrylicStand_Base"),
+        };
+        foreach (var kv in meshes) AssetDatabase.CreateAsset(kv.Value, $"{Folder}/{kv.Key}.asset");
+
+        var matPrint = MakeMaterial("Mat_Print", Color.white, 0.6f, "cutout");
+        var matAcrylic = MakeMaterial("Mat_Acrylic", new Color(0.92f, 0.96f, 1f, 0.18f), 0.95f, "fade");
+        var matBase = MakeMaterial("Mat_Base", new Color(0.93f, 0.95f, 0.97f, 1f), 0.85f, "opaque");
+
+        var root = new GameObject("AcrylicStand");
+        void Part(string name, Mesh mesh, Material mat)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(root.transform, false);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            go.AddComponent<MeshRenderer>().sharedMaterial = mat;
+        }
+        Part("Print", meshes["AcrylicStand_Print"], matPrint);
+        Part("Plate", meshes["AcrylicStand_Plate"], matAcrylic);
+        Part("Base", meshes["AcrylicStand_Base"], matBase);
+        PrefabUtility.SaveAsPrefabAsset(root, $"{Folder}/AcrylicStand.prefab");
+        Object.DestroyImmediate(root);
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+
+        var outPath = System.Environment.GetEnvironmentVariable("ACRYLIC_OUT");
+        AssetDatabase.ExportPackage(Folder, outPath, ExportPackageOptions.Recurse);
+        Debug.Log($"ACRYLIC exported {outPath} ({new FileInfo(outPath).Length} bytes)");
+    }
+}

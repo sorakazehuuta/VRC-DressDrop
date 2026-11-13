@@ -1,0 +1,36 @@
+{
+  "slug": "acrylic-stand",
+  "name": "アクリルスタンド",
+  "nameReading": "あくりるすたんど",
+  "category": "グッズ",
+  "description": "透明なアクリル板に絵をのせたスタンド。背景を透明にした画像を貼ると、絵の形に切り抜かれます。台座の色も変えられます。",
+  "en": {
+    "name": "Acrylic Stand",
+    "description": "A clear acrylic stand with your artwork. Transparent parts of your image are cut out, so the art keeps its shape. You can also change the base color."
+  },
+  "tokenCost": 1,
+  "isPublic": false,
+  "sortOrder": 330,
+  "files": {
+    "package": "acrylic-stand.unitypackage"
+  },
+  "slots": [
+    {
+      "key": "print",
+      "type": "print",
+      "label": "絵",
+      "labelEn": "Artwork",
+      "material": "Mat_Print",
+      "background": "transparent",
+      "aspect": 0.667
+    },
+    {
+      "key": "base",
+      "type": "color",
+      "label": "台座の色",
+      "labelEn": "Base color",
+      "material": "Mat_Base",
+      "defaultColor": "#edf2f7"
+    }
+  ]
+}
