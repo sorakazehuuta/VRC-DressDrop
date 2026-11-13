@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { duplicateWork, saveWork } from "@/app/works/actions";
 import { useOnTabReturn } from "@/components/tab-return";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui";
 import { useLocale, useLocalePath, useMessages } from "@/i18n/client";
 import Link from "@/i18n/link";
@@ -26,6 +27,7 @@ import { removeBackground } from "./background";
 import { editorMessages } from "./messages";
 import { imageExt, uploadImages, uploadThumbnail } from "./save";
 import { useHistory } from "./use-history";
+import { useLeaveGuard } from "./leave-guard";
 
 function ViewerLoading() {
   const m = useMessages(editorMessages);
@@ -151,6 +153,8 @@ function Editor({ template, otherTemplates, gimmickDefs, userId, initialWork, re
   const captureRef = useRef<(() => Promise<Blob | null>) | null>(null);
 
   const dirty = snapshot(name, state) !== savedSnapshot;
+  const leaveGuard = useLeaveGuard(dirty);
+  const { replaceUrl } = leaveGuard;
   const readOnly = initialWork?.suspended ?? false;
 
   // ギミックの組み合わせが変わったら、プレビューを最初の状態（触る前）に戻す。
@@ -297,14 +301,14 @@ function Editor({ template, otherTemplates, gimmickDefs, userId, initialWork, re
       setName(name.trim());
       setStatus({ kind: "saved", at: result.updatedAt });
       setLastSavedAt(result.updatedAt);
-      if (!workId) window.history.replaceState(null, "", toLocale(`/editor/${template.slug}?work=${result.workId}`));
+      if (!workId) replaceUrl(toLocale(`/editor/${template.slug}?work=${result.workId}`));
       setSaveCount((n) => n + 1);
       return result.workId;
     } catch (e) {
       setStatus({ kind: "error", message: e instanceof Error ? e.message : m.errors.saveFailed });
       return null;
     }
-  }, [readOnly, status.kind, loadingImages, referencedImages, params, gimmicks, state, userId, template, name, router, workId, savedImageIds, dirty, savedSnapshot, lastSavedAt, askKeepPrevious, onWorkId, locale, m, toLocale]);
+  }, [readOnly, status.kind, loadingImages, referencedImages, params, gimmicks, state, userId, template, name, router, workId, savedImageIds, dirty, savedSnapshot, lastSavedAt, askKeepPrevious, onWorkId, locale, m, toLocale, replaceUrl]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -365,6 +369,30 @@ function Editor({ template, otherTemplates, gimmickDefs, userId, initialWork, re
       </div>
 
       {keepPreviousDialog}
+      {leaveGuard.pending && (
+        <ConfirmDialog title={m.leave.title} onClose={leaveGuard.stay}>
+          <p className="text-sm leading-relaxed text-zinc-600">{m.leave.body}</p>
+          <div className="flex flex-col gap-2">
+            <Button
+              type="button"
+              variant="accent"
+              onClick={() => {
+                if (userId) return void leaveGuard.saveAndLeave(save);
+                leaveGuard.dismiss();
+                void save();
+              }}
+            >
+              {userId ? m.leave.save : m.leave.loginToSave}
+            </Button>
+            <Button type="button" variant="secondary" onClick={leaveGuard.leave}>
+              {m.leave.discard}
+            </Button>
+            <Button type="button" variant="secondary" onClick={leaveGuard.stay} autoFocus>
+              {m.leave.stay}
+            </Button>
+          </div>
+        </ConfirmDialog>
+      )}
       {reuse && (
         <ReuseDialog
           templates={otherTemplates}

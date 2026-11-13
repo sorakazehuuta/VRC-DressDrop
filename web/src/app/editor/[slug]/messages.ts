@@ -51,6 +51,14 @@ export const editorMessages = defineMessages({
       overwrite: "上書き保存",
       keep: "残して保存",
     },
+    leave: {
+      title: "保存していない変更があります",
+      body: "このまま移動すると、保存していない変更は失われます。",
+      save: "保存して移動する",
+      loginToSave: "ログインして保存する",
+      discard: "保存せずに移動する",
+      stay: "編集を続ける",
+    },
     reuse: {
       title: "この画像でほかのグッズも作る",
       lead: "選んだグッズのエディタを新しいタブで開きます。画像（と入れた文字）は最初の印刷面に貼った状態になります。今の作品はこのタブにそのまま残ります。",
@@ -223,6 +231,14 @@ export const editorMessages = defineMessages({
       cancel: "Cancel",
       overwrite: "Overwrite",
       keep: "Keep and save",
+    },
+    leave: {
+      title: "You have unsaved changes",
+      body: "If you leave now, your unsaved changes will be lost.",
+      save: "Save and leave",
+      loginToSave: "Log in to save",
+      discard: "Leave without saving",
+      stay: "Keep editing",
     },
     reuse: {
       title: "Use this image for other items",

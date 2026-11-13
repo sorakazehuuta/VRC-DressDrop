@@ -2,6 +2,7 @@ import "server-only";
 import sharp from "sharp";
 import { printPlacement, textureDimensions, type PrintParams } from "@/lib/templates/params";
 import type { PrintSlot } from "@/lib/templates/schema";
+import { applyOutline } from "@/lib/templates/outline";
 import { layoutText, textSvg } from "@/lib/templates/text";
 import { loadTextFont } from "./fonts";
 
@@ -31,7 +32,14 @@ export async function renderPrintTexture(slot: PrintSlot, params: PrintParams, i
     },
   });
   const layers = [...(image ? await imageLayer(params, image, canvas) : []), ...(await textLayer(params, canvas))];
-  return base.composite(layers).png({ compressionLevel: 9 }).toBuffer();
+  if (!slot.outline || background) return base.composite(layers).png({ compressionLevel: 9 }).toBuffer();
+
+  // 絵と文字の周りをアクリルの板にする（エディタの drawPrint と同じ処理）
+  const composed = await sharp(await base.composite(layers).png().toBuffer()).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  applyOutline(composed.data, composed.info.width, composed.info.height, slot.outline);
+  return sharp(composed.data, { raw: { width: composed.info.width, height: composed.info.height, channels: 4 } })
+    .png({ compressionLevel: 9 })
+    .toBuffer();
 }
 
 // 文字（画像の上に重ねる。明るさ・彩度は掛けない）

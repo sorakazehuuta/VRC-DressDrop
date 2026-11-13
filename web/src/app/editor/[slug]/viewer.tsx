@@ -380,7 +380,14 @@ function Model({
         const target = printTextures.get(slot.key);
         if (!target) continue;
         const image = slotParams.imageId ? images[slotParams.imageId] : undefined;
-        drawPrint(target.canvas, slotParams, image ?? null, backgroundColor(slot as PrintSlot, params), slotParams.text && textFonts[slotParams.text.font]);
+        drawPrint(
+          target.canvas,
+          slotParams,
+          image ?? null,
+          backgroundColor(slot as PrintSlot, params),
+          slotParams.text && textFonts[slotParams.text.font],
+          (slot as PrintSlot).outline,
+        );
         target.texture.needsUpdate = true;
       }
     }
