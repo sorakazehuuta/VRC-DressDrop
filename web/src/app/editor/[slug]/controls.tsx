@@ -360,7 +360,7 @@ function TextControls({ text, onChange, onCommit }: { text: PrintText | undefine
         <button
           key={hex}
           type="button"
-          aria-label={`${label} ${hex}`}
+          aria-label={c.textSwatch(label, hex)}
           aria-pressed={value === hex}
           onClick={() => update({ [key]: hex }, true)}
           className={`h-6 w-6 cursor-pointer rounded-full border ${value === hex ? "ring-2 ring-accent ring-offset-1" : "border-zinc-300"}`}
@@ -417,8 +417,8 @@ function TextControls({ text, onChange, onCommit }: { text: PrintText | undefine
           ))}
         </div>
         <Slider label={c.textSize} value={draft.size} limits={TEXT_LIMITS.size} display={SIZE_DISPLAY} decimals={1} onChange={(v) => update({ size: v }, false)} onCommit={onCommit} />
-        <Slider label={c.offsetX} value={draft.offsetX} limits={TEXT_LIMITS.offset} display={PERCENT} onChange={(v) => update({ offsetX: v }, false)} onCommit={onCommit} />
-        <Slider label={c.offsetY} value={draft.offsetY} limits={TEXT_LIMITS.offset} display={PERCENT} onChange={(v) => update({ offsetY: v }, false)} onCommit={onCommit} />
+        <Slider label={c.textOffsetX} value={draft.offsetX} limits={TEXT_LIMITS.offset} display={PERCENT} onChange={(v) => update({ offsetX: v }, false)} onCommit={onCommit} />
+        <Slider label={c.textOffsetY} value={draft.offsetY} limits={TEXT_LIMITS.offset} display={PERCENT} onChange={(v) => update({ offsetY: v }, false)} onCommit={onCommit} />
         {colorRow(c.textColor, draft.color, "color")}
         {colorRow(c.textOutline, draft.outlineColor, "outlineColor")}
         <Slider
