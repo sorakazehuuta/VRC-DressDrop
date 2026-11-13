@@ -53,17 +53,19 @@ export type RelatedPurchase = { id: string; params_hash: string; gimmick_slugs: 
 
 // 同じ版の購入があれば purchase に入る（再ダウンロードは無料）。
 // なければ、土台の版が購入済みならギミックの未購入分だけ、未購入ならテンプレートと全ギミックの分を数える
+// modelLabel: 内訳のテンプレートの行の名前（省略すると「<名前>（モデル）」）
 export function priceVersion<P extends RelatedPurchase>(opts: {
   template: { name: string; tokenCost: number };
   gimmicks: { slug: string; name: string; tokenCost: number }[];
   related: P[];
   fullHashes: string[];
+  modelLabel?: (name: string) => string;
 }) {
   const purchase = opts.related.find((p) => opts.fullHashes.includes(p.params_hash)) ?? null;
   const basePaid = opts.related.length > 0;
   const paidSlugs = new Set(opts.related.flatMap((p) => p.gimmick_slugs ?? []));
   const breakdown: CostLine[] = [
-    { label: `${opts.template.name}（モデル）`, cost: opts.template.tokenCost, paid: basePaid },
+    { label: opts.modelLabel ? opts.modelLabel(opts.template.name) : `${opts.template.name}（モデル）`, cost: opts.template.tokenCost, paid: basePaid },
     ...opts.gimmicks.map((g) => ({ label: g.name, cost: g.tokenCost, paid: paidSlugs.has(g.slug) })),
   ];
   const cost = breakdown.reduce((sum, line) => sum + (line.paid ? 0 : line.cost), 0);

@@ -1,14 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getLocale } from "@/i18n/server";
+import { pick } from "@/i18n/messages";
 import { gimmickMap, listGimmicks } from "@/lib/gimmicks/queries";
-import { parseGimmickSelection, type GimmickDefinition, type GimmickSelection } from "@/lib/gimmicks/schema";
+import { localizeGimmick, parseGimmickSelection, type GimmickDefinition, type GimmickSelection } from "@/lib/gimmicks/schema";
 import { buildWorkPackage, packageBaseName, purchaseFileName } from "@/lib/package/work-package";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { parseEditorParams, type EditorParams } from "@/lib/templates/params";
+import { localizedTemplateText } from "@/lib/templates/queries";
 import { slotsSchema, type Slot } from "@/lib/templates/schema";
 import { WORK_IMAGES_BUCKET } from "@/lib/works/constants";
 import { priceVersion, versionKindOf, workVersions, type CostLine, type VersionKind } from "@/lib/works/versions";
+import { worksMessages } from "./messages";
 
 const PACKAGES_BUCKET = "packages";
 const URL_TTL_SECONDS = 5 * 60;
@@ -25,8 +29,11 @@ export type DownloadResult =
   | { ok: true; kind: "confirm"; cost: number; balance: number; breakdown: CostLine[]; versionKind: VersionKind }
   | { ok: false; error: string; code?: "insufficient" };
 
-const SUSPENDED_ACCOUNT = "このアカウントは停止されているため、ダウンロードできません。";
-const SUSPENDED_PURCHASE = "このダウンロード内容は運営により停止されているため、ダウンロードできません。";
+// 表示している言語のダウンロードの文言
+async function downloadMessages() {
+  const locale = await getLocale();
+  return { locale, m: pick(worksMessages, locale).download, modelLabel: pick(worksMessages, locale).modelLabel };
+}
 
 async function accountSuspended(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data } = await supabase.from("profiles").select("status").eq("id", userId).maybeSingle();
@@ -34,20 +41,21 @@ async function accountSuspended(supabase: Awaited<ReturnType<typeof createClient
 }
 
 async function loadWork(workId: string) {
+  const { locale, m, modelLabel } = await downloadMessages();
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
   const userId = claims?.claims.sub;
-  if (!userId) return { error: "ダウンロードするにはログインしてください。" } as const;
+  if (!userId) return { error: m.loginToDownload } as const;
 
   const { data: work } = await supabase
     .from("works")
-    .select("id, name, params, gimmicks, status, template_id, thumbnail_path, templates(id, slug, name, slots, token_cost, package_model_path, package_prefab_path), work_images(id, storage_path, content_hash)")
+    .select("id, name, params, gimmicks, status, template_id, thumbnail_path, templates(*), work_images(id, storage_path, content_hash)")
     .eq("id", workId)
     .eq("user_id", userId)
     .maybeSingle();
-  if (!work) return { error: "作品が見つかりません。保存してからダウンロードしてください。" } as const;
-  if (work.status === "suspended") return { error: "この作品は運営により公開停止されているため、ダウンロードできません。" } as const;
-  if (await accountSuspended(supabase, userId)) return { error: SUSPENDED_ACCOUNT } as const;
+  if (!work) return { error: m.workNotFound } as const;
+  if (work.status === "suspended") return { error: m.workSuspended } as const;
+  if (await accountSuspended(supabase, userId)) return { error: m.accountSuspended } as const;
 
   const template = work.templates as unknown as {
     id: string;
@@ -57,8 +65,9 @@ async function loadWork(workId: string) {
     token_cost: number;
     package_model_path: string;
     package_prefab_path: string | null;
+    name_en?: string;
   } | null;
-  if (!template) return { error: "この作品のテンプレートは提供を終了したため、ダウンロードできません。" } as const;
+  if (!template) return { error: m.templateEnded } as const;
   const slots = slotsSchema.parse(template.slots);
   const params = parseEditorParams(work.params, slots);
   const defs = gimmickMap(await listGimmicks());
@@ -75,13 +84,15 @@ async function loadWork(workId: string) {
     .select("id, params_hash, base_hash, gimmick_slugs, package_path, package_name, created_at, suspended_at")
     .eq("work_id", work.id)
     .or(`base_hash.in.(${baseHashes.join(",")}),params_hash.in.(${baseHashes.join(",")})`);
+  // 内訳の名前は表示している言語にする（パッケージと購入の記録は日本語の名前のまま）
   const { purchase, basePaid, breakdown, cost } = priceVersion({
-    template: { name: template.name, tokenCost: template.token_cost },
-    gimmicks: gimmicks.map((g) => defs.get(g.slug) as GimmickDefinition),
+    template: { name: localizedTemplateText(template, locale).name, tokenCost: template.token_cost },
+    gimmicks: gimmicks.map((g) => localizeGimmick(defs.get(g.slug) as GimmickDefinition, locale)),
     related: related ?? [],
     fullHashes,
+    modelLabel,
   });
-  if (purchase?.suspended_at) return { error: SUSPENDED_PURCHASE } as const;
+  if (purchase?.suspended_at) return { error: m.purchaseSuspended } as const;
   const { count } = basePaid ? { count: 1 } : await supabase.from("purchases").select("id", { count: "exact", head: true }).eq("work_id", work.id);
   const versionKind = versionKindOf(basePaid, Boolean(count));
   return { supabase, userId, work, template, slots, params, defs, gimmicks, baseHash, hash, purchase, breakdown, cost, versionKind } as const;
@@ -164,13 +175,14 @@ async function saveSnapshot(
 }
 
 export async function downloadWork(workId: string, confirmed: boolean): Promise<DownloadResult> {
+  const { m } = await downloadMessages();
   const loaded = await loadWork(workId);
   if ("error" in loaded) return { ok: false, error: loaded.error as string };
   const { supabase, userId, work, template, slots, params, defs, gimmicks, baseHash, hash, purchase, breakdown, cost, versionKind } = loaded;
 
   if (purchase?.package_path) {
     const url = await signedDownloadUrl(supabase, purchase.package_path);
-    return url ? { ok: true, kind: "ready", url, filename: purchaseFileName(purchase), charged: 0 } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
+    return url ? { ok: true, kind: "ready", url, filename: purchaseFileName(purchase), charged: 0 } : { ok: false, error: m.noLink };
   }
 
   // 控えを削除した取得済みの版は、今の作品から無料で作り直す（同じ購入 ID なので GUID も同じになる）
@@ -179,7 +191,7 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
     const balance = await balanceOf(supabase);
     // ギミックの設定値だけを変えた場合などは無料なので、確認せずに作り直す
     if (!confirmed && cost > 0) return { ok: true, kind: "confirm", cost, balance, breakdown, versionKind };
-    if (balance < cost) return { ok: false, error: `トークンが足りません（必要: ${cost} / 残り: ${balance}）。`, code: "insufficient" };
+    if (balance < cost) return { ok: false, error: m.notEnough(cost, balance), code: "insufficient" };
   }
 
   const admin = createAdminClient();
@@ -191,7 +203,7 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
   const imageExt = new Map<string, string>();
 
   // 以前の形式（FBX）のテンプレートは新しく作れない。購入済みの版は控えから再ダウンロードできる
-  if (!template.package_prefab_path) return { ok: false, error: "このテンプレートは提供を終了したため、新しくダウンロードできません。" };
+  if (!template.package_prefab_path) return { ok: false, error: m.templateEndedNew };
   const prefabPath = template.package_prefab_path;
 
   try {
@@ -219,14 +231,14 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
       .upload(packagePath, file, { contentType: "application/octet-stream" });
     if (uploadError) throw new Error("upload");
   } catch {
-    return { ok: false, error: "モデルの生成に失敗しました。時間をおいて再度お試しください。トークンは消費していません。" };
+    return { ok: false, error: m.buildFailed };
   }
 
   if (restoring) {
     const { error } = await admin.from("purchases").update({ package_path: packagePath, package_name: packageName }).eq("id", purchaseId);
-    if (error) return { ok: false, error: "ダウンロードの処理に失敗しました。" };
+    if (error) return { ok: false, error: m.failed };
     const url = await signedDownloadUrl(supabase, packagePath);
-    return url ? { ok: true, kind: "ready", url, filename: `${packageName}.unitypackage`, charged: 0 } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
+    return url ? { ok: true, kind: "ready", url, filename: `${packageName}.unitypackage`, charged: 0 } : { ok: false, error: m.noLink };
   }
 
   const { data: rows, error } = await admin.rpc("purchase_work_version", {
@@ -243,12 +255,12 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
   if (error || !result) {
     await admin.storage.from(PACKAGES_BUCKET).remove([packagePath]);
     if (error?.message.includes("account_suspended")) {
-      return { ok: false, error: "このアカウントは停止されているため、ダウンロードできません。" };
+      return { ok: false, error: m.accountSuspended };
     }
     if (error?.message.includes("insufficient_tokens")) {
-      return { ok: false, error: "トークンが足りません。", code: "insufficient" };
+      return { ok: false, error: m.notEnoughShort, code: "insufficient" };
     }
-    return { ok: false, error: "ダウンロードの処理に失敗しました。トークンは消費していません。" };
+    return { ok: false, error: m.failedNoCharge };
   }
 
   // 同時に押された場合などで既存の購入が返ってきたら、今回作ったファイルは不要
@@ -283,14 +295,15 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
   const url = await signedDownloadUrl(supabase, finalPath);
   return url
     ? { ok: true, kind: "ready", url, filename, charged: result.charged }
-    : { ok: false, error: "購入は完了しました。ダウンロード履歴から再ダウンロードしてください。" };
+    : { ok: false, error: m.purchasedRetry };
 }
 
 export async function purchaseDownloadUrl(purchaseId: string): Promise<{ ok: true; url: string; filename: string } | { ok: false; error: string }> {
+  const { m } = await downloadMessages();
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
   const userId = claims?.claims.sub;
-  if (!userId) return { ok: false, error: "ログインしてください。" };
+  if (!userId) return { ok: false, error: m.loginToDownload };
   // RLS でも本人の購入に限られるが、設定ミスに備えてここでも絞り込む
   const { data } = await supabase
     .from("purchases")
@@ -298,9 +311,9 @@ export async function purchaseDownloadUrl(purchaseId: string): Promise<{ ok: tru
     .eq("id", purchaseId)
     .eq("user_id", userId)
     .maybeSingle();
-  if (data?.suspended_at) return { ok: false, error: SUSPENDED_PURCHASE };
-  if (await accountSuspended(supabase, userId)) return { ok: false, error: SUSPENDED_ACCOUNT };
-  if (!data?.package_path) return { ok: false, error: "ダウンロードできるファイルが見つかりません。" };
+  if (data?.suspended_at) return { ok: false, error: m.purchaseSuspended };
+  if (await accountSuspended(supabase, userId)) return { ok: false, error: m.accountSuspended };
+  if (!data?.package_path) return { ok: false, error: m.fileNotFound };
   const url = await signedDownloadUrl(supabase, data.package_path);
-  return url ? { ok: true, url, filename: purchaseFileName(data) } : { ok: false, error: "ダウンロード用のリンクを作れませんでした。" };
+  return url ? { ok: true, url, filename: purchaseFileName(data) } : { ok: false, error: m.noLink };
 }

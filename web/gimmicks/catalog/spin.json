@@ -3,6 +3,25 @@
   "name": "ずっと回転する",
   "category": "動き",
   "description": "その場でゆっくり回り続けます。",
+  "en": {
+    "name": "Spins continuously",
+    "category": "Motion",
+    "description": "Keeps spinning slowly in place.",
+    "params": {
+      "speed": {
+        "label": "Spin speed",
+        "unit": "°/s"
+      },
+      "axis": {
+        "label": "Rotation axis",
+        "options": {
+          "0": "Horizontal (X axis)",
+          "1": "Vertical (Y axis)",
+          "2": "Front-back (Z axis)"
+        }
+      }
+    }
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 210,

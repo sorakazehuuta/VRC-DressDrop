@@ -81,7 +81,7 @@ export function useCaptcha(resetSignal: unknown) {
       if (widgetRef.current) window.turnstile?.remove(widgetRef.current);
       widgetRef.current = null;
     };
-  }, []);
+  }, [locale]);
 
   useEffect(() => {
     if (signalRef.current === resetSignal) return;

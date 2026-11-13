@@ -3,6 +3,24 @@
   "name": "動いたあとに軌跡",
   "category": "視覚効果",
   "description": "持って動かしたり、ついてきたりしたときに、通ったあとに光の線が残ります。",
+  "en": {
+    "name": "Trail when moving",
+    "category": "Visual effects",
+    "description": "Leaves a line of light behind it when it's carried or follows someone.",
+    "params": {
+      "color": {
+        "label": "Line color"
+      },
+      "time": {
+        "label": "Line length",
+        "unit": "s"
+      },
+      "width": {
+        "label": "Line width",
+        "unit": "m"
+      }
+    }
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 420,

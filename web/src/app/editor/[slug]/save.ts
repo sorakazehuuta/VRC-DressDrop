@@ -5,14 +5,14 @@ import type { LoadedImage } from "./images";
 export const imageExt = (image: LoadedImage) => (image.file.type === "image/png" ? "png" : "jpg");
 
 // 画像は Server Action の容量制限（1MB）を超えるため、ブラウザから Storage へ直接アップロードする
-export async function uploadImages(userId: string, workId: string, images: LoadedImage[]) {
+export async function uploadImages(userId: string, workId: string, images: LoadedImage[], errorMessage: string) {
   const bucket = createClient().storage.from(WORK_IMAGES_BUCKET);
   for (const image of images) {
     const { error } = await bucket.upload(workImagePath(userId, workId, image.id, imageExt(image)), image.file, {
       contentType: image.file.type,
       upsert: true,
     });
-    if (error) throw new Error("画像をアップロードできませんでした。通信状況を確認して、もう一度お試しください。");
+    if (error) throw new Error(errorMessage);
   }
 }
 

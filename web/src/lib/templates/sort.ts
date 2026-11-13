@@ -1,16 +1,10 @@
-// テンプレート一覧の並べ替え。「おすすめ順」は管理画面で並べた順番（サーバーから届いた順番）
-export const templateSorts = {
-  recommended: "おすすめ順",
-  newest: "新しい順",
-  "cost-asc": "トークンが少ない順",
-  "cost-desc": "トークンが多い順",
-  name: "名前順（あいうえお）",
-} as const;
+// テンプレート一覧の並べ替え。「おすすめ順」は管理画面で並べた順番（サーバーから届いた順番）。表示名は app/templates/messages.ts
+export const templateSorts = ["recommended", "newest", "cost-asc", "cost-desc", "name"] as const;
 
-export type TemplateSort = keyof typeof templateSorts;
+export type TemplateSort = (typeof templateSorts)[number];
 
 export function parseTemplateSort(value: unknown): TemplateSort {
-  return typeof value === "string" && value in templateSorts ? (value as TemplateSort) : "recommended";
+  return typeof value === "string" && (templateSorts as readonly string[]).includes(value) ? (value as TemplateSort) : "recommended";
 }
 
 type Sortable = { name: string; nameReading: string; tokenCost: number; createdAt: string };
@@ -35,11 +29,11 @@ export function sortTemplates<T extends Sortable>(templates: T[], sort: Template
 const normalize = (s: string) =>
   s.normalize("NFKC").toLowerCase().replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
 
-export function filterTemplates<T extends Sortable & { description: string; category: string }>(templates: T[], query: string): T[] {
+export function filterTemplates<T extends Sortable & { description: string; category: string; categoryLabel?: string }>(templates: T[], query: string): T[] {
   const words = normalize(query).split(/\s+/).filter(Boolean);
   if (!words.length) return templates;
   return templates.filter((t) => {
-    const text = normalize([t.name, t.nameReading, t.description, t.category].join(" "));
+    const text = normalize([t.name, t.nameReading, t.description, t.category, t.categoryLabel ?? ""].join(" "));
     return words.every((w) => text.includes(w));
   });
 }

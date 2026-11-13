@@ -16,24 +16,27 @@ export type LoadedImage = {
   source: ImageBitmap;
 };
 
-export async function loadImage(file: File, id: string = crypto.randomUUID()): Promise<LoadedImage> {
+// errors: 表示している言語のエラー文（messages.ts の editorMessages の errors）
+type ImageErrors = { imageType: string; imageSize: string; imageBroken: string; imageSide: (max: number, w: number, h: number) => string };
+
+export async function loadImage(file: File, errors: ImageErrors, id: string = crypto.randomUUID()): Promise<LoadedImage> {
   if (!(IMAGE_LIMITS.types as readonly string[]).includes(file.type)) {
-    throw new Error("PNG または JPEG の画像を選んでください。");
+    throw new Error(errors.imageType);
   }
   if (file.size > IMAGE_LIMITS.maxBytes) {
-    throw new Error("画像のサイズは 10MB までです。");
+    throw new Error(errors.imageSize);
   }
 
   let bitmap: ImageBitmap;
   try {
     bitmap = await createImageBitmap(file);
   } catch {
-    throw new Error("画像を読み込めませんでした。ファイルが壊れていないか確認してください。");
+    throw new Error(errors.imageBroken);
   }
   const { width, height } = bitmap;
   if (Math.max(width, height) > IMAGE_LIMITS.maxSide) {
     bitmap.close();
-    throw new Error(`画像の長辺は ${IMAGE_LIMITS.maxSide}px までです（選んだ画像: ${width}×${height}px）。`);
+    throw new Error(errors.imageSide(IMAGE_LIMITS.maxSide, width, height));
   }
 
   let source = bitmap;

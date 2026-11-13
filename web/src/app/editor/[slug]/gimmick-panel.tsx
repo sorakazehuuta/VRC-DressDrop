@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useLocale } from "@/i18n/client";
+import { pick } from "@/i18n/messages";
 import {
   defaultGimmickParams,
   gimmickConflict,
@@ -10,6 +12,7 @@ import {
   type GimmickSelection,
 } from "@/lib/gimmicks/schema";
 import { Slider } from "./controls";
+import { editorMessages } from "./messages";
 
 type Change = (update: (prev: GimmickSelection[]) => GimmickSelection[], commit?: boolean) => void;
 
@@ -24,6 +27,8 @@ export function GimmickPanel({
   onChange: Change;
   onCommit: () => void;
 }) {
+  const locale = useLocale();
+  const m = pick(editorMessages, locale).gimmicks;
   const [open, setOpen] = useState(true);
   const defMap = useMemo(() => new Map(defs.map((d) => [d.slug, d])), [defs]);
   const categories = useMemo(() => {
@@ -65,24 +70,25 @@ export function GimmickPanel({
   return (
     <section className="flex flex-col gap-3">
       <button type="button" onClick={() => setOpen((v) => !v)} className="flex cursor-pointer items-center justify-between text-left" aria-expanded={open}>
-        <span className="font-semibold">ギミック（動き・演出）</span>
+        <span className="font-semibold">{m.heading}</span>
         <span className="text-sm text-zinc-500">
-          {selected.length > 0 ? `${selected.length}個・+${total} トークン` : "なし"} {open ? "▲" : "▼"}
+          {selected.length > 0 ? m.summary(selected.length, total) : m.none} {open ? "▲" : "▼"}
         </span>
       </button>
 
       {open && (
         <div className="flex flex-col gap-4">
           <p className="rounded-md bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
-            ギミックを使うには、ワールドの Unity プロジェクトに UdonSharp が必要です（VCC の Manage Project で追加できます）。
-            選んだギミックの動きは、左の3D表示で試せます（見え方は目安です）。
+            {m.udonNote}
+            {locale === "ja" ? "" : " "}
+            {m.previewNote}
           </p>
           {categories.map(([category, items]) => (
             <div key={category} className="flex flex-col gap-2">
               <h3 className="text-xs font-semibold text-zinc-500">{category}</h3>
               {items.map((def) => {
                 const selection = selected.find((s) => s.slug === def.slug);
-                const conflict = selection ? null : gimmickConflict(def, selected, defMap);
+                const conflict = selection ? null : gimmickConflict(def, selected, defMap, locale);
                 return (
                   <div
                     key={def.slug}
@@ -99,7 +105,7 @@ export function GimmickPanel({
                       <span className="flex-1">
                         <span className="flex items-baseline justify-between gap-2">
                           <span className="text-sm font-medium">{def.name}</span>
-                          <span className="shrink-0 text-xs text-zinc-500">+{def.tokenCost} トークン</span>
+                          <span className="shrink-0 text-xs text-zinc-500">{m.cost(def.tokenCost)}</span>
                         </span>
                         <span className="block text-xs text-zinc-600">{def.description}</span>
                         {conflict && <span className="block text-xs text-zinc-500">※ {conflict}</span>}

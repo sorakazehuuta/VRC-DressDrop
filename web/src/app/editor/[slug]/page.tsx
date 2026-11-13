@@ -1,18 +1,22 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import Link from "@/i18n/link";
+import { getLocale, getMessages, localized } from "@/i18n/server";
+import { pick } from "@/i18n/messages";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { parseEditorParams } from "@/lib/templates/params";
 import { getTemplate } from "@/lib/templates/queries";
 import { gimmickMap, listGimmicks } from "@/lib/gimmicks/queries";
-import { parseGimmickSelection } from "@/lib/gimmicks/schema";
+import { localizeGimmick, parseGimmickSelection } from "@/lib/gimmicks/schema";
 import { WORK_IMAGES_BUCKET } from "@/lib/works/constants";
 import { EditorHost, type InitialWork } from "./editor";
+import { editorMessages } from "./messages";
 
 export async function generateMetadata({ params }: PageProps<"/editor/[slug]">): Promise<Metadata> {
   const template = await getTemplate((await params).slug);
-  return { title: `${template?.name ?? "エディタ"} を編集 | VRPrintLab` };
+  const m = await getMessages(editorMessages);
+  return { title: `${m.pageTitle(template?.name ?? m.titleFallback)} | VRPrintLab` };
 }
 
 export default async function EditorPage({ params, searchParams }: PageProps<"/editor/[slug]">) {
@@ -22,12 +26,14 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
   if (!template) notFound();
 
   const user = await getCurrentUser();
+  const locale = await getLocale();
+  const m = pick(editorMessages, locale);
   const gimmickDefs = await listGimmicks();
   const workId = typeof query.work === "string" ? query.work : null;
   let initialWork: InitialWork | null = null;
 
   if (workId) {
-    if (!user) redirect(`/login?next=${encodeURIComponent(`/editor/${slug}?work=${workId}`)}`);
+    if (!user) redirect(await localized(`/login?next=${encodeURIComponent(`/editor/${slug}?work=${workId}`)}`));
     const supabase = await createClient();
     const { data: work } = await supabase
       .from("works")
@@ -37,7 +43,7 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
       .maybeSingle();
     if (!work) notFound();
     const workTemplate = work.templates as unknown as { slug: string } | null;
-    if (workTemplate && workTemplate.slug !== slug) redirect(`/editor/${workTemplate.slug}?work=${workId}`);
+    if (workTemplate && workTemplate.slug !== slug) redirect(await localized(`/editor/${workTemplate.slug}?work=${workId}`));
 
     const paths = work.work_images.map((i) => i.storage_path);
     const { data: signed } = paths.length
@@ -64,11 +70,11 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-3 px-4 py-5 lg:h-[calc(100dvh-4rem-1px)] lg:min-h-[640px] lg:flex-none">
       <nav className="flex gap-3 text-sm text-zinc-500">
         <Link href="/templates" className="hover:underline">
-          ← テンプレート一覧
+          {m.backToTemplates}
         </Link>
         {user && (
           <Link href="/works" className="hover:underline">
-            マイ作品
+            {m.myWorks}
           </Link>
         )}
       </nav>
@@ -81,7 +87,7 @@ export default async function EditorPage({ params, searchParams }: PageProps<"/e
           previewModelUrl: template.previewModelUrl,
           slots: template.slots,
         }}
-        gimmickDefs={gimmickDefs}
+        gimmickDefs={gimmickDefs.map((d) => localizeGimmick(d, locale))}
         userId={user?.id ?? null}
         initialWork={initialWork}
         restoreDraft={query.draft === "1" && !initialWork}

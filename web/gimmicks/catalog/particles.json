@@ -3,6 +3,20 @@
   "name": "キラキラのパーティクル",
   "category": "視覚効果",
   "description": "本体のまわりに、いつもキラキラした粒が舞います。",
+  "en": {
+    "name": "Sparkle particles",
+    "category": "Visual effects",
+    "description": "Sparkling particles always float around the item.",
+    "params": {
+      "color": {
+        "label": "Particle color"
+      },
+      "amount": {
+        "label": "Particle amount",
+        "unit": "/s"
+      }
+    }
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 410,

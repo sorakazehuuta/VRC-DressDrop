@@ -49,6 +49,17 @@ export const SETUP_STEPS = [
   "object-sync", // VRC Object Sync（位置を全員に同期）
 ] as const;
 
+// 英語版の表示（名前・分類・説明・注意書きと、設定項目の名前・単位・選択肢）。設定項目は key ごとに書く
+const gimmickEnglishSchema = z.object({
+  name: z.string().min(1),
+  category: z.string().min(1),
+  description: z.string().default(""),
+  note: z.string().default(""),
+  params: z
+    .record(paramKey, z.object({ label: z.string().min(1), unit: z.string().optional(), options: z.record(z.string(), z.string()).optional() }))
+    .default({}),
+});
+
 export const gimmickDefinitionSchema = z
   .object({
     slug: z.string().regex(/^[a-z0-9][a-z0-9-]*$/, "英小文字・数字・- で指定してください"),
@@ -56,6 +67,8 @@ export const gimmickDefinitionSchema = z
     category: z.string().min(1),
     description: z.string().default(""),
     note: z.string().default(""),
+    // 英語版の表示。日本語を変えたらこちらも直す（足りないと gimmicks:check で失敗する）
+    en: gimmickEnglishSchema,
     tokenCost: z.number().int().min(0),
     isPublic: z.boolean().default(true),
     sortOrder: z.number().int().default(0),
@@ -81,8 +94,38 @@ export const gimmickDefinitionSchema = z
       if (p.type === "select" && !p.options.some((o) => o.value === p.default)) {
         ctx.addIssue({ code: "custom", path: ["params", i, "default"], message: "default は options の value のどれかにしてください" });
       }
+      const english = g.en.params[p.key];
+      if (!english) ctx.addIssue({ code: "custom", path: ["en", "params", p.key], message: `設定項目 "${p.key}" の英語の名前（label）を書いてください` });
+      if (p.type === "number" && p.unit && english && english.unit === undefined) {
+        ctx.addIssue({ code: "custom", path: ["en", "params", p.key, "unit"], message: `設定項目 "${p.key}" の英語の単位（unit）を書いてください` });
+      }
+      if (p.type === "select") {
+        for (const o of p.options) {
+          if (!english?.options?.[o.value]) ctx.addIssue({ code: "custom", path: ["en", "params", p.key, "options", o.value], message: `選択肢 "${o.value}" の英語の名前を書いてください` });
+        }
+      }
     }
   });
+
+// 表示する言語に合わせた定義（英語なら en の名前・説明・設定項目の名前に差し替える）
+export function localizeGimmick(def: GimmickDefinition, locale: "ja" | "en"): GimmickDefinition {
+  if (locale === "ja") return def;
+  const en = def.en;
+  return {
+    ...def,
+    name: en.name,
+    category: en.category,
+    description: en.description,
+    note: en.note,
+    params: def.params.map((p) => {
+      const t = en.params[p.key];
+      if (!t) return p;
+      if (p.type === "number") return { ...p, label: t.label, unit: t.unit ?? p.unit };
+      if (p.type === "select") return { ...p, label: t.label, options: p.options.map((o) => ({ ...o, label: t.options?.[o.value] ?? o.label })) };
+      return { ...p, label: t.label };
+    }),
+  };
+}
 
 export type GimmickParam = z.infer<typeof gimmickParamSchema>;
 export type GimmickDefinition = z.infer<typeof gimmickDefinitionSchema>;
@@ -109,16 +152,18 @@ function normalizeParam(p: GimmickParam, raw: unknown): GimmickParamValue {
   }
 }
 
-// 選んだギミックがほかの選択とぶつかる理由（ぶつからなければ null）
-export function gimmickConflict(def: GimmickDefinition, selected: GimmickSelection[], defs: Map<string, GimmickDefinition>): string | null {
+// 選んだギミックがほかの選択とぶつかる理由（ぶつからなければ null）。defs は表示する言語に合わせたもの
+export function gimmickConflict(def: GimmickDefinition, selected: GimmickSelection[], defs: Map<string, GimmickDefinition>, locale: "ja" | "en" = "ja"): string | null {
   for (const s of selected) {
     if (s.slug === def.slug) continue;
     const other = defs.get(s.slug);
-    if (other && other.groups.some((g) => def.groups.includes(g))) return `「${other.name}」と同時には使えません`;
+    if (other && other.groups.some((g) => def.groups.includes(g))) {
+      return locale === "en" ? `Can't be used together with "${other.name}"` : `「${other.name}」と同時には使えません`;
+    }
   }
   if (def.requiresAny.length > 0 && !selected.some((s) => def.requiresAny.includes(s.slug))) {
     const names = def.requiresAny.map((slug) => defs.get(slug)?.name).filter(Boolean);
-    return `「${names.join("」「")}」のどれかと一緒に使います`;
+    return locale === "en" ? `Use together with ${names.map((n) => `"${n}"`).join(" or ")}` : `「${names.join("」「")}」のどれかと一緒に使います`;
   }
   return null;
 }

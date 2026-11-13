@@ -3,6 +3,19 @@
   "name": "手で触れると光る",
   "category": "プレイヤーに反応",
   "description": "だれかの手が触れている間、本体がふわっと光ります。",
+  "en": {
+    "name": "Glows when touched",
+    "category": "Reacts to players",
+    "description": "The item glows softly while someone's hand is touching it.",
+    "params": {
+      "glowColor": {
+        "label": "Glow color"
+      },
+      "intensity": {
+        "label": "Glow strength"
+      }
+    }
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 310,

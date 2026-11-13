@@ -14,6 +14,20 @@ import type { LoadedImage } from "./images";
 import { applyMaterialFx, createPreviewRig, GimmickBody, GimmickEffects, NEUTRAL_FX, type PreviewRig } from "./gimmick-preview/preview-3d";
 import type { PreviewState } from "./gimmick-preview/spec";
 import { drawPrint } from "./print-canvas";
+import { useMessages } from "@/i18n/client";
+import { editorMessages } from "./messages";
+
+// 3D 表示に失敗したときの案内（エラー境界はクラスの部品で hook を使えないため、別の部品にする）
+function ModelError() {
+  const m = useMessages(editorMessages);
+  return (
+    <div className="flex h-full items-center justify-center p-6 text-center text-sm text-zinc-600">
+      {m.modelError1}
+      <br />
+      {m.modelError2}
+    </div>
+  );
+}
 
 type ViewerProps = {
   modelUrl: string;
@@ -381,11 +395,7 @@ class ViewerErrorBoundary extends Component<{ children: ReactNode }, { failed: b
   render() {
     if (this.state.failed) {
       return (
-        <div className="flex h-full items-center justify-center p-6 text-center text-sm text-zinc-600">
-          3Dモデルを表示できませんでした。ページを再読み込みしてください。
-          <br />
-          お使いのブラウザが WebGL に対応していない可能性もあります。
-        </div>
+        <ModelError />
       );
     }
     return this.props.children;

@@ -8,15 +8,18 @@ const LABELS: Record<Locale, string> = { ja: "日本語", en: "English" };
 
 // 選んだ言語を Cookie に保存して、同じページのその言語の URL を開き直す
 // （ヘッダーなど共通部分の言語も切り替えるため、画面の中での移動ではなく読み込み直す）
+function switchLocale(locale: Locale, pathname: string) {
+  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+  const { path } = splitLocale(pathname);
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- 共通部分（ヘッダーなど）も含めて読み込み直すため
+  window.location.assign(`${localePath(locale, path)}${window.location.search}${window.location.hash}`);
+}
+
 export function LanguageSwitcher({ variant = "list", className = "" }: { variant?: "list" | "toggle"; className?: string }) {
   const current = useLocale();
   const pathname = usePathname();
 
-  const switchTo = (locale: Locale) => {
-    document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
-    const { path } = splitLocale(pathname);
-    window.location.assign(`${localePath(locale, path)}${window.location.search}${window.location.hash}`);
-  };
+  const switchTo = (locale: Locale) => switchLocale(locale, pathname);
 
   // ヘッダー用: もう一方の言語だけを小さく出す
   if (variant === "toggle") {

@@ -60,21 +60,28 @@ export const color = (params: Record<string, GimmickParamValue>, key: string, fa
 
 export type PrimaryAction = { kind: "touch" | "hold" | "shake"; label: string; hint: string };
 
+// ボタンの名前と説明（表示している言語のもの。../messages.ts の editorMessages の preview）
+type ActionTexts = {
+  hold: { label: string; hint: string };
+  shake: { label: string; hint: string };
+  switch: { label: string; hint: string };
+  followStop: string;
+  followStart: string;
+  followHint: string;
+  touch: { label: string; hint: string };
+};
+
 // 選んだギミックに合わせて、プレビューのメインのボタンを決める（触ったときの動作は1つしか選べない）
-export function primaryAction(selected: GimmickSelection[], touches: number): PrimaryAction | null {
+export function primaryAction(selected: GimmickSelection[], touches: number, t: ActionTexts): PrimaryAction | null {
   const has = (slug: string) => selected.some((s) => s.slug === slug);
-  if (has("pickup")) return { kind: "hold", label: "持って動かす", hint: "手で持って動かしたときの様子を再生します。" };
-  if (has("shake-sparkle")) return { kind: "shake", label: "持って振る", hint: "手で持って振ったときの様子を再生します。" };
-  if (has("toggle-visibility")) return { kind: "touch", label: "スイッチを押す", hint: "横の小さなスイッチをクリックしても押せます。" };
+  if (has("pickup")) return { kind: "hold", ...t.hold };
+  if (has("shake-sparkle")) return { kind: "shake", ...t.shake };
+  if (has("toggle-visibility")) return { kind: "touch", ...t.switch };
   if (has("follow")) {
-    return {
-      kind: "touch",
-      label: touches % 2 === 1 ? "触る（止める）" : "触る（ついてくる）",
-      hint: "触った人の肩のあたりについてくる動きを、その場で再現しています。",
-    };
+    return { kind: "touch", label: touches % 2 === 1 ? t.followStop : t.followStart, hint: t.followHint };
   }
   if (["toggle-light", "toggle-particles", "toggle-transparency", "step-rotate", "sway-on-touch", "glow-on-touch"].some(has)) {
-    return { kind: "touch", label: "触る", hint: "モデルをクリックしても触れます。" };
+    return { kind: "touch", ...t.touch };
   }
   return null;
 }

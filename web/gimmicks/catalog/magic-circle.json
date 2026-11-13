@@ -3,6 +3,24 @@
   "name": "オーラ・魔法陣",
   "category": "視覚効果",
   "description": "足元に回る魔法陣が浮かび、光の粒が立ちのぼります。",
+  "en": {
+    "name": "Aura / magic circle",
+    "category": "Visual effects",
+    "description": "A spinning magic circle appears at its base, with particles of light rising up.",
+    "params": {
+      "color": {
+        "label": "Color"
+      },
+      "size": {
+        "label": "Magic circle size (relative to the item's width)",
+        "unit": "×"
+      },
+      "spinSpeed": {
+        "label": "Magic circle spin speed",
+        "unit": "°/s"
+      }
+    }
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 440,

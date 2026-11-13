@@ -1,22 +1,25 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useState } from "react";
-import { categoryOptions, filterByCategory } from "@/lib/templates/categories";
+import { useMessages } from "@/i18n/client";
+import Link from "@/i18n/link";
+import { categoryId, categoryOptions, filterByCategory } from "@/lib/templates/categories";
 import type { TemplateListItem } from "@/lib/templates/queries";
 import { filterTemplates, sortTemplates, templateSorts, type TemplateSort } from "@/lib/templates/sort";
+import { templatesMessages } from "./messages";
 
 type ListState = { sort: TemplateSort; query: string; category: string };
 
-// 並び順・検索語・カテゴリは URL に残す（戻る・再読み込みで同じ並びに戻れるように）
+// 並び順・検索語・カテゴリは URL に残す（戻る・再読み込み・言語の切り替えで同じ並びに戻れるように）。
+// カテゴリは言語に依存しない ID（signs など）で残す
 function replaceQuery({ sort, query, category }: ListState) {
   const params = new URLSearchParams(window.location.search);
   if (sort === "recommended") params.delete("sort");
   else params.set("sort", sort);
   if (query.trim()) params.set("q", query.trim());
   else params.delete("q");
-  if (category) params.set("category", category);
+  if (category) params.set("category", categoryId(category));
   else params.delete("category");
   const search = params.toString();
   window.history.replaceState(null, "", `${window.location.pathname}${search ? `?${search}` : ""}`);
@@ -33,12 +36,14 @@ export function TemplateList({
   initialQuery: string;
   initialCategory: string;
 }) {
+  const m = useMessages(templatesMessages);
   const categories = categoryOptions(templates);
+  const labels = new Map(templates.map((t) => [t.category, t.categoryLabel]));
   const [state, setState] = useState<ListState>({
     sort: initialSort,
     query: initialQuery,
-    // URL のカテゴリが一覧にない（公開中のテンプレートがない）ときは「すべて」にする
-    category: categories.some((c) => c.name === initialCategory) ? initialCategory : "",
+    // URL のカテゴリ（ID。以前の日本語の名前も受け付ける）が一覧にない（公開中のテンプレートがない）ときは「すべて」にする
+    category: categories.find((c) => categoryId(c.name) === initialCategory || c.name === initialCategory)?.name ?? "",
   });
   const { sort, query, category } = state;
   const update = (patch: Partial<ListState>) => {
@@ -52,15 +57,13 @@ export function TemplateList({
   const counts = new Map(categoryOptions(matched).map((c) => [c.name, c.count]));
   const shown = sortTemplates(filterByCategory(matched, category), sort);
   const filtered = Boolean(category || query.trim());
-  const summary = filtered
-    ? `${category ? `「${category}」` : ""}${category && query.trim() ? "で、" : ""}${query.trim() ? `「${query.trim()}」に合う` : "の"}テンプレート ${shown.length} 件`
-    : `${templates.length} 件のテンプレート`;
+  const summary = filtered ? m.summary(category ? (labels.get(category) ?? category) : "", query.trim(), shown.length) : m.total(templates.length);
 
   return (
     <div className="flex flex-col gap-4">
       {categories.length > 1 && (
-        <div role="group" aria-label="カテゴリで絞り込む" className="flex flex-wrap gap-2">
-          {[{ name: "", label: "すべて", count: matched.length }, ...categories.map((c) => ({ name: c.name, label: c.name, count: counts.get(c.name) ?? 0 }))].map((c) => {
+        <div role="group" aria-label={m.categoryGroup} className="flex flex-wrap gap-2">
+          {[{ name: "", label: m.all, count: matched.length }, ...categories.map((c) => ({ name: c.name, label: labels.get(c.name) ?? c.name, count: counts.get(c.name) ?? 0 }))].map((c) => {
             const selected = category === c.name;
             return (
               <button
@@ -84,20 +87,20 @@ export function TemplateList({
           type="search"
           value={query}
           onChange={(e) => update({ query: e.target.value })}
-          placeholder="名前で探す（例: 看板）"
-          aria-label="テンプレートを名前で探す"
+          placeholder={m.searchPlaceholder}
+          aria-label={m.searchLabel}
           className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm sm:w-80"
         />
         <label className="ml-auto flex items-center gap-2 text-sm text-zinc-600">
-          並び順
+          {m.sortLabel}
           <select
             value={sort}
             onChange={(e) => update({ sort: e.target.value as TemplateSort })}
             className="rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm text-zinc-900"
           >
-            {Object.entries(templateSorts).map(([value, label]) => (
+            {templateSorts.map((value) => (
               <option key={value} value={value}>
-                {label}
+                {m.sorts[value]}
               </option>
             ))}
           </select>
@@ -109,9 +112,9 @@ export function TemplateList({
 
       {shown.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-lg bg-zinc-100 p-6 text-center text-zinc-600">
-          <p>{category ? "このカテゴリには、検索に合うテンプレートがありません。" : "見つかりませんでした。別のことばで探してみてください。"}</p>
+          <p>{category ? m.notFoundInCategory : m.notFound}</p>
           <button type="button" onClick={() => update({ query: "", category: "" })} className="cursor-pointer text-sm font-semibold text-zinc-900 underline">
-            絞り込みと検索を解除する
+            {m.reset}
           </button>
         </div>
       ) : (
@@ -130,11 +133,11 @@ export function TemplateList({
                   )}
                 </div>
                 <div className="flex flex-1 flex-col gap-1 p-4">
-                  <span className="text-xs text-zinc-500">{t.category}</span>
+                  <span className="text-xs text-zinc-500">{t.categoryLabel}</span>
                   <span className="font-semibold group-hover:underline">{t.name}</span>
                   {t.description && <p className="text-sm text-zinc-600">{t.description}</p>}
                   <span className="mt-auto pt-2 text-sm">
-                    <strong>{t.tokenCost}</strong> トークン
+                    <strong>{t.tokenCost}</strong> {m.tokenUnit(t.tokenCost)}
                   </span>
                 </div>
               </Link>

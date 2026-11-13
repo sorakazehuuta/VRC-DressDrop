@@ -1,12 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { duplicateWork, saveWork } from "@/app/works/actions";
 import { useOnTabReturn } from "@/components/tab-return";
 import { Button } from "@/components/ui";
+import { useLocale, useLocalePath, useMessages } from "@/i18n/client";
+import Link from "@/i18n/link";
 import { defaultParams, type ColorParams, type EditorParams, type PrintParams, type SlotParams } from "@/lib/templates/params";
 import type { Slot } from "@/lib/templates/schema";
 import type { GimmickDefinition, GimmickSelection } from "@/lib/gimmicks/schema";
@@ -19,13 +20,16 @@ import { initialPreviewState, looksBetterInDark, primaryAction, type PreviewStat
 import { removeExpiredDrafts, saveDraft, takeDraft } from "./draft";
 import { loadImage, type LoadedImage } from "./images";
 import { formatSavedAt, useKeepPreviousDialog } from "./keep-previous-dialog";
+import { editorMessages } from "./messages";
 import { imageExt, uploadImages, uploadThumbnail } from "./save";
 import { useHistory } from "./use-history";
 
-const Viewer = dynamic(() => import("./viewer"), {
-  ssr: false,
-  loading: () => <div className="flex h-full items-center justify-center text-sm text-zinc-500">3Dモデルを読み込み中…</div>,
-});
+function ViewerLoading() {
+  const m = useMessages(editorMessages);
+  return <div className="flex h-full items-center justify-center text-sm text-zinc-500">{m.loadingModel}</div>;
+}
+
+const Viewer = dynamic(() => import("./viewer"), { ssr: false, loading: () => <ViewerLoading /> });
 
 export type EditorTemplate = { id: string; slug: string; name: string; tokenCost: number; previewModelUrl: string; slots: Slot[] };
 
@@ -45,14 +49,14 @@ type Status = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; at: strin
 type EditorState = { params: EditorParams; gimmicks: GimmickSelection[] };
 
 const snapshot = (name: string, state: EditorState) => JSON.stringify({ name, params: state.params, gimmicks: state.gimmicks });
-const timeFormat = new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" });
+const timeFormat = (locale: string) => new Intl.DateTimeFormat(locale === "en" ? "en-US" : "ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" });
 
-async function fetchSavedImage(img: InitialWork["images"][number]) {
+async function fetchSavedImage(img: InitialWork["images"][number], m: (typeof editorMessages)["ja"]) {
   const res = await fetch(img.url);
-  if (!res.ok) throw new Error("画像を読み込めませんでした");
+  if (!res.ok) throw new Error(m.errors.imageLoad);
   const blob = await res.blob();
   const type = img.ext === "png" ? "image/png" : "image/jpeg";
-  return loadImage(new File([blob], `${img.slot}.${img.ext}`, { type }), img.id);
+  return loadImage(new File([blob], `${img.slot}.${img.ext}`, { type }), m.errors, img.id);
 }
 
 type EditorProps = {
@@ -83,11 +87,14 @@ export function EditorHost(props: EditorProps) {
 
 function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWorkId }: EditorProps & { onWorkId: (id: string) => void }) {
   const router = useRouter();
+  const locale = useLocale();
+  const toLocale = useLocalePath();
+  const m = useMessages(editorMessages);
   const initialState = useMemo<EditorState>(
     () => ({ params: initialWork?.params ?? defaultParams(template.slots), gimmicks: initialWork?.gimmicks ?? [] }),
     [initialWork, template.slots],
   );
-  const initialName = initialWork?.name ?? `${template.name}の作品`;
+  const initialName = initialWork?.name ?? m.defaultWorkName(template.name);
 
   const history = useHistory<EditorState>(initialState);
   const { value: state, change: changeState, commit, undo, redo, reset } = history;
@@ -142,7 +149,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
     setPrevGimmickKey(gimmickKey);
     setPreview((p) => ({ ...p, touches: 0, action: null, near: false, dark: p.dark || addedDarkLooking }));
   }
-  const previewAction = primaryAction(gimmicks, preview.touches);
+  const previewAction = primaryAction(gimmicks, preview.touches, m.preview);
   const actionKind = previewAction?.kind ?? null;
   const runPreviewAction = useMemo(() => {
     if (!actionKind) return null;
@@ -163,23 +170,23 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
     (async () => {
       try {
         if (initialWork?.images.length) {
-          const loaded = await Promise.all(initialWork.images.map(fetchSavedImage));
+          const loaded = await Promise.all(initialWork.images.map((img) => fetchSavedImage(img, m)));
           // 未保存の画像を消さないよう、既存の一覧に足す
           if (!cancelled) setImages((prev) => ({ ...Object.fromEntries(loaded.map((i) => [i.id, i])), ...prev }));
         } else if (restoreDraft) {
           const draft = await takeDraft(template.slug);
           if (draft && !cancelled) {
-            const loaded = await Promise.all(draft.images.map((i) => loadImage(i.file, i.id)));
+            const loaded = await Promise.all(draft.images.map((i) => loadImage(i.file, m.errors, i.id)));
             setImages((prev) => ({ ...prev, ...Object.fromEntries(loaded.map((i) => [i.id, i])) }));
             setName(draft.name);
             // 下書きのあとに非公開になったギミックは外す（パネルが出ないと外せなくなる）
             const usable = gimmickSlugs.split(",");
             reset({ params: draft.params, gimmicks: (draft.gimmicks ?? []).filter((g) => usable.includes(g.slug)) });
           }
-          window.history.replaceState(null, "", `/editor/${template.slug}`);
+          window.history.replaceState(null, "", toLocale(`/editor/${template.slug}`));
         }
       } catch {
-        if (!cancelled) setStatus({ kind: "error", message: "保存した画像を読み込めませんでした。ページを再読み込みしてください。" });
+        if (!cancelled) setStatus({ kind: "error", message: m.errors.savedImagesLoad });
       } finally {
         if (!cancelled) setLoadingImages(false);
       }
@@ -187,7 +194,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
     return () => {
       cancelled = true;
     };
-  }, [initialWork, restoreDraft, template.slug, reset, gimmickSlugs]);
+  }, [initialWork, restoreDraft, template.slug, reset, gimmickSlugs, m, toLocale]);
 
   const changeSlot = useCallback(
     <T extends SlotParams>(key: string) =>
@@ -218,7 +225,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
         images: used.map(({ image }) => ({ id: image.id, file: image.file })),
         savedAt: Date.now(),
       });
-      router.push(`/login?next=${encodeURIComponent(`/editor/${template.slug}?draft=1`)}`);
+      router.push(toLocale(`/login?next=${encodeURIComponent(`/editor/${template.slug}?draft=1`)}`));
       return null;
     }
 
@@ -229,12 +236,12 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
       if (choice === "cancel") return null;
       if (choice === "keep") {
         setStatus({ kind: "saving" });
-        const kept = await duplicateWork(workId, `${previousName}（${lastSavedAt ? formatSavedAt(lastSavedAt) : "前回"}の保存）`);
+        const kept = await duplicateWork(workId, m.keepPrevious.name(previousName, lastSavedAt ? formatSavedAt(lastSavedAt, locale) : null));
         if (!kept.ok) {
           setStatus({
             kind: "error",
-            message: `前回の内容を残せなかったため、保存を中止しました（${kept.error}）。上書きしてよい場合は、もう一度保存して「上書き保存」を選んでください。`,
-            limit: kept.error.includes("上限"),
+            message: m.errors.keepFailed(kept.error),
+            limit: kept.code === "limit",
           });
           return null;
         }
@@ -250,6 +257,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
         userId,
         id,
         used.filter(({ image }) => !savedImageIds.has(image.id)).map(({ image }) => image),
+        m.errors.upload,
       );
       const thumbnail = await captureRef.current?.();
       const hasThumbnail = thumbnail ? await uploadThumbnail(userId, id, thumbnail) : false;
@@ -274,14 +282,14 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
       setName(name.trim());
       setStatus({ kind: "saved", at: result.updatedAt });
       setLastSavedAt(result.updatedAt);
-      if (!workId) window.history.replaceState(null, "", `/editor/${template.slug}?work=${result.workId}`);
+      if (!workId) window.history.replaceState(null, "", toLocale(`/editor/${template.slug}?work=${result.workId}`));
       setSaveCount((n) => n + 1);
       return result.workId;
     } catch (e) {
-      setStatus({ kind: "error", message: e instanceof Error ? e.message : "保存に失敗しました。" });
+      setStatus({ kind: "error", message: e instanceof Error ? e.message : m.errors.saveFailed });
       return null;
     }
-  }, [readOnly, status.kind, loadingImages, referencedImages, params, gimmicks, state, userId, template, name, router, workId, savedImageIds, dirty, savedSnapshot, lastSavedAt, askKeepPrevious, onWorkId]);
+  }, [readOnly, status.kind, loadingImages, referencedImages, params, gimmicks, state, userId, template, name, router, workId, savedImageIds, dirty, savedSnapshot, lastSavedAt, askKeepPrevious, onWorkId, locale, m, toLocale]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -326,16 +334,16 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={100}
-            aria-label="作品名"
+            aria-label={m.workName}
             disabled={readOnly}
             className="min-w-0 rounded-md border border-transparent px-2 py-0.5 text-xl font-bold text-brand hover:border-zinc-300 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
           />
-          <span className="px-2 text-xs text-zinc-500">テンプレート: {template.name}</span>
+          <span className="px-2 text-xs text-zinc-500">{m.templateLabel(template.name)}</span>
         </div>
         <div className="ml-auto flex items-center gap-3">
           <SaveStatus status={status} dirty={dirty} saved={Boolean(workId)} />
-          <Button type="button" onClick={() => void save()} disabled={readOnly || status.kind === "saving" || loadingImages} title="保存 (Ctrl+S)">
-            {status.kind === "saving" ? "保存中…" : userId ? "保存" : "ログインして保存"}
+          <Button type="button" onClick={() => void save()} disabled={readOnly || status.kind === "saving" || loadingImages} title={m.saveShortcut}>
+            {status.kind === "saving" ? m.saving : userId ? m.save : m.loginToSave}
           </Button>
         </div>
       </div>
@@ -344,7 +352,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
 
       {readOnly && (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-          この作品は運営により公開停止されているため、編集・保存できません。
+          {m.suspended}
         </p>
       )}
 
@@ -373,21 +381,21 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
             />
             {loadingImages && (
               <div className="absolute inset-x-0 top-3 mx-auto w-fit rounded-full bg-white/90 px-3 py-1 text-xs text-zinc-600 shadow">
-                画像を読み込み中…
+                {m.loadingImages}
               </div>
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="secondary" onClick={undo} disabled={!history.canUndo} title="元に戻す (Ctrl+Z)">
-              元に戻す
+            <Button type="button" variant="secondary" onClick={undo} disabled={!history.canUndo} title={m.undoShortcut}>
+              {m.undo}
             </Button>
-            <Button type="button" variant="secondary" onClick={redo} disabled={!history.canRedo} title="やり直す (Ctrl+Shift+Z)">
-              やり直す
+            <Button type="button" variant="secondary" onClick={redo} disabled={!history.canRedo} title={m.redoShortcut}>
+              {m.redo}
             </Button>
             <Button type="button" variant="secondary" onClick={() => setResetViewSignal((n) => n + 1)}>
-              視点をリセット
+              {m.resetView}
             </Button>
-            <span className="ml-auto text-xs text-zinc-500">ドラッグで回転・ホイールで拡大縮小</span>
+            <span className="ml-auto text-xs text-zinc-500">{m.viewHint}</span>
           </div>
         </div>
 
@@ -405,7 +413,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
                     onChange={changeSlot<PrintParams>(slot.key)}
                     onCommit={commit}
                     onImage={async (file) => {
-                      const loaded = await loadImage(file);
+                      const loaded = await loadImage(file, m.errors);
                       setImages((prev) => ({ ...prev, [loaded.id]: loaded }));
                       changeSlot<PrintParams>(slot.key)((p) => ({ ...p, imageId: loaded.id }));
                     }}
@@ -430,7 +438,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
               {status.message}
               {status.limit && (
                 <Link href="/works" className="ml-1 font-semibold underline">
-                  マイ作品を開く
+                  {m.openWorks}
                 </Link>
               )}
             </p>
@@ -452,9 +460,11 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
 }
 
 function SaveStatus({ status, dirty, saved }: { status: Status; dirty: boolean; saved: boolean }) {
+  const locale = useLocale();
+  const m = useMessages(editorMessages);
   if (status.kind === "saving") return null;
-  if (dirty) return <span className="text-xs text-amber-700">未保存の変更があります</span>;
-  if (status.kind === "saved") return <span className="text-xs text-accent-dark">{timeFormat.format(new Date(status.at))} に保存しました</span>;
-  if (saved) return <span className="text-xs text-zinc-500">保存済み</span>;
+  if (dirty) return <span className="text-xs text-amber-700">{m.unsaved}</span>;
+  if (status.kind === "saved") return <span className="text-xs text-accent-dark">{m.savedAt(timeFormat(locale).format(new Date(status.at)))}</span>;
+  if (saved) return <span className="text-xs text-zinc-500">{m.saved}</span>;
   return null;
 }

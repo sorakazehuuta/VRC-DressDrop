@@ -3,6 +3,16 @@
   "name": "手で持てる",
   "category": "小物",
   "description": "手で持って動かせます。位置は全員に同期されます。",
+  "en": {
+    "name": "Can be picked up",
+    "category": "Props",
+    "description": "Can be picked up and moved by hand. Its position is synced for everyone.",
+    "params": {
+      "physics": {
+        "label": "Physics (can be dropped or thrown)"
+      }
+    }
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 510,

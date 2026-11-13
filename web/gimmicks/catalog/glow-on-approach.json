@@ -3,6 +3,23 @@
   "name": "近づくと光る",
   "category": "プレイヤーに反応",
   "description": "だれかが決めた距離まで近づくと、本体が光ります。",
+  "en": {
+    "name": "Glows when someone approaches",
+    "category": "Reacts to players",
+    "description": "The item glows when someone comes within the set distance.",
+    "params": {
+      "glowColor": {
+        "label": "Glow color"
+      },
+      "intensity": {
+        "label": "Glow strength"
+      },
+      "distance": {
+        "label": "Trigger distance",
+        "unit": "m"
+      }
+    }
+  },
   "tokenCost": 2,
   "isPublic": true,
   "sortOrder": 320,

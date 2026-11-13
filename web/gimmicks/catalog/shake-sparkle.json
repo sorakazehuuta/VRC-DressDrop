@@ -3,6 +3,22 @@
   "name": "持って振るとキラキラ",
   "category": "小物",
   "description": "手で持って振ると、キラキラした粒が飛び散ります。全員に見えます。",
+  "en": {
+    "name": "Sparkles when shaken",
+    "category": "Props",
+    "description": "Sparkling particles scatter when you pick it up and shake it. Everyone can see them.",
+    "params": {
+      "color": {
+        "label": "Particle color"
+      },
+      "sensitivity": {
+        "label": "Sensitivity"
+      },
+      "physics": {
+        "label": "Physics (can be dropped or thrown)"
+      }
+    }
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 520,

@@ -3,6 +3,23 @@
   "name": "触るとパーティクル ON/OFF",
   "category": "表示の切り替え（触ると ON/OFF・全員に同期）",
   "description": "本体を触るたびに、キラキラのパーティクルが出たり止まったりします。",
+  "en": {
+    "name": "Particles ON/OFF on touch",
+    "category": "Toggle on touch (ON/OFF, synced for everyone)",
+    "description": "Each time the item is touched, sparkle particles start or stop.",
+    "params": {
+      "color": {
+        "label": "Particle color"
+      },
+      "amount": {
+        "label": "Particle amount",
+        "unit": "/s"
+      },
+      "startOn": {
+        "label": "ON from the start"
+      }
+    }
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 120,

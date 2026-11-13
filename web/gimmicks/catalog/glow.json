@@ -3,6 +3,19 @@
   "name": "いつも光る",
   "category": "視覚効果",
   "description": "本体がいつもぼんやり光ります。暗いワールドで目立ちます。",
+  "en": {
+    "name": "Always glows",
+    "category": "Visual effects",
+    "description": "The item always glows softly. It stands out in dark worlds.",
+    "params": {
+      "glowColor": {
+        "label": "Glow color"
+      },
+      "intensity": {
+        "label": "Glow strength"
+      }
+    }
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 430,

@@ -181,6 +181,8 @@ async function main() {
       slug: manifest.slug,
       name: manifest.name,
       description: manifest.description,
+      name_en: manifest.en.name,
+      description_en: manifest.en.description,
       preview_model_path: previewPath,
       package_model_path: packagePath,
       package_prefab_path: prefab,
@@ -191,7 +193,11 @@ async function main() {
       ? await supabase.from("templates").insert({ ...row, token_cost: manifest.tokenCost, is_public: manifest.isPublic, sort_order: newSortOrders.get(manifest.slug), name_reading: manifest.nameReading, category: manifest.category })
       : await supabase.from("templates").update(row).eq("slug", manifest.slug);
     if (error) {
-      const hint = error.message.includes("package_prefab_path") ? "（マイグレーション 20261016000000_unitypackage_templates.sql を SQL Editor で実行してください）" : "";
+      const hint = error.message.includes("package_prefab_path")
+        ? "（マイグレーション 20261016000000_unitypackage_templates.sql を SQL Editor で実行してください）"
+        : error.message.includes("name_en") || error.message.includes("description_en")
+          ? "（マイグレーション 20261115000000_template_english.sql を SQL Editor で実行してください）"
+          : "";
       throw new Error(`${manifest.slug} の登録に失敗: ${error.message}${hint}`);
     }
     console.log(

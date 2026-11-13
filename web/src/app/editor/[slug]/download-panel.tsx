@@ -1,20 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { downloadWork, getDownloadQuote, type CostLine, type DownloadQuote, type VersionKind } from "@/app/works/download";
 import { useOnTabReturn } from "@/components/tab-return";
 import { Button } from "@/components/ui";
+import { useMessages } from "@/i18n/client";
+import Link from "@/i18n/link";
 import { saveFileFromUrl } from "@/lib/save-file";
+import { editorMessages } from "./messages";
 
 type Confirm = { workId: string; cost: number; balance: number; breakdown: CostLine[]; versionKind: VersionKind };
 
-const versionMessages: Record<VersionKind, string> = {
-  first: "この作品はまだ取得していません。",
-  changed: "前回ダウンロードしたときから見た目が変わっているため、新しいダウンロードとしてトークンを使います。",
-  gimmicks: "見た目は取得済みです。追加したギミックの分だけトークンを使います。",
-};
 
 export function DownloadPanel({
   tokenCost,
@@ -33,6 +30,7 @@ export function DownloadPanel({
   saveCount: number;
   onSave: () => Promise<string | null>;
 }) {
+  const m = useMessages(editorMessages).download;
   const router = useRouter();
   const [quote, setQuote] = useState<DownloadQuote | null>(null);
   const [busy, setBusy] = useState(false);
@@ -69,7 +67,7 @@ export function DownloadPanel({
     setQuote({ ok: true, purchased: true });
     setMessage({
       kind: "ok",
-      text: result.charged > 0 ? `${result.charged} トークンを使用しました。ダウンロードを開始します。` : "ダウンロードを開始します。",
+      text: m.started(result.charged),
     });
     if (result.charged > 0) router.refresh();
   }
@@ -100,39 +98,39 @@ export function DownloadPanel({
   return (
     <div className="mt-auto flex flex-col gap-3 rounded-lg bg-zinc-100 p-4 text-sm">
       {purchased ? (
-        <p className="font-medium text-accent-dark">この内容はダウンロード済みです。何度でも無料でダウンロードできます。</p>
+        <p className="font-medium text-accent-dark">{m.purchased}</p>
       ) : (
         <div className="flex flex-col gap-1">
           <p>
-            ダウンロードに必要なトークン:{" "}
+            {m.needed}
             <strong className="text-base">{!dirty && quote?.ok && !quote.purchased ? quote.cost : tokenCost}</strong>
             {!dirty && quote?.ok && !quote.purchased && quote.cost < tokenCost && (
-              <span className="ml-1 text-xs text-accent-dark">（取得済みの分を除く）</span>
+              <span className="ml-1 text-xs text-accent-dark">{m.excludingOwned}</span>
             )}
-            {quote?.ok && !quote.purchased && <span className="ml-2 text-xs text-zinc-500">（残り {quote.balance}）</span>}
+            {quote?.ok && !quote.purchased && <span className="ml-2 text-xs text-zinc-500">{m.remaining(quote.balance)}</span>}
           </p>
           {!dirty && quote?.ok && !quote.purchased && (
-            <p className="text-xs text-zinc-600">{quote.cost === 0 ? "ギミックの設定値の変更や取り外しだけなので、トークンは使いません。" : versionMessages[quote.versionKind]}</p>
+            <p className="text-xs text-zinc-600">{quote.cost === 0 ? m.settingsOnly : m.versions[quote.versionKind]}</p>
           )}
-          {dirty && workId && <p className="text-xs text-zinc-500">保存すると、ダウンロード済みの内容かどうかを確認します。</p>}
+          {dirty && workId && <p className="text-xs text-zinc-500">{m.checkAfterSave}</p>}
         </div>
       )}
       <Button type="button" onClick={() => void onClick()} disabled={disabled || busy}>
-        {busy ? "準備中…" : loggedIn ? (dirty || !workId ? "保存してダウンロード" : "ダウンロード") : "ログインしてダウンロード"}
+        {busy ? m.preparing : loggedIn ? (dirty || !workId ? m.saveAndDownload : m.download) : m.loginToDownload}
       </Button>
       <p className="text-xs text-zinc-500">
-        VRChat 用の unitypackage（PC / Quest 対応）をダウンロードします。ワールドやアバターへの置き方は
+        {m.about1}
         <Link href="/guide" target="_blank" className="underline">
-          導入ガイド
+          {m.guide}
         </Link>
-        をご覧ください。
+        {m.about2}
       </p>
       {message && (
         <p role={message.kind === "error" ? "alert" : "status"} className={message.kind === "error" ? "text-red-700" : "text-accent-dark"}>
           {message.text}
           {message.insufficient && (
             <Link href="/tokens" className="ml-1 font-semibold underline">
-              トークンを購入する
+              {m.buyTokens}
             </Link>
           )}
         </p>
@@ -142,40 +140,40 @@ export function DownloadPanel({
         <div role="dialog" aria-modal="true" aria-labelledby="download-confirm-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="flex w-full max-w-sm flex-col gap-4 rounded-xl bg-white p-6 shadow-xl">
             <h2 id="download-confirm-title" className="text-lg font-bold text-brand">
-              トークンを使ってダウンロード
+              {m.confirmTitle}
             </h2>
-            <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">{versionMessages[confirm.versionKind]}</p>
+            <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">{m.versions[confirm.versionKind]}</p>
             <ul className="flex flex-col gap-1 rounded-md bg-zinc-50 p-3 text-sm">
               {confirm.breakdown.map((line) => (
                 <li key={line.label} className="flex justify-between gap-3">
                   <span>{line.label}</span>
-                  <span className="tabular-nums">{line.paid ? <span className="text-xs text-accent-dark">取得済み 0</span> : line.cost}</span>
+                  <span className="tabular-nums">{line.paid ? <span className="text-xs text-accent-dark">{m.owned}</span> : line.cost}</span>
                 </li>
               ))}
             </ul>
             <dl className="grid grid-cols-[1fr_auto] gap-y-1 text-sm">
-              <dt>使用するトークン</dt>
+              <dt>{m.use}</dt>
               <dd className="text-right font-semibold tabular-nums">{confirm.cost}</dd>
-              <dt>現在の残高</dt>
+              <dt>{m.balance}</dt>
               <dd className="text-right tabular-nums">{confirm.balance}</dd>
-              <dt>ダウンロード後の残高</dt>
+              <dt>{m.after}</dt>
               <dd className={`text-right font-semibold tabular-nums ${confirm.balance < confirm.cost ? "text-red-700" : ""}`}>
                 {confirm.balance - confirm.cost}
               </dd>
             </dl>
             {confirm.balance < confirm.cost ? (
-              <p className="text-sm text-red-700">トークンが足りません。</p>
+              <p className="text-sm text-red-700">{m.notEnough}</p>
             ) : (
               <p className="text-xs text-zinc-500">
-                一度ダウンロードした内容は、あとから何度でも無料でダウンロードできます。見た目を変えると新しいダウンロードになり、トークンが必要です。
+                {m.reDownloadNote}
               </p>
             )}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setConfirm(null)}>
-                キャンセル
+                {m.cancel}
               </Button>
               <Button type="button" onClick={() => void onConfirm()} disabled={confirm.balance < confirm.cost} autoFocus>
-                ダウンロードする
+                {m.confirm}
               </Button>
             </div>
           </div>

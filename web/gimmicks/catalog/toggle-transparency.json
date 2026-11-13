@@ -3,6 +3,17 @@
   "name": "触ると半透明に切り替え",
   "category": "表示の切り替え（触ると ON/OFF・全員に同期）",
   "description": "本体を触るたびに、ふつうの見た目と半透明が切り替わります。",
+  "en": {
+    "name": "Toggle transparency on touch",
+    "category": "Toggle on touch (ON/OFF, synced for everyone)",
+    "description": "Each time the item is touched, it switches between its normal look and semi-transparent.",
+    "params": {
+      "opacity": {
+        "label": "Opacity when semi-transparent",
+        "unit": "%"
+      }
+    }
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 140,

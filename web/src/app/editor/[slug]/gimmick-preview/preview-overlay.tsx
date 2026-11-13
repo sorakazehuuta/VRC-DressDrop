@@ -1,6 +1,8 @@
 "use client";
 
+import { useMessages } from "@/i18n/client";
 import type { GimmickSelection } from "@/lib/gimmicks/schema";
+import { editorMessages } from "../messages";
 import { findSelection, num, PREVIEW_SLUGS, type PreviewState, type PrimaryAction } from "./spec";
 
 const chip = "pointer-events-auto inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm transition-colors";
@@ -23,21 +25,23 @@ export function PreviewOverlay({
   onTogglePlaying: () => void;
   onToggleDark: () => void;
 }) {
+  const m = useMessages(editorMessages).preview;
   if (selected.length === 0) return null;
 
   const approach = findSelection(selected, "glow-on-approach");
   const hints = preview.playing
     ? [
         action?.hint,
-        approach && `人が ${num(approach.params, "distance", 2)}m 以内に近づくと光ります。`,
-        selected.some((s) => !(PREVIEW_SLUGS as readonly string[]).includes(s.slug)) && "選んだギミックの一部は、プレビューに対応していません。",
+        approach && m.approach(num(approach.params, "distance", 2)),
+        selected.some((s) => !(PREVIEW_SLUGS as readonly string[]).includes(s.slug)) && m.unsupported,
       ].filter((h): h is string => Boolean(h))
-    : ["ギミックの動きを止めています。"];
+    : [m.stopped];
 
   return (
     <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-col items-start gap-1.5">
       <p className="rounded-md bg-white/85 px-2 py-1 text-[11px] leading-relaxed text-zinc-700 shadow-sm">
-        <span className="font-semibold text-brand">ギミックのプレビュー</span>（動きは目安です）
+        <span className="font-semibold text-brand">{m.title}</span>
+        {m.approximate}
         {hints.map((h) => (
           <span key={h} className="block">
             {h}
@@ -52,11 +56,11 @@ export function PreviewOverlay({
         )}
         {preview.playing && approach && (
           <button type="button" onClick={onToggleNear} aria-pressed={preview.near} className={`${chip} bg-accent text-white hover:bg-accent-dark`}>
-            {preview.near ? "人が離れる" : "人が近づく"}
+            {preview.near ? m.leave : m.approachButton}
           </button>
         )}
         <button type="button" onClick={onTogglePlaying} aria-pressed={!preview.playing} className={`${chip} bg-white/90 text-zinc-800 hover:bg-white`}>
-          {preview.playing ? "■ 動きを止める" : "▶ 動きを再生"}
+          {preview.playing ? m.stop : m.play}
         </button>
         <button
           type="button"
@@ -64,7 +68,7 @@ export function PreviewOverlay({
           aria-pressed={preview.dark}
           className={`${chip} ${preview.dark ? "bg-zinc-800 text-white hover:bg-zinc-700" : "bg-white/90 text-zinc-800 hover:bg-white"}`}
         >
-          {preview.dark ? "☀ 明るい場所で見る" : "☾ 暗い場所で見る"}
+          {preview.dark ? m.bright : m.dark}
         </button>
       </div>
     </div>

@@ -4,6 +4,27 @@
   "category": "表示の切り替え（触ると ON/OFF・全員に同期）",
   "description": "本体を触るたびに、まわりを照らすライトが点いたり消えたりします。",
   "note": "リアルタイムライトは Quest では重くなるため、1つのワールドに多く置かないでください。",
+  "en": {
+    "name": "Light ON/OFF on touch",
+    "category": "Toggle on touch (ON/OFF, synced for everyone)",
+    "description": "Each time the item is touched, a light that illuminates the surroundings turns on or off.",
+    "note": "Real-time lights are heavy on Quest, so don't place many of them in one world.",
+    "params": {
+      "color": {
+        "label": "Light color"
+      },
+      "intensity": {
+        "label": "Brightness"
+      },
+      "range": {
+        "label": "Range",
+        "unit": "m"
+      },
+      "startOn": {
+        "label": "ON from the start"
+      }
+    }
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 130,

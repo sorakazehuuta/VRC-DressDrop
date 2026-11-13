@@ -3,6 +3,17 @@
   "name": "触った人についてくる",
   "category": "小物",
   "description": "触った人の肩のあたりについてきます。もう一度触ると止まります。",
+  "en": {
+    "name": "Follows whoever touches it",
+    "category": "Props",
+    "description": "Follows near the shoulder of the person who touched it. Touch it again to stop.",
+    "params": {
+      "distance": {
+        "label": "Distance",
+        "unit": "m"
+      }
+    }
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 530,

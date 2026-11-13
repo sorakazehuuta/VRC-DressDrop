@@ -3,6 +3,25 @@
   "name": "触るたびに段階的に回転",
   "category": "動き",
   "description": "本体を触るたびに、決めた角度ずつ回ります（例: 4段階なら90°ずつ）。",
+  "en": {
+    "name": "Rotates step by step when touched",
+    "category": "Motion",
+    "description": "Rotates by a set angle each time the item is touched (for example, 90° per step with 4 steps).",
+    "params": {
+      "steps": {
+        "label": "Number of steps",
+        "unit": "steps"
+      },
+      "axis": {
+        "label": "Rotation axis",
+        "options": {
+          "0": "Horizontal (X axis)",
+          "1": "Vertical (Y axis)",
+          "2": "Front-back (Z axis)"
+        }
+      }
+    }
+  },
   "tokenCost": 2,
   "isPublic": true,
   "sortOrder": 220,

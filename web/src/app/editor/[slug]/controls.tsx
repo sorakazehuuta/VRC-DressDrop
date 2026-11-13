@@ -2,9 +2,12 @@
 
 import { useId, useRef, useState, type DragEvent } from "react";
 import { Button } from "@/components/ui";
+import { useLocale } from "@/i18n/client";
+import { pick } from "@/i18n/messages";
 import { PRINT_LIMITS, defaultPrintParams, type ColorParams, type PrintParams } from "@/lib/templates/params";
-import type { ColorSlot, PrintSlot } from "@/lib/templates/schema";
+import { slotLabel, type ColorSlot, type PrintSlot } from "@/lib/templates/schema";
 import { IMAGE_LIMITS, type LoadedImage } from "./images";
+import { editorMessages } from "./messages";
 
 type Change<T> = (update: (prev: T) => T, commit?: boolean) => void;
 
@@ -117,6 +120,9 @@ export function PrintControls({
   onCommit: () => void;
   onImage: (file: File) => Promise<void>;
 }) {
+  const locale = useLocale();
+  const m = pick(editorMessages, locale);
+  const c = m.controls;
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -129,7 +135,7 @@ export function PrintControls({
     try {
       await onImage(file);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "画像を読み込めませんでした。");
+      setError(e instanceof Error ? e.message : m.errors.imageLoad);
     } finally {
       setLoading(false);
     }
@@ -156,7 +162,7 @@ export function PrintControls({
 
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="font-semibold">{slot.label}</h2>
+      <h2 className="font-semibold">{slotLabel(slot, locale)}</h2>
 
       <div
         onDragOver={(e) => {
@@ -178,17 +184,17 @@ export function PrintControls({
           </p>
         ) : (
           <p className="text-zinc-600">
-            画像をここにドラッグ＆ドロップ
-            <span className="block text-xs">PNG（透過OK）/ JPEG・10MB・長辺{IMAGE_LIMITS.maxSide}pxまで</span>
+            {c.dropHere}
+            <span className="block text-xs">{c.formats(IMAGE_LIMITS.maxSide)}</span>
           </p>
         )}
         <div className="flex gap-2">
           <Button type="button" variant="secondary" disabled={loading} onClick={() => inputRef.current?.click()}>
-            {loading ? "読み込み中…" : image ? "画像を変更" : "画像を選ぶ"}
+            {loading ? c.loading : image ? c.change : c.choose}
           </Button>
           {image && (
             <Button type="button" variant="secondary" onClick={() => onChange((p) => ({ ...p, imageId: null }))}>
-              外す
+              {c.remove}
             </Button>
           )}
         </div>
@@ -209,11 +215,11 @@ export function PrintControls({
         )}
       </div>
 
-      {!image && <p className="text-xs text-zinc-500">画像を選ぶと、大きさ・位置・回転・色合いを調整できます。</p>}
+      {!image && <p className="text-xs text-zinc-500">{c.chooseHint}</p>}
       <fieldset disabled={!image} className="flex flex-col gap-4 disabled:opacity-40">
         <div className="flex flex-col gap-3">
-          <Slider label="横幅" value={params.scaleX} limits={PRINT_LIMITS.scale} display={PERCENT} onChange={(v) => setScale("x", v)} onCommit={onCommit} />
-          <Slider label="高さ" value={params.scaleY} limits={PRINT_LIMITS.scale} display={PERCENT} onChange={(v) => setScale("y", v)} onCommit={onCommit} />
+          <Slider label={c.width} value={params.scaleX} limits={PRINT_LIMITS.scale} display={PERCENT} onChange={(v) => setScale("x", v)} onCommit={onCommit} />
+          <Slider label={c.height} value={params.scaleY} limits={PRINT_LIMITS.scale} display={PERCENT} onChange={(v) => setScale("y", v)} onCommit={onCommit} />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -222,8 +228,8 @@ export function PrintControls({
                 onChange={(e) => onChange((p) => ({ ...p, keepAspect: e.target.checked }))}
                 className="accent-brand"
               />
-              縦横比を固定
-              <span className="text-xs text-zinc-500">（横幅と高さが一緒に変わります）</span>
+              {c.lockAspect}
+              <span className="text-xs text-zinc-500">{c.lockAspectHint}</span>
             </label>
             {Math.abs(params.scaleX - params.scaleY) > 0.0001 && (
               <button
@@ -231,23 +237,23 @@ export function PrintControls({
                 onClick={() => onChange((p) => ({ ...p, scaleY: p.scaleX }))}
                 className="cursor-pointer text-xs font-medium text-accent-dark hover:underline"
               >
-                画像の縦横比に戻す
+                {c.resetAspect}
               </button>
             )}
           </div>
         </div>
-        <Slider label="位置（左右）" value={params.offsetX} limits={PRINT_LIMITS.offset} display={PERCENT} onChange={(v) => live({ offsetX: v })} onCommit={onCommit} />
-        <Slider label="位置（上下）" value={params.offsetY} limits={PRINT_LIMITS.offset} display={PERCENT} onChange={(v) => live({ offsetY: v })} onCommit={onCommit} />
-        <Slider label="回転" value={params.rotation} limits={PRINT_LIMITS.rotation} display={DEGREE} onChange={(v) => live({ rotation: v })} onCommit={onCommit} />
-        <Slider label="明るさ" value={params.brightness} limits={PRINT_LIMITS.brightness} display={PLAIN_PERCENT} onChange={(v) => live({ brightness: v })} onCommit={onCommit} />
-        <Slider label="彩度" value={params.saturation} limits={PRINT_LIMITS.saturation} display={PLAIN_PERCENT} onChange={(v) => live({ saturation: v })} onCommit={onCommit} />
+        <Slider label={c.offsetX} value={params.offsetX} limits={PRINT_LIMITS.offset} display={PERCENT} onChange={(v) => live({ offsetX: v })} onCommit={onCommit} />
+        <Slider label={c.offsetY} value={params.offsetY} limits={PRINT_LIMITS.offset} display={PERCENT} onChange={(v) => live({ offsetY: v })} onCommit={onCommit} />
+        <Slider label={c.rotation} value={params.rotation} limits={PRINT_LIMITS.rotation} display={DEGREE} onChange={(v) => live({ rotation: v })} onCommit={onCommit} />
+        <Slider label={c.brightness} value={params.brightness} limits={PRINT_LIMITS.brightness} display={PLAIN_PERCENT} onChange={(v) => live({ brightness: v })} onCommit={onCommit} />
+        <Slider label={c.saturation} value={params.saturation} limits={PRINT_LIMITS.saturation} display={PLAIN_PERCENT} onChange={(v) => live({ saturation: v })} onCommit={onCommit} />
         <Button
           type="button"
           variant="secondary"
           className="self-start"
           onClick={() => onChange((p) => ({ ...defaultPrintParams(), imageId: p.imageId }))}
         >
-          配置と色調をリセット
+          {c.resetPrint}
         </Button>
       </fieldset>
     </section>
@@ -271,9 +277,12 @@ export function ColorControls({
   onChange: Change<ColorParams>;
   onCommit: () => void;
 }) {
+  const locale = useLocale();
+  const m = pick(editorMessages, locale);
+  const c = m.controls;
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-semibold">{slot.label}</h2>
+      <h2 className="font-semibold">{slotLabel(slot, locale)}</h2>
       {/* 選択中の枠（ring + offset で外側に 4px）が親のスクロール領域で切れないよう余白を取る */}
       <div className="grid w-fit grid-cols-8 gap-2 p-1">
         {SWATCHES.map((color) => (
@@ -281,7 +290,7 @@ export function ColorControls({
             key={color}
             type="button"
             title={color}
-            aria-label={`色 ${color}`}
+            aria-label={c.color(color)}
             onClick={() => onChange((p) => ({ ...p, color }))}
             className={`h-8 w-8 cursor-pointer rounded-full border shadow-sm ${
               params.color.toLowerCase() === color ? "ring-2 ring-brand ring-offset-2" : "border-zinc-300"
@@ -298,7 +307,7 @@ export function ColorControls({
           onBlur={onCommit}
           className="h-9 w-14 cursor-pointer rounded border border-zinc-300 bg-transparent"
         />
-        <span>その他の色</span>
+        <span>{c.otherColors}</span>
         <span className="font-mono text-zinc-500">{params.color}</span>
       </label>
     </section>
