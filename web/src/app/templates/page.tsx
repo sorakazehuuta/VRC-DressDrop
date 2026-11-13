@@ -6,7 +6,7 @@ import { TemplateList } from "./template-list";
 
 export const metadata: Metadata = { title: "テンプレート一覧 | VRPrintLab" };
 
-export default async function TemplatesPage({ searchParams }: { searchParams: Promise<{ sort?: string; q?: string }> }) {
+export default async function TemplatesPage({ searchParams }: { searchParams: Promise<{ sort?: string; q?: string; category?: string }> }) {
   const [templates, params] = await Promise.all([listTemplates(), searchParams]);
 
   return (
@@ -22,7 +22,12 @@ export default async function TemplatesPage({ searchParams }: { searchParams: Pr
           公開中のテンプレートはまだありません。
         </p>
       ) : (
-        <TemplateList templates={templates} initialSort={parseTemplateSort(params.sort)} initialQuery={typeof params.q === "string" ? params.q : ""} />
+        <TemplateList
+          templates={templates}
+          initialSort={parseTemplateSort(params.sort)}
+          initialQuery={typeof params.q === "string" ? params.q : ""}
+          initialCategory={typeof params.category === "string" ? params.category : ""}
+        />
       )}
     </main>
   );

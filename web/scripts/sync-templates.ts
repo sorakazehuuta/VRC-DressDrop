@@ -8,6 +8,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import { isMaterial, isScript, resolveTemplatePrefab, unityMaterialName } from "../src/lib/package/read-unitypackage";
+import { TEMPLATE_CATEGORIES } from "../src/lib/templates/categories";
 import type { TemplateManifest } from "../src/lib/templates/schema";
 import { readGlbJson, readTemplateFolder, sha256, templateSlugs } from "./template-bake/template-files";
 
@@ -40,6 +41,10 @@ function load(slug: string): Loaded {
     prefab = resolveTemplatePrefab(entries, manifest.files.prefab);
   } catch (e) {
     errors.push(e instanceof Error ? e.message : String(e));
+  }
+  // 一覧の絞り込みは決めたカテゴリの順に並ぶ。それ以外のカテゴリも使えるが、並びが最後になる
+  if (!(TEMPLATE_CATEGORIES as readonly string[]).includes(manifest.category)) {
+    warnings.push(`カテゴリ "${manifest.category}" は src/lib/templates/categories.ts にありません（${TEMPLATE_CATEGORIES.join("・")}）。新しいカテゴリなら、そこに足してください`);
   }
   const scripts = entries.filter(isScript);
   if (scripts.length) errors.push(`unitypackage にスクリプトが含まれています。テンプレートには入れられません（${scripts.map((s) => s.path).join(", ")}）`);
