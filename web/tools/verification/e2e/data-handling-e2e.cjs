@@ -49,7 +49,8 @@ async function filesUnder(bucket, prefix) {
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   const balance = async () => (await page.locator("header").getByText(/トークン/).first().innerText()).trim();
-  const panel = () => page.locator("div.mt-auto.rounded-lg");
+  // 見た目のクラス名ではなく目印の属性で探す（デザインを変えても壊れないように）
+  const panel = () => page.locator("[data-download-panel]");
   let accountDeleted = false;
   try {
     // ---- ログイン前の下書き: 期限切れはエディタを開くと消える ----

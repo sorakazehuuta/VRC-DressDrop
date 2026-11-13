@@ -4,11 +4,28 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
+  /* ブランドの色（ロゴに合わせた色。利用者と相談せずに変えない） */
   --color-brand: #031e42;
   --color-brand-light: #0c3366;
   --color-accent: #00a29c;
   --color-accent-dark: #00837e;
   --color-accent-soft: #e0f5f4;
+
+  /* 灰色は紺に寄せた冷たい色にそろえる（サイト全体・管理画面の zinc-* がこの色になる）。
+     100 はサムネイルを置く台の色、200 は枠線・区切り線、600 は説明文 */
+  --color-zinc-50: #f6f8fa;
+  --color-zinc-100: #eef2f5;
+  --color-zinc-200: #d6dde5;
+  --color-zinc-300: #bcc6d1;
+  --color-zinc-400: #8b97a5;
+  --color-zinc-500: #5f6c7b;
+  --color-zinc-600: #4b5a6b;
+  --color-zinc-700: #364352;
+  --color-zinc-800: #232f3d;
+  --color-zinc-900: #14202e;
+  --color-zinc-950: #0a1522;
+
+  --font-sans: var(--font-mplus), "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo, system-ui, sans-serif;
 }
 
 :root {
@@ -22,6 +39,67 @@ html {
 
 body {
   background: #ffffff;
-  color: #18181b;
-  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo, system-ui, sans-serif;
+  color: var(--color-zinc-900);
+  font-family: var(--font-sans);
+  font-feature-settings: "palt" 0;
+  line-height: 1.7;
+}
+
+/* 見出しは字間を少し詰めて、行間を本文より狭くする */
+h1,
+h2,
+h3 {
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+/* キーボードで操作したときの枠をサイト全体でそろえる */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* 印刷物の裁ち落としの目印（トンボ）。枠の四隅の外側に細い線を引く（枠から 16px はみ出す）。
+   使う場所は「印刷面」を表す枠だけ（トップのグッズの台・エディタの画像を置く欄） */
+.trim-marks {
+  --trim: var(--color-zinc-400);
+  --trim-len: 11px;
+  --trim-gap: 5px;
+  --trim-out: calc(var(--trim-len) + var(--trim-gap));
+  position: relative;
+}
+.trim-marks::before,
+.trim-marks::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  --l: linear-gradient(var(--trim), var(--trim));
+}
+/* 横の線: 上辺・下辺の高さで、左右の外側に */
+.trim-marks::before {
+  inset: 0 calc(-1 * var(--trim-out));
+  background:
+    var(--l) top left / var(--trim-len) 1px no-repeat,
+    var(--l) top right / var(--trim-len) 1px no-repeat,
+    var(--l) bottom left / var(--trim-len) 1px no-repeat,
+    var(--l) bottom right / var(--trim-len) 1px no-repeat;
+}
+/* 縦の線: 左辺・右辺の位置で、上下の外側に */
+.trim-marks::after {
+  inset: calc(-1 * var(--trim-out)) 0;
+  background:
+    var(--l) top left / 1px var(--trim-len) no-repeat,
+    var(--l) top right / 1px var(--trim-len) no-repeat,
+    var(--l) bottom left / 1px var(--trim-len) no-repeat,
+    var(--l) bottom right / 1px var(--trim-len) no-repeat;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

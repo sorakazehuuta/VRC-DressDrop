@@ -20,7 +20,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
           name="q"
           defaultValue={q}
           placeholder="メールアドレス・表示名・ユーザー ID"
-          className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm"
+          className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm"
         />
         <Button type="submit" variant="secondary">
           検索

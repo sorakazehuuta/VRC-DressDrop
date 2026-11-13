@@ -89,14 +89,14 @@ export function TemplateList({
           onChange={(e) => update({ query: e.target.value })}
           placeholder={m.searchPlaceholder}
           aria-label={m.searchLabel}
-          className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm sm:w-80"
+          className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm sm:w-80"
         />
         <label className="ml-auto flex items-center gap-2 text-sm text-zinc-600">
           {m.sortLabel}
           <select
             value={sort}
             onChange={(e) => update({ sort: e.target.value as TemplateSort })}
-            className="rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm text-zinc-900"
+            className="rounded-lg border border-zinc-300 bg-white px-2 py-2.5 text-sm text-zinc-900"
           >
             {templateSorts.map((value) => (
               <option key={value} value={value}>
@@ -111,34 +111,39 @@ export function TemplateList({
       </p>
 
       {shown.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-lg bg-zinc-100 p-6 text-center text-zinc-600">
+        <div className="flex flex-col items-center gap-3 rounded-xl bg-zinc-100 p-8 text-center text-zinc-600">
           <p>{category ? m.notFoundInCategory : m.notFound}</p>
           <button type="button" onClick={() => update({ query: "", category: "" })} className="cursor-pointer text-sm font-semibold text-zinc-900 underline">
             {m.reset}
           </button>
         </div>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <ul className="grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-3 xl:grid-cols-4">
           {shown.map((t) => (
             <li key={t.slug} data-template={t.slug}>
-              <Link
-                href={`/editor/${t.slug}`}
-                className="group flex h-full flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white transition-shadow hover:shadow-md"
-              >
-                <div className="relative flex aspect-[4/3] items-center justify-center bg-zinc-100">
+              <Link href={`/editor/${t.slug}`} className="group flex h-full flex-col gap-3">
+                <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-zinc-100">
                   {t.thumbnailUrl ? (
-                    <Image src={t.thumbnailUrl} alt="" fill sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" className="object-cover" unoptimized />
+                    <Image
+                      src={t.thumbnailUrl}
+                      alt=""
+                      fill
+                      sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, 50vw"
+                      className="object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+                      unoptimized
+                    />
                   ) : (
                     <span className="text-5xl font-bold text-zinc-300">{t.name.slice(0, 1)}</span>
                   )}
                 </div>
-                <div className="flex flex-1 flex-col gap-1 p-4">
-                  <span className="text-xs text-zinc-500">{t.categoryLabel}</span>
-                  <span className="font-semibold group-hover:underline">{t.name}</span>
-                  {t.description && <p className="text-sm text-zinc-600">{t.description}</p>}
-                  <span className="mt-auto pt-2 text-sm">
-                    <strong>{t.tokenCost}</strong> {m.tokenUnit(t.tokenCost)}
-                  </span>
+                <div className="flex flex-col gap-1 px-0.5">
+                  <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-x-3">
+                    <span className="font-bold text-zinc-900 group-hover:underline">{t.name}</span>
+                    <span className="text-sm text-accent-dark tabular-nums">
+                      <strong className="text-base">{t.tokenCost}</strong> {m.tokenUnit(t.tokenCost)}
+                    </span>
+                  </div>
+                  {t.description && <p className="line-clamp-2 text-sm leading-relaxed text-zinc-600">{t.description}</p>}
                 </div>
               </Link>
             </li>

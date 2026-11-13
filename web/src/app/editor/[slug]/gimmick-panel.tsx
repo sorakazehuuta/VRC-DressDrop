@@ -78,7 +78,7 @@ export function GimmickPanel({
 
       {open && (
         <div className="flex flex-col gap-4">
-          <p className="rounded-md bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
             {m.udonNote}
             {locale === "ja" ? "" : " "}
             {m.previewNote}
@@ -92,6 +92,7 @@ export function GimmickPanel({
                 return (
                   <div
                     key={def.slug}
+                    data-gimmick-item
                     className={`rounded-lg border p-3 ${selection ? "border-accent bg-accent-soft/40" : "border-zinc-200"} ${conflict ? "opacity-60" : ""}`}
                   >
                     <label className="flex cursor-pointer items-start gap-2">
@@ -190,7 +191,7 @@ function ParamInput({
           <select
             value={String(value)}
             onChange={(e) => onChange(e.target.value, true)}
-            className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm focus:border-accent focus:outline-none"
+            className="rounded-lg border border-zinc-300 bg-white px-2 py-1 text-sm focus:border-accent focus:outline-none"
           >
             {param.options.map((o) => (
               <option key={o.value} value={o.value}>

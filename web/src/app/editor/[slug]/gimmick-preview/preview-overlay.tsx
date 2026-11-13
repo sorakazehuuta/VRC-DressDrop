@@ -39,7 +39,7 @@ export function PreviewOverlay({
 
   return (
     <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-col items-start gap-1.5">
-      <p className="rounded-md bg-white/85 px-2 py-1 text-[11px] leading-relaxed text-zinc-700 shadow-sm">
+      <p className="rounded-lg bg-white/85 px-2 py-1 text-[11px] leading-relaxed text-zinc-700 shadow-sm">
         <span className="font-semibold text-brand">{m.title}</span>
         {m.approximate}
         {hints.map((h) => (

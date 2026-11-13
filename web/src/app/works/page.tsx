@@ -47,10 +47,10 @@ export default async function WorksPage() {
   const full = cards.length >= MAX_WORKS_PER_USER;
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-10">
+    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 pt-10 pb-16">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-brand">{m.title}</h1>
+          <h1 className="text-[1.75rem] font-extrabold text-brand">{m.title}</h1>
           <p className="text-sm text-zinc-500">
             {m.count(cards.length, MAX_WORKS_PER_USER)}
             {full && m.full}
@@ -60,21 +60,21 @@ export default async function WorksPage() {
           <Link href="/downloads" className={buttonClassName("secondary")}>
             {m.downloads}
           </Link>
-          <Link href="/templates" className="rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-dark">
+          <Link href="/templates" className={buttonClassName("accent")}>
             {m.create}
           </Link>
         </div>
       </div>
 
       {cards.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl bg-zinc-50 p-10 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-xl bg-zinc-100 p-10 text-center">
           <p className="text-zinc-600">{m.empty}</p>
           <Link href="/templates" className="font-semibold text-accent-dark underline">
             {m.emptyCta}
           </Link>
         </div>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <ul className="grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-3 xl:grid-cols-4">
           {cards.map((work) => (
             <li key={work.id}>
               <WorkCard work={work} canDuplicate={!full} />

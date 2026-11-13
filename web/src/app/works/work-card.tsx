@@ -38,8 +38,8 @@ export function WorkCard({ work, canDuplicate }: { work: WorkCardData; canDuplic
   }
 
   return (
-    <article className={`flex h-full flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white ${pending ? "opacity-60" : ""}`}>
-      <Link href={work.editUrl} className="relative block aspect-[4/3] bg-zinc-100">
+    <article className={`flex h-full flex-col gap-3 ${pending ? "opacity-60" : ""}`}>
+      <Link href={work.editUrl} className="relative block aspect-[4/3] overflow-hidden rounded-xl bg-zinc-100">
         {work.thumbnailUrl ? (
           // 署名付き URL は1時間で切れるため、最適化キャッシュを通さず直接表示する
           // eslint-disable-next-line @next/next/no-img-element
@@ -52,7 +52,7 @@ export function WorkCard({ work, canDuplicate }: { work: WorkCardData; canDuplic
         )}
       </Link>
 
-      <div className="flex flex-1 flex-col gap-2 p-4">
+      <div className="flex flex-1 flex-col gap-1.5 px-0.5">
         {editing ? (
           <form
             className="flex gap-2"
@@ -67,7 +67,7 @@ export function WorkCard({ work, canDuplicate }: { work: WorkCardData; canDuplic
               maxLength={100}
               autoFocus
               aria-label={m.name}
-              className="min-w-0 flex-1 rounded-md border border-zinc-300 px-2 py-1 text-sm focus:border-accent focus:outline-none"
+              className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-2 py-1 text-sm focus:border-accent focus:outline-none"
             />
             <button type="submit" disabled={pending} className="text-sm font-semibold text-accent-dark">
               {m.save}
@@ -84,7 +84,7 @@ export function WorkCard({ work, canDuplicate }: { work: WorkCardData; canDuplic
             </button>
           </form>
         ) : (
-          <Link href={work.editUrl} className="font-semibold text-brand hover:underline">
+          <Link href={work.editUrl} className="font-bold text-zinc-900 hover:underline">
             {work.name}
           </Link>
         )}

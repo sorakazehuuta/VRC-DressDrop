@@ -15,7 +15,8 @@ function switchLocale(locale: Locale, pathname: string) {
   window.location.assign(`${localePath(locale, path)}${window.location.search}${window.location.hash}`);
 }
 
-export function LanguageSwitcher({ variant = "list", className = "" }: { variant?: "list" | "toggle"; className?: string }) {
+// tone: dark は紺の背景（フッター）の上で使う
+export function LanguageSwitcher({ variant = "list", tone = "light", className = "" }: { variant?: "list" | "toggle"; tone?: "light" | "dark"; className?: string }) {
   const current = useLocale();
   const pathname = usePathname();
 
@@ -30,13 +31,14 @@ export function LanguageSwitcher({ variant = "list", className = "" }: { variant
         lang={other}
         onClick={() => switchTo(other)}
         aria-label={other === "en" ? "Switch to English" : "日本語に切り替える"}
-        className={`flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-1 text-xs text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 ${className}`}
+        className={`flex h-9 min-w-9 cursor-pointer items-center justify-center gap-1 rounded-lg px-1.5 text-xs text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 ${className}`}
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
           <circle cx="12" cy="12" r="9" />
           <path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z" />
         </svg>
-        {other === "en" ? "EN" : "日本語"}
+        {/* スマホ幅ではアイコンだけにして、ヘッダーが 1 行に収まるようにする */}
+        <span className="hidden sm:inline">{other === "en" ? "EN" : "日本語"}</span>
       </button>
     );
   }
@@ -45,13 +47,17 @@ export function LanguageSwitcher({ variant = "list", className = "" }: { variant
     <div role="group" aria-label="Language / 言語" className={`flex items-center gap-1 text-xs ${className}`}>
       {LOCALES.map((locale, i) => (
         <span key={locale} className="flex items-center gap-1">
-          {i > 0 && <span className="text-zinc-300">|</span>}
+          {i > 0 && <span className={tone === "dark" ? "text-white/30" : "text-zinc-300"}>|</span>}
           <button
             type="button"
             lang={locale}
             aria-pressed={locale === current}
             onClick={() => locale !== current && switchTo(locale)}
-            className={locale === current ? "font-semibold text-zinc-900" : "cursor-pointer text-zinc-500 hover:text-zinc-900 hover:underline"}
+            className={
+              tone === "dark"
+                ? locale === current ? "font-semibold text-white" : "cursor-pointer text-white/70 hover:text-white hover:underline"
+                : locale === current ? "font-semibold text-zinc-900" : "cursor-pointer text-zinc-500 hover:text-zinc-900 hover:underline"
+            }
           >
             {LABELS[locale]}
           </button>

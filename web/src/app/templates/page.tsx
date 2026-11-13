@@ -14,15 +14,15 @@ export default async function TemplatesPage({ searchParams }: { searchParams: Pr
   const [templates, params, m] = await Promise.all([listTemplates(), searchParams, getMessages(templatesMessages)]);
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-10">
+    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 pt-10 pb-16">
       <RefreshOnTabReturn />
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold">{m.heading}</h1>
+        <h1 className="text-[1.75rem] font-extrabold text-brand">{m.heading}</h1>
         <p className="text-zinc-600">{m.lead}</p>
       </div>
 
       {templates.length === 0 ? (
-        <p className="rounded-lg bg-zinc-100 p-6 text-center text-zinc-600">
+        <p className="rounded-xl bg-zinc-100 p-8 text-center text-zinc-600">
           {m.empty}
         </p>
       ) : (

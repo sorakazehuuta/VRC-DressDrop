@@ -93,7 +93,7 @@ export const tokensMessages = defineMessages({
       completed: "Your payment is complete and the tokens have been added.",
       awaiting_payment:
         "We're waiting for your convenience store payment. Tokens will be added as soon as the payment is confirmed (you can view the payment slip under \"Awaiting payment\" below).",
-      pending: "We're confirming your payment. It may take a little while to be reflected. Please reload the page after a while.",
+      pending: "We're confirming your payment. This can take a few minutes, so please reload the page in a little while.",
       blocked: "This card can't be used. Your payment has been fully refunded.",
       account_deleted: "This account has been deleted, so your payment has been fully refunded.",
       expired: "The checkout page has expired. Please try again.",
@@ -125,7 +125,7 @@ export const tokensMessages = defineMessages({
         "Tokens can only be used within VRPrintLab. They can't be exchanged for cash or transferred.",
         "As a rule, purchased tokens can't be refunded. If you couldn't download because of a problem on our side, we'll issue a refund (unused tokens only).",
         "If you're a minor, please get permission from a parent or guardian before purchasing.",
-        "Convenience store payments may take a few minutes to be reflected. The payment deadline is 3 days.",
+        "Convenience store payments can take a few minutes to show up here. The payment deadline is 3 days.",
       ],
       agree1: "By clicking \"Buy\", you agree to the ",
       terms: "Terms of Service",

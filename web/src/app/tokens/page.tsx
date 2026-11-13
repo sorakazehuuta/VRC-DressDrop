@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Card } from "@/components/ui";
 import { formatDate, formatDateTime } from "@/i18n/format";
 import Link from "@/i18n/link";
 import { getLocale, getMessages } from "@/i18n/server";
@@ -71,8 +70,8 @@ export default async function TokensPage({ searchParams }: { searchParams: Promi
   const message = result ? { kind: checkoutKinds[result], text: m.checkout[result] } : canceled ? { kind: "info" as const, text: m.checkout.canceled } : null;
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10">
-      <h1 className="text-2xl font-bold text-brand">{m.title}</h1>
+    <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 pt-10 pb-16">
+      <h1 className="text-[1.75rem] font-extrabold text-brand">{m.title}</h1>
 
       {message && (
         <p
@@ -85,11 +84,11 @@ export default async function TokensPage({ searchParams }: { searchParams: Promi
         </p>
       )}
 
-      <Card className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">{m.balance.heading}</h2>
-        <p className={`text-4xl font-bold tabular-nums ${(balance ?? 0) < 0 ? "text-red-700" : ""}`}>
+      <section className="flex flex-col gap-1 border-l-4 border-accent pl-4">
+        <h2 className="text-sm font-semibold text-zinc-600">{m.balance.heading}</h2>
+        <p className={`text-4xl font-extrabold tabular-nums ${(balance ?? 0) < 0 ? "text-red-700" : "text-brand"}`}>
           {balance ?? 0}
-          <span className="ml-1 text-base font-medium text-zinc-500">{m.balance.unit}</span>
+          <span className="ml-1.5 text-base font-semibold text-zinc-500">{m.balance.unit}</span>
         </p>
         {nextExpiry && (
           <p className="text-sm text-zinc-600">
@@ -102,11 +101,11 @@ export default async function TokensPage({ searchParams }: { searchParams: Promi
           </p>
         )}
         {suspended && <p className="text-sm text-red-700">{m.balance.suspended}</p>}
-      </Card>
+      </section>
 
-      <Card className="flex flex-col gap-4">
-        <div>
-          <h2 className="text-lg font-semibold">{m.buy.heading}</h2>
+      <section className="flex flex-col gap-4 border-t border-zinc-200 pt-6">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-xl font-bold text-brand">{m.buy.heading}</h2>
           <p className="text-sm text-zinc-600">{m.buy.methods}</p>
         </div>
         {!stripeConfigured() && <p className="text-sm text-zinc-600">{m.buy.preparing}</p>}
@@ -115,16 +114,20 @@ export default async function TokensPage({ searchParams }: { searchParams: Promi
             const perToken = pack.price_jpy / pack.tokens;
             const discount = basePrice ? Math.round((1 - perToken / basePrice) * 100) : 0;
             return (
-              <li key={pack.id} className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4">
-                <p className="text-2xl font-bold tabular-nums text-brand">
+              <li key={pack.id} data-pack={pack.tokens} className="flex flex-col gap-3 rounded-xl bg-zinc-100 p-5">
+                <p className="text-4xl font-extrabold tabular-nums text-brand">
                   {pack.tokens}
-                  <span className="ml-1 text-sm font-medium text-zinc-500">{m.buy.unit}</span>
+                  <span className="ml-1.5 text-base font-semibold text-zinc-600">{m.buy.unit}</span>
                 </p>
-                <p className="text-lg font-semibold tabular-nums">{yen(pack.price_jpy)}</p>
-                <p className="text-xs text-zinc-500">
-                  {m.buy.perToken(yen(Math.round(perToken)))}
-                  {discount > 0 && <span className="ml-1 font-semibold text-accent-dark">{m.buy.discount(discount)}</span>}
-                </p>
+                <div className="flex flex-col gap-0.5">
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="text-xl font-bold tabular-nums text-zinc-900">{yen(pack.price_jpy)}</span>
+                    {discount > 0 && (
+                      <span className="whitespace-nowrap rounded bg-accent px-1.5 py-0.5 text-xs font-bold text-white">{m.buy.discount(discount)}</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-zinc-600">{m.buy.perToken(yen(Math.round(perToken)))}</p>
+                </div>
                 <BuyButton packId={pack.id} disabled={!canBuy} />
               </li>
             );
@@ -146,11 +149,11 @@ export default async function TokensPage({ searchParams }: { searchParams: Promi
           </Link>
           {m.buy.agree2}
         </p>
-      </Card>
+      </section>
 
       {!!waiting?.length && (
-        <Card className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold">{m.waiting.heading}</h2>
+        <section className="flex flex-col gap-3 border-t border-zinc-200 pt-6">
+          <h2 className="text-xl font-bold text-brand">{m.waiting.heading}</h2>
           <ul className="divide-y divide-zinc-100 text-sm">
             {waiting.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
@@ -166,11 +169,11 @@ export default async function TokensPage({ searchParams }: { searchParams: Promi
               </li>
             ))}
           </ul>
-        </Card>
+        </section>
       )}
 
-      <Card className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">{m.history.heading}</h2>
+      <section className="flex flex-col gap-3 border-t border-zinc-200 pt-6">
+        <h2 className="text-xl font-bold text-brand">{m.history.heading}</h2>
         {!history?.length ? (
           <p className="text-sm text-zinc-600">{m.history.empty}</p>
         ) : (
@@ -199,7 +202,7 @@ export default async function TokensPage({ searchParams }: { searchParams: Promi
         <Link href="/downloads" className="self-start text-sm font-semibold text-accent-dark underline">
           {m.history.downloads}
         </Link>
-      </Card>
+      </section>
     </main>
   );
 }

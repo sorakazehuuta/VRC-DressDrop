@@ -60,7 +60,7 @@ export function SignupForm({ next }: { next: string }) {
       <Field label={m.fields.passwordConfirm} name="passwordConfirm" type="password" autoComplete="new-password" minLength={8} required />
       {captcha.field}
       <FormMessage state={state} />
-      <Button type="submit" disabled={pending || !captcha.ready}>
+      <Button type="submit" variant="accent" disabled={pending || !captcha.ready}>
         {pending ? m.buttons.signingUp : m.buttons.signup}
       </Button>
     </form>

@@ -96,14 +96,14 @@ export function DownloadPanel({
   }
 
   return (
-    <div className="mt-auto flex flex-col gap-3 rounded-lg bg-zinc-100 p-4 text-sm">
+    <div data-download-panel className="mt-auto flex flex-col gap-3 rounded-xl border border-accent/30 bg-accent-soft/50 p-4 text-sm">
       {purchased ? (
         <p className="font-medium text-accent-dark">{m.purchased}</p>
       ) : (
         <div className="flex flex-col gap-1">
           <p>
             {m.needed}
-            <strong className="text-base">{!dirty && quote?.ok && !quote.purchased ? quote.cost : tokenCost}</strong>
+            <strong className="ml-1 text-2xl font-extrabold text-brand tabular-nums">{!dirty && quote?.ok && !quote.purchased ? quote.cost : tokenCost}</strong>
             {!dirty && quote?.ok && !quote.purchased && quote.cost < tokenCost && (
               <span className="ml-1 text-xs text-accent-dark">{m.excludingOwned}</span>
             )}
@@ -115,7 +115,7 @@ export function DownloadPanel({
           {dirty && workId && <p className="text-xs text-zinc-500">{m.checkAfterSave}</p>}
         </div>
       )}
-      <Button type="button" onClick={() => void onClick()} disabled={disabled || busy}>
+      <Button type="button" variant="accent" className="py-3 text-base" onClick={() => void onClick()} disabled={disabled || busy}>
         {busy ? m.preparing : loggedIn ? (dirty || !workId ? m.saveAndDownload : m.download) : m.loginToDownload}
       </Button>
       <p className="text-xs text-zinc-500">
@@ -138,12 +138,12 @@ export function DownloadPanel({
 
       {confirm && (
         <div role="dialog" aria-modal="true" aria-labelledby="download-confirm-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="flex w-full max-w-sm flex-col gap-4 rounded-xl bg-white p-6 shadow-xl">
+          <div className="flex w-full max-w-sm flex-col gap-4 rounded-2xl bg-white p-6 shadow-2xl shadow-brand/25">
             <h2 id="download-confirm-title" className="text-lg font-bold text-brand">
               {m.confirmTitle}
             </h2>
-            <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">{m.versions[confirm.versionKind]}</p>
-            <ul className="flex flex-col gap-1 rounded-md bg-zinc-50 p-3 text-sm">
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{m.versions[confirm.versionKind]}</p>
+            <ul className="flex flex-col gap-1 rounded-lg bg-zinc-50 p-3 text-sm">
               {confirm.breakdown.map((line) => (
                 <li key={line.label} className="flex justify-between gap-3">
                   <span>{line.label}</span>
@@ -172,7 +172,7 @@ export function DownloadPanel({
               <Button type="button" variant="secondary" onClick={() => setConfirm(null)}>
                 {m.cancel}
               </Button>
-              <Button type="button" onClick={() => void onConfirm()} disabled={confirm.balance < confirm.cost} autoFocus>
+              <Button type="button" variant="accent" onClick={() => void onConfirm()} disabled={confirm.balance < confirm.cost} autoFocus>
                 {m.confirm}
               </Button>
             </div>

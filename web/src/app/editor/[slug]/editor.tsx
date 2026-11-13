@@ -336,7 +336,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
             maxLength={100}
             aria-label={m.workName}
             disabled={readOnly}
-            className="min-w-0 rounded-md border border-transparent px-2 py-0.5 text-xl font-bold text-brand hover:border-zinc-300 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+            className="min-w-0 rounded-lg border border-transparent px-2 py-0.5 text-xl font-bold text-brand hover:border-zinc-300 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
           />
           <span className="px-2 text-xs text-zinc-500">{m.templateLabel(template.name)}</span>
         </div>
@@ -351,7 +351,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
       {keepPreviousDialog}
 
       {readOnly && (
-        <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
           {m.suspended}
         </p>
       )}
@@ -434,7 +434,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
           )}
 
           {status.kind === "error" && (
-            <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
               {status.message}
               {status.limit && (
                 <Link href="/works" className="ml-1 font-semibold underline">

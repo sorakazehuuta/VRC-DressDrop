@@ -18,11 +18,11 @@ export async function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-4">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-2 px-4">
         <Link href="/" className="shrink-0">
-          <Image src={logo} alt="VRPrintLab" priority className="h-9 w-auto sm:h-14" sizes="(min-width: 640px) 168px, 108px" />
+          <Image src={logo} alt="VRPrintLab" priority className="h-7 w-auto sm:h-14" sizes="(min-width: 640px) 168px, 84px" />
         </Link>
-        <div className="flex items-center gap-1.5 sm:gap-4">
+        <div className="flex min-w-0 items-center gap-1 sm:gap-4">
           <HeaderNav
             loggedIn={loggedIn}
             balance={balance ?? 0}

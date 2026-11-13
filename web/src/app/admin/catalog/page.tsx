@@ -1,4 +1,4 @@
-import { Card } from "@/components/ui";
+import { Section } from "@/components/ui";
 import { TEMPLATE_CATEGORIES } from "@/lib/templates/categories";
 import { createAdminClient } from "@/lib/supabase/server";
 import { updateGimmicks, updateTemplates } from "../actions";
@@ -17,14 +17,14 @@ export default async function AdminCatalogPage() {
         トークン数・公開状態・並び順（テンプレートは名前の読みとカテゴリも）はここで変えます。同期コマンド（templates:sync / gimmicks:sync）は、登録済みのものの値を上書きしません（ファイルの値は初回の登録だけに使い、新しく登録したものは最後に並びます）。読みはテンプレート一覧の「名前順」に、カテゴリは一覧の絞り込みに使います。
         モデル・スロット・ギミックの中身の登録と更新は、これまでどおりファイルと同期コマンドで行います。非公開のテンプレートは、管理者だけがエディタで確認できます。
       </p>
-      <Card className="flex flex-col">
-        <h1 className="mb-2 text-lg font-semibold">テンプレート</h1>
+      <Section className="flex flex-col">
+        <h1 className="mb-2 text-xl font-bold text-brand">テンプレート</h1>
         <CatalogForm rows={templates ?? []} action={updateTemplates} previewBase="/editor" saveLabel="テンプレートを保存" categories={TEMPLATE_CATEGORIES} orderNote="この順番がテンプレート一覧の「おすすめ順」（最初に表示される順）になります。" />
-      </Card>
-      <Card className="flex flex-col">
-        <h2 className="mb-2 text-lg font-semibold">ギミック</h2>
+      </Section>
+      <Section className="flex flex-col">
+        <h2 className="mb-2 text-lg font-bold text-brand">ギミック</h2>
         <CatalogForm rows={gimmicks ?? []} action={updateGimmicks} saveLabel="ギミックを保存" orderNote="この順番がエディタでの並び順になります（分類の見出しは、その分類で一番上のものの位置に出ます）。" />
-      </Card>
+      </Section>
     </main>
   );
 }

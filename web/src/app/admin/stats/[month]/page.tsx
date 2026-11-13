@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Card } from "@/components/ui";
+import { Section } from "@/components/ui";
 import { monthRange, monthsAgo } from "@/lib/admin-month";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -84,7 +84,7 @@ export default async function AdminMonthPage({ params, searchParams }: PageProps
         ))}
       </dl>
 
-      <Card className="flex flex-col gap-4">
+      <Section className="flex flex-col gap-4">
         <div role="tablist" className="flex flex-wrap gap-2">
           {(Object.keys(TABS) as Tab[]).map((t) => (
             <Link
@@ -100,7 +100,7 @@ export default async function AdminMonthPage({ params, searchParams }: PageProps
         </div>
 
         {emailError && (
-          <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             メールアドレスを読めなかったため、ユーザー ID で表示しています（{emailError.message}）。マイグレーション 20261112000000_admin_month_detail.sql を実行したか確認してください。
           </p>
         )}
@@ -110,7 +110,7 @@ export default async function AdminMonthPage({ params, searchParams }: PageProps
           <p className="text-sm text-zinc-500">この月の{TABS[tab]}はありません。</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full whitespace-nowrap text-left text-sm">
               <thead className="text-xs text-zinc-500">
                 <tr>
                   {list.columns.map((c) => (
@@ -154,7 +154,7 @@ export default async function AdminMonthPage({ params, searchParams }: PageProps
             </span>
           </div>
         )}
-      </Card>
+      </Section>
     </main>
   );
 }
@@ -308,7 +308,7 @@ function Breakdown({ title, items }: { title: string; items: { label: string; va
       <h2 className="text-xs text-zinc-500">{title}</h2>
       <ul className="flex flex-wrap gap-2 text-sm">
         {items.map((i) => (
-          <li key={i.label} className="rounded-md bg-zinc-50 px-2 py-1">
+          <li key={i.label} className="rounded-lg bg-zinc-50 px-2 py-1">
             <span className="font-medium">{i.label}</span> <span className="text-zinc-600 tabular-nums">{i.value}</span>
           </li>
         ))}

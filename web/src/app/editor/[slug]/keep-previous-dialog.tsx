@@ -57,7 +57,7 @@ export function useKeepPreviousDialog() {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onKeyDown={(e) => e.key === "Escape" && choose("cancel")}
     >
-      <div className="flex w-full max-w-md flex-col gap-4 rounded-xl bg-white p-6 shadow-xl">
+      <div className="flex w-full max-w-md flex-col gap-4 rounded-2xl bg-white p-6 shadow-2xl shadow-brand/25">
         <h2 id="keep-previous-title" className="text-lg font-bold text-brand">
           {m.title}
         </h2>

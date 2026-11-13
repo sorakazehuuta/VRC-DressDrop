@@ -87,12 +87,12 @@ function parse(source: string): Block[] {
 export async function Markdown({ source }: { source: string }) {
   const m = pick(commonMessages, await getLocale());
   return (
-    <div className="flex flex-col gap-3 text-sm leading-relaxed text-zinc-800">
+    <div className="flex flex-col gap-3.5 text-[0.9375rem] leading-[1.85] text-zinc-800">
       {parse(source).map((b, i) => {
         if (b.kind === "heading") {
-          if (b.level === 1) return <h1 key={i} className="text-2xl font-bold text-brand">{inline(b.text)}</h1>;
-          if (b.level === 2) return <h2 key={i} className="mt-6 border-b border-zinc-200 pb-1 text-lg font-semibold text-brand">{inline(b.text)}</h2>;
-          return <h3 key={i} className="mt-3 font-semibold">{inline(b.text)}</h3>;
+          if (b.level === 1) return <h1 key={i} className="text-[1.75rem] font-extrabold text-brand">{inline(b.text)}</h1>;
+          if (b.level === 2) return <h2 key={i} className="mt-8 border-b border-zinc-200 pb-2 text-xl font-bold text-brand">{inline(b.text)}</h2>;
+          return <h3 key={i} className="mt-4 text-base font-bold text-zinc-900">{inline(b.text)}</h3>;
         }
         if (b.kind === "image") {
           return (
@@ -103,7 +103,7 @@ export async function Markdown({ source }: { source: string }) {
                 </div>
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={b.src} alt={b.alt} className="max-w-full self-start rounded-lg border border-zinc-200" />
+                <img src={b.src} alt={b.alt} className="max-w-full self-start rounded-xl border border-zinc-200" />
               )}
               {b.src !== "placeholder" && <figcaption className="text-xs text-zinc-500">{b.alt}</figcaption>}
             </figure>
@@ -112,7 +112,7 @@ export async function Markdown({ source }: { source: string }) {
         if (b.kind === "list") {
           const List = b.ordered ? "ol" : "ul";
           return (
-            <List key={i} className={`flex flex-col gap-1 pl-6 ${b.ordered ? "list-decimal" : "list-disc"}`}>
+            <List key={i} className={`flex flex-col gap-1.5 pl-6 marker:text-zinc-400 ${b.ordered ? "list-decimal" : "list-disc"}`}>
               {b.items.map((item, j) => <li key={j}>{inline(item)}</li>)}
             </List>
           );

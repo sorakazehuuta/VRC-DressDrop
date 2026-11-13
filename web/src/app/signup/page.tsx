@@ -29,9 +29,9 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
         </>
       }
     >
-      <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+      <p className="rounded-lg bg-accent-soft px-3 py-2.5 text-sm text-brand">
         {m.signup.bonus1}
-        <strong>{m.signup.bonusTokens}</strong>
+        <strong className="text-accent-dark">{m.signup.bonusTokens}</strong>
         {m.signup.bonus2}
       </p>
       <OAuthButtons next={next} />

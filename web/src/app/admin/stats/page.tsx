@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Card } from "@/components/ui";
+import { Section } from "@/components/ui";
 import { createAdminClient } from "@/lib/supabase/server";
 
 type MonthRow = {
@@ -36,10 +36,10 @@ export default async function AdminStatsPage() {
 
   return (
     <main className="flex flex-col gap-6">
-      <Card className="flex flex-col gap-2">
-        <h1 className="text-lg font-semibold">月ごとの集計（直近12か月）</h1>
+      <Section className="flex flex-col gap-2">
+        <h1 className="text-xl font-bold text-brand">月ごとの集計（直近12か月）</h1>
         <div className="overflow-x-auto">
-          <table className="w-full text-right text-sm tabular-nums">
+          <table className="w-full whitespace-nowrap text-right text-sm tabular-nums">
             <thead className="text-xs text-zinc-500">
               <tr>
                 <th className="py-1 text-left">月</th>
@@ -85,10 +85,10 @@ export default async function AdminStatsPage() {
         <p className="text-xs text-zinc-500">
           月を押すと、その月の新規登録・退会・支払い・ダウンロードの一覧を見られます。新規登録は今も登録中の人数で、あとで退会した人は含みません。売上は入金済みの支払い（日本時間の入金月）。返金・取り消しは、その後に返金・チャージバックになった支払いの金額。ダウンロードは、トークンを使ったダウンロード内容の数（同じ内容の再ダウンロードは含まない）。
         </p>
-      </Card>
+      </Section>
 
-      <Card className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">同じカードを使っている複数のアカウント</h2>
+      <Section className="flex flex-col gap-2">
+        <h2 className="text-lg font-bold text-brand">同じカードを使っている複数のアカウント</h2>
         {shared.length === 0 ? (
           <p className="text-sm text-zinc-600">ありません。</p>
         ) : (
@@ -111,7 +111,7 @@ export default async function AdminStatsPage() {
           </ul>
         )}
         <p className="text-xs text-zinc-500">電話番号での確認は、SMS での確認を導入してから追加します。</p>
-      </Card>
+      </Section>
     </main>
   );
 }

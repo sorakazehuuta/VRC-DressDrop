@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LogoutButton } from "@/components/logout-button";
-import { Card, buttonClassName } from "@/components/ui";
+import { buttonClassName } from "@/components/ui";
 import Link from "@/i18n/link";
 import { formatDate } from "@/i18n/format";
 import { getLocale, getMessages } from "@/i18n/server";
@@ -37,54 +37,54 @@ export default async function AccountPage() {
   const hasPassword = user.identities?.some((i) => i.provider === "email") ?? false;
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10">
+    <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 pt-10 pb-16">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-brand">{m.title}</h1>
-        <LogoutButton className={buttonClassName("secondary")} />
+        <h1 className="text-[1.75rem] font-extrabold text-brand">{m.title}</h1>
+        <LogoutButton className={buttonClassName("secondary", "shrink-0 whitespace-nowrap")} />
       </div>
 
-      <Card className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">{m.tokens.heading}</h2>
-        <p className="text-4xl font-bold tabular-nums">
+      <section className="flex flex-col gap-2 border-l-4 border-accent pl-4">
+        <h2 className="text-sm font-semibold text-zinc-600">{m.tokens.heading}</h2>
+        <p className="text-4xl font-extrabold tabular-nums text-brand">
           {balance ?? 0}
-          <span className="ml-1 text-base font-medium text-zinc-500">{m.tokens.unit}</span>
+          <span className="ml-1.5 text-base font-semibold text-zinc-500">{m.tokens.unit}</span>
         </p>
         {nextExpiry && (
           <p className="text-sm text-zinc-600">
             {m.tokens.nextExpiry(nextExpiry.remaining, formatDate(locale, nextExpiry.expires_at))}
           </p>
         )}
-        <div className="flex flex-wrap gap-x-5 gap-y-2">
-          <Link href="/tokens" className="text-sm font-semibold text-accent-dark underline">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-1">
+          <Link href="/tokens" className={buttonClassName("accent")}>
             {m.tokens.buy}
           </Link>
           <Link href="/downloads" className="text-sm font-semibold text-accent-dark underline">
             {m.tokens.downloads}
           </Link>
         </div>
-      </Card>
+      </section>
 
-      <Card className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold">{m.profile.heading}</h2>
+      <section className="flex flex-col gap-4 border-t border-zinc-200 pt-6">
+        <h2 className="text-xl font-bold text-brand">{m.profile.heading}</h2>
         <p className="text-sm">
           <span className="text-zinc-500">{m.profile.email}</span>
           {user.email}
         </p>
         <DisplayNameForm defaultValue={profile?.display_name ?? ""} />
-      </Card>
+      </section>
 
-      <Card className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">{m.password.heading}</h2>
+      <section className="flex flex-col gap-3 border-t border-zinc-200 pt-6">
+        <h2 className="text-xl font-bold text-brand">{m.password.heading}</h2>
         <p className="text-sm text-zinc-600">
           {hasPassword ? m.password.hasPassword : m.password.noPassword}
         </p>
         <Link href="/account/password" className="self-start text-sm font-semibold underline">
           {hasPassword ? m.password.change : m.password.set}
         </Link>
-      </Card>
+      </section>
 
-      <Card className="flex flex-col gap-3 border-red-200">
-        <h2 className="text-lg font-semibold text-red-700">{m.delete.heading}</h2>
+      <section className="flex flex-col gap-3 border-t border-red-200 pt-6">
+        <h2 className="text-xl font-bold text-red-700">{m.delete.heading}</h2>
         <div className="flex flex-col gap-2 text-sm leading-relaxed text-zinc-600">
           <p>{m.delete.warning}</p>
           <div>
@@ -112,7 +112,7 @@ export default async function AccountPage() {
           </p>
         </div>
         <DeleteAccountForm />
-      </Card>
+      </section>
     </main>
   );
 }

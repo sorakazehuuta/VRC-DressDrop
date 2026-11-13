@@ -36,7 +36,7 @@ export default async function DownloadsPage() {
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-brand">{m.title}</h1>
+          <h1 className="text-[1.75rem] font-extrabold text-brand">{m.title}</h1>
           <p className="text-sm text-zinc-500">{m.lead}</p>
         </div>
         <Link href="/works" className={buttonClassName("secondary")}>
@@ -45,19 +45,19 @@ export default async function DownloadsPage() {
       </div>
 
       {!purchases?.length ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl bg-zinc-50 p-10 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-xl bg-zinc-100 p-10 text-center">
           <p className="text-zinc-600">{m.empty}</p>
           <Link href="/works" className="font-semibold text-accent-dark underline">
             {m.openWorks}
           </Link>
         </div>
       ) : (
-        <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white">
+        <ul className="divide-y divide-zinc-200 border-y border-zinc-200">
           {purchases.map((p) => {
             const thumb = p.thumbnail_path ? thumbByPath.get(p.thumbnail_path) : undefined;
             return (
-              <li key={p.id} className="flex items-center gap-4 p-4">
-                <Link href={`/downloads/${p.id}`} className="block h-18 w-24 shrink-0 overflow-hidden rounded-md bg-zinc-100">
+              <li key={p.id} className="flex items-center gap-4 py-4">
+                <Link href={`/downloads/${p.id}`} className="block h-18 w-24 shrink-0 overflow-hidden rounded-lg bg-zinc-100">
                   {thumb ? (
                     // 署名付き URL は1時間で切れるため、最適化キャッシュを通さず直接表示する
                     // eslint-disable-next-line @next/next/no-img-element

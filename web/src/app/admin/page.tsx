@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Card } from "@/components/ui";
+import { Section } from "@/components/ui";
 import { createAdminClient } from "@/lib/supabase/server";
 import { RetryDeletionsForm } from "./forms";
 
@@ -16,22 +16,22 @@ export default async function AdminPage() {
 
   return (
     <main className="flex flex-col gap-6">
-      <Card className="flex flex-col gap-2">
-        <h1 className="text-lg font-semibold">ユーザーとトークン</h1>
+      <Section className="flex flex-col gap-2">
+        <h1 className="text-xl font-bold text-brand">ユーザーとトークン</h1>
         <p className="text-sm text-zinc-600">トークンの手動調整（二重消費・不具合の補填など）は、ユーザーの詳細画面から行います。</p>
         <Link href="/admin/users" className="self-start text-sm font-semibold underline">
           ユーザーを検索する
         </Link>
-      </Card>
+      </Section>
 
-      <Card className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">未完了のファイル削除（{count ?? 0} 件）</h2>
+      <Section className="flex flex-col gap-3">
+        <h2 className="text-lg font-bold text-brand">未完了のファイル削除（{count ?? 0} 件）</h2>
         <p className="text-sm text-zinc-600">
           削除に失敗した Storage のファイルです。本番では1日1回自動で再試行します（10回失敗したものは自動では再試行しません）。
         </p>
         {pending && pending.length > 0 && (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full whitespace-nowrap text-left text-xs">
               <thead className="text-zinc-500">
                 <tr>
                   <th className="py-1 pr-3">記録日時</th>
@@ -59,7 +59,7 @@ export default async function AdminPage() {
           </div>
         )}
         <RetryDeletionsForm />
-      </Card>
+      </Section>
     </main>
   );
 }

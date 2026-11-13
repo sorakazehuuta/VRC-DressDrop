@@ -90,7 +90,7 @@ export const worksMessages = defineMessages({
       name: "Work name",
       save: "Save",
       cancelRename: "Cancel",
-      updated: (template: string, date: string) => `${template} · Updated ${date}`,
+      updated: (template: string, date: string) => `${template}, updated ${date}`,
       edit: "Edit",
       rename: "Rename",
       limitReached: "You've reached the maximum number of works you can save",

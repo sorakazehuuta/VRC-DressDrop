@@ -20,7 +20,7 @@ export function ConfirmDialog({ title, children, onClose }: { title: string; chi
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-xl bg-white p-6 shadow-xl"
+        className="flex w-full max-w-sm flex-col gap-4 rounded-2xl bg-white p-6 shadow-2xl shadow-brand/25"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id={titleId} className="text-lg font-bold text-brand">

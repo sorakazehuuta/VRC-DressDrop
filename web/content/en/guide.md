@@ -23,12 +23,12 @@ When the import finishes, the finished Prefab (blue cube icon) is created automa
 
 ## 3. Place it in your scene or avatar
 
-Drag and drop the Prefab into your scene (Hierarchy) or avatar, then adjust its position, rotation, and scale. That's it!
+Drag and drop the Prefab into your scene (Hierarchy) or avatar, then adjust its position, rotation, and scale. You're done.
 
 ![The Prefab placed in the scene. It also appears in the Hierarchy with the same name](/guide/placed.webp)
 
 ## Troubleshooting
 
-- **The Prefab isn't created:** Run **Tools > VRPrintLab > Prefab をすべて作り直す** (Rebuild all Prefabs) from the menu.
-- **Gimmicks don't work:** Gimmicks only work in worlds (they use UdonSharp). Add UdonSharp with VCC or ALCOM, then run the rebuild command above.
-- **You want to download again:** You can download again from your [download history](/downloads).
+- If the Prefab isn't created, run **Tools > VRPrintLab > Prefab をすべて作り直す** (Rebuild all Prefabs) from the menu.
+- Gimmicks only work in worlds, because they use UdonSharp. If they don't work, add UdonSharp with VCC or ALCOM, then run the rebuild command above.
+- To download a package again, open your [download history](/downloads).

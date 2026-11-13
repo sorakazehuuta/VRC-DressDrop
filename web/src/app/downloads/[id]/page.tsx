@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Card } from "@/components/ui";
 import { formatDateTime } from "@/i18n/format";
 import Link from "@/i18n/link";
 import { getLocale, getMessages } from "@/i18n/server";
@@ -85,7 +84,7 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-brand">{purchase.work_name || all.noName}</h1>
+          <h1 className="text-[1.75rem] font-extrabold text-brand">{purchase.work_name || all.noName}</h1>
           <p className="text-sm text-zinc-500">
             {m.purchased(templateName(purchase.template_name), formatDateTime(locale, purchase.created_at), purchase.token_spent)}
           </p>
@@ -113,7 +112,7 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
         </p>
       ) : (
         purchase.snapshot_deleted_at && (
-          <p className="rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-600">
+          <p className="rounded-lg bg-zinc-100 px-3 py-2 text-sm text-zinc-600">
             {m.deleted1(formatDateTime(locale, purchase.snapshot_deleted_at))}
             {m.deleted2}
           </p>
@@ -131,29 +130,29 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
         </div>
 
         {snapshot ? (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col divide-y divide-zinc-200 border-y border-zinc-200">
             {snapshot.slots.map((slot) => {
               const p = snapshot.params.slots[slot.key];
               if (slot.type === "color" && p?.kind === "color") {
                 return (
-                  <Card key={slot.key} className="flex items-center gap-3 !p-4">
+                  <section key={slot.key} className="flex items-center gap-3 py-4">
                     <span className="h-8 w-8 shrink-0 rounded-full border border-zinc-300" style={{ backgroundColor: p.color }} />
                     <div>
-                      <p className="text-sm font-semibold">{slotLabel(slot, locale)}</p>
+                      <h2 className="text-sm font-bold text-brand">{slotLabel(slot, locale)}</h2>
                       <p className="font-mono text-xs text-zinc-500">{p.color}</p>
                     </div>
-                  </Card>
+                  </section>
                 );
               }
               if (slot.type === "print" && p?.kind === "print") {
                 const imagePath = p.imageId ? snapshot.images[p.imageId] : undefined;
                 const imageUrl = imagePath ? urlByPath.get(imagePath) : undefined;
                 return (
-                  <Card key={slot.key} className="flex flex-col gap-3 !p-4">
-                    <p className="text-sm font-semibold">{slotLabel(slot, locale)}</p>
+                  <section key={slot.key} className="flex flex-col gap-3 py-4">
+                    <h2 className="text-sm font-bold text-brand">{slotLabel(slot, locale)}</h2>
                     {p.imageId ? (
                       <div className="flex gap-4">
-                        <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-[repeating-conic-gradient(#e4e4e7_0%_25%,#fff_0%_50%)] bg-[length:16px_16px]">
+                        <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-[repeating-conic-gradient(var(--color-zinc-200)_0%_25%,#fff_0%_50%)] bg-[length:16px_16px]">
                           {imageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={imageUrl} alt={m.imageAlt} className="max-h-full max-w-full object-contain" />
@@ -173,13 +172,13 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
                     ) : (
                       <p className="text-xs text-zinc-500">{m.noImage}</p>
                     )}
-                  </Card>
+                  </section>
                 );
               }
               return null;
             })}
-            <Card className="flex flex-col gap-2 !p-4">
-              <p className="text-sm font-semibold">{m.gimmicks}</p>
+            <section className="flex flex-col gap-2 py-4">
+              <h2 className="text-sm font-bold text-brand">{m.gimmicks}</h2>
               {snapshot.gimmicks.length === 0 ? (
                 <p className="text-xs text-zinc-500">{m.none}</p>
               ) : (
@@ -205,7 +204,7 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
                   })}
                 </ul>
               )}
-            </Card>
+            </section>
           </div>
         ) : (
           <p className="rounded-lg bg-zinc-50 p-4 text-sm text-zinc-600">

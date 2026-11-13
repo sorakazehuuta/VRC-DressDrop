@@ -12,7 +12,7 @@ export function BuyButton({ packId, disabled }: { packId: string; disabled: bool
   return (
     <form action={action} className="mt-auto flex flex-col gap-1">
       <input type="hidden" name="packId" value={packId} />
-      <Button type="submit" disabled={disabled || pending}>
+      <Button type="submit" variant="accent" className="py-3 text-base" disabled={disabled || pending}>
         {pending ? m.redirecting : m.button}
       </Button>
       {state?.error && (

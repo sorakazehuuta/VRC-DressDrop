@@ -65,7 +65,7 @@ function Nav({ loggedIn, balance, adminTab, adminMenuItem, editingWork }: Header
         <Link href="/login" aria-current={pathname === "/login" ? "page" : undefined} className={pathname === "/login" ? "font-medium text-accent-dark" : "hover:text-accent-dark"}>
           {m.login}
         </Link>
-        <Link href="/signup" className="rounded-md bg-brand px-2.5 py-1.5 font-semibold text-white hover:bg-brand-light sm:px-3">
+        <Link href="/signup" className="rounded-lg bg-brand px-2 py-1.5 font-semibold text-white hover:bg-brand-light sm:px-3.5 sm:py-2">
           {m.signup}
         </Link>
       </nav>
@@ -138,14 +138,14 @@ function MobileMenu({ pathname, adminMenuItem, m }: { pathname: string; adminMen
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={m.menu}
-        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-md hover:bg-zinc-100"
+        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg hover:bg-zinc-100"
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
           {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
         </svg>
       </button>
       {open && (
-        <nav className="absolute inset-x-0 top-full border-b border-zinc-200 bg-white shadow-md">
+        <nav className="absolute inset-x-0 top-full border-b border-zinc-200 bg-white shadow-lg shadow-brand/10">
           <ul className="flex flex-col py-2 text-sm">
             {items.map((item) => {
               const active = isActive(pathname, item);

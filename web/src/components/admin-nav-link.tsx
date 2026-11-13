@@ -11,7 +11,7 @@ export async function AdminNavLink({ variant }: { variant: "tab" | "menu" }) {
       href="/admin"
       className={
         variant === "tab"
-          ? "rounded-md border border-zinc-300 px-2.5 py-1 font-medium text-zinc-700 hover:bg-zinc-50"
+          ? "rounded-lg border border-zinc-300 px-2.5 py-1 font-medium text-zinc-700 hover:bg-zinc-50"
           : "block border-l-4 border-transparent px-4 py-3 text-zinc-700 hover:bg-zinc-50"
       }
     >

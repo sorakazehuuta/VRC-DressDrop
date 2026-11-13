@@ -40,7 +40,7 @@ const cleanup = (uid) => cleanupUser(admin, uid);
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   page.on("dialog", (d) => d.accept());
   const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const item = (name) => page.locator("aside div.rounded-lg").filter({ has: page.locator("span.text-sm.font-medium", { hasText: new RegExp("^" + esc(name) + "$") }) }).first();
+  const item = (name) => page.locator("aside [data-gimmick-item]").filter({ has: page.locator("span.text-sm.font-medium", { hasText: new RegExp("^" + esc(name) + "$") }) }).first();
   const check = (name) => item(name).getByRole("checkbox").first();
   try {
     await page.goto(`${BASE}/login?next=/editor/${TEMPLATE.slug}`, { waitUntil: "networkidle" });

@@ -162,7 +162,7 @@ export function PrintControls({
 
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="font-semibold">{slotLabel(slot, locale)}</h2>
+      <h2 className="font-bold text-brand">{slotLabel(slot, locale)}</h2>
 
       <div
         onDragOver={(e) => {
@@ -171,8 +171,9 @@ export function PrintControls({
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
-        className={`flex flex-col items-center gap-2 rounded-lg border-2 border-dashed p-4 text-center text-sm transition-colors ${
-          dragging ? "border-brand bg-zinc-100" : "border-zinc-300"
+        // 印刷面を表す欄なので、四隅にトンボを付ける（トンボが操作欄からはみ出さないよう左右と上下に余白を取る）
+        className={`trim-marks mx-4 my-3 flex flex-col items-center gap-2 p-5 text-center text-sm transition-colors ${
+          dragging ? "bg-accent-soft ring-2 ring-accent" : "bg-zinc-100"
         }`}
       >
         {image ? (
@@ -282,7 +283,7 @@ export function ColorControls({
   const c = m.controls;
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-semibold">{slotLabel(slot, locale)}</h2>
+      <h2 className="font-bold text-brand">{slotLabel(slot, locale)}</h2>
       {/* 選択中の枠（ring + offset で外側に 4px）が親のスクロール領域で切れないよう余白を取る */}
       <div className="grid w-fit grid-cols-8 gap-2 p-1">
         {SWATCHES.map((color) => (
