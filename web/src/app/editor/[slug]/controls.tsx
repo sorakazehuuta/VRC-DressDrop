@@ -4,10 +4,11 @@ import { useId, useRef, useState, type DragEvent } from "react";
 import { Button } from "@/components/ui";
 import { useLocale } from "@/i18n/client";
 import { pick } from "@/i18n/messages";
-import { PRINT_LIMITS, defaultPrintParams, type ColorParams, type PrintParams } from "@/lib/templates/params";
+import { PRINT_LIMITS, defaultPrintParams, textureDimensions, type ColorParams, type PrintParams } from "@/lib/templates/params";
 import { slotLabel, type ColorSlot, type PrintSlot } from "@/lib/templates/schema";
 import { IMAGE_LIMITS, type LoadedImage } from "./images";
 import { editorMessages } from "./messages";
+import { createPrintGuide, downloadBlob } from "./print-guide";
 
 type Change<T> = (update: (prev: T) => T, commit?: boolean) => void;
 
@@ -112,6 +113,8 @@ export function PrintControls({
   onChange,
   onCommit,
   onImage,
+  modelUrl,
+  fileBase,
 }: {
   slot: PrintSlot;
   params: PrintParams;
@@ -119,6 +122,9 @@ export function PrintControls({
   onChange: Change<PrintParams>;
   onCommit: () => void;
   onImage: (file: File) => Promise<void>;
+  // 下絵を作るためのプレビュー用モデルと、下絵のファイル名の先頭（テンプレートの slug）
+  modelUrl: string;
+  fileBase: string;
 }) {
   const locale = useLocale();
   const m = pick(editorMessages, locale);
@@ -127,6 +133,19 @@ export function PrintControls({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [guideState, setGuideState] = useState<"idle" | "making" | "error">("idle");
+  const size = textureDimensions(slot);
+
+  async function downloadGuide() {
+    setGuideState("making");
+    try {
+      const blob = await createPrintGuide(modelUrl, slot);
+      downloadBlob(blob, `VRPrintLab_${fileBase}_${slot.key}_${size.width}x${size.height}.png`);
+      setGuideState("idle");
+    } catch {
+      setGuideState("error");
+    }
+  }
 
   async function handleFile(file: File | undefined) {
     if (!file) return;
@@ -212,6 +231,30 @@ export function PrintControls({
         {error && (
           <p role="alert" className="text-sm text-red-700">
             {error}
+          </p>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1.5 text-xs text-zinc-600">
+        <p>
+          <span className="font-semibold text-zinc-800 tabular-nums">{c.printSize(size.width, size.height)}</span>
+          <span className="ml-1.5">{c.printSizeHint}</span>
+        </p>
+        <p className="flex flex-wrap items-baseline gap-x-2">
+          <button
+            type="button"
+            onClick={() => void downloadGuide()}
+            disabled={guideState === "making"}
+            title={c.guideHint}
+            className="cursor-pointer font-semibold text-accent-dark underline underline-offset-2 hover:text-brand disabled:cursor-wait disabled:opacity-60"
+          >
+            {guideState === "making" ? c.guideMaking : c.guide}
+          </button>
+          <span className="text-zinc-500">{c.guideShort}</span>
+        </p>
+        {guideState === "error" && (
+          <p role="alert" className="text-red-700">
+            {c.guideError}
           </p>
         )}
       </div>

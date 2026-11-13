@@ -412,6 +412,8 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
                     image={slotParams.imageId ? images[slotParams.imageId] : undefined}
                     onChange={changeSlot<PrintParams>(slot.key)}
                     onCommit={commit}
+                    modelUrl={template.previewModelUrl}
+                    fileBase={template.slug}
                     onImage={async (file) => {
                       const loaded = await loadImage(file, m.errors);
                       setImages((prev) => ({ ...prev, [loaded.id]: loaded }));
