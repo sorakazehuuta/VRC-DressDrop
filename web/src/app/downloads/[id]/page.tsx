@@ -1,37 +1,46 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/ui";
+import { formatDateTime } from "@/i18n/format";
+import Link from "@/i18n/link";
+import { getLocale, getMessages } from "@/i18n/server";
+import { pick } from "@/i18n/messages";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { PrintParams } from "@/lib/templates/params";
+import { templateNameTranslator } from "@/lib/templates/queries";
+import { slotLabel } from "@/lib/templates/schema";
 import { DeleteSnapshotButton } from "../delete-snapshot-button";
 import { RedownloadButton } from "../redownload-button";
 import { parseSnapshot } from "../snapshot";
+import { downloadsMessages } from "../messages";
 import { gimmickMap, listGimmicks } from "@/lib/gimmicks/queries";
-import type { GimmickDefinition, GimmickParamValue } from "@/lib/gimmicks/schema";
+import { localizeGimmick, type GimmickDefinition, type GimmickParamValue } from "@/lib/gimmicks/schema";
 
-export const metadata: Metadata = { title: "ダウンロード内容 | VRPrintLab" };
+type DetailMessages = (typeof downloadsMessages)["ja"]["detail"];
 
-const dateFormat = new Intl.DateTimeFormat("ja-JP", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Tokyo" });
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: `${(await getMessages(downloadsMessages)).detail.title} | VRPrintLab` };
+}
+
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const signedPct = (v: number) => `${v > 0 ? "+" : ""}${Math.round(v * 100)}%`;
 
-function printRows(p: PrintParams) {
+function printRows(p: PrintParams, m: DetailMessages) {
   return [
-    ["サイズ", p.scaleX === p.scaleY ? pct(p.scaleX) : `横 ${pct(p.scaleX)} / 縦 ${pct(p.scaleY)}`],
-    ["位置（左右）", signedPct(p.offsetX)],
-    ["位置（上下）", signedPct(p.offsetY)],
-    ["回転", `${p.rotation}°`],
-    ["明るさ", `${p.brightness}%`],
-    ["彩度", `${p.saturation}%`],
+    [m.rows.size, p.scaleX === p.scaleY ? pct(p.scaleX) : m.sizeXY(pct(p.scaleX), pct(p.scaleY))],
+    [m.rows.offsetX, signedPct(p.offsetX)],
+    [m.rows.offsetY, signedPct(p.offsetY)],
+    [m.rows.rotation, `${p.rotation}°`],
+    [m.rows.brightness, `${p.brightness}%`],
+    [m.rows.saturation, `${p.saturation}%`],
   ];
 }
 
-function formatGimmickParam(def: GimmickDefinition | undefined, key: string, value: GimmickParamValue) {
+function formatGimmickParam(def: GimmickDefinition | undefined, key: string, value: GimmickParamValue, m: DetailMessages) {
   const p = def?.params.find((x) => x.key === key);
   if (!p) return null;
-  if (p.type === "boolean") return `${p.label}: ${value ? "あり" : "なし"}`;
+  if (p.type === "boolean") return `${p.label}: ${value ? m.yes : m.no}`;
   if (p.type === "select") return `${p.label}: ${p.options.find((o) => o.value === value)?.label ?? value}`;
   if (p.type === "number") return `${p.label}: ${value}${p.unit}`;
   return `${p.label}: ${value}`;
@@ -49,8 +58,13 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
     .maybeSingle();
   if (!purchase) notFound();
 
+  const locale = await getLocale();
+  const all = pick(downloadsMessages, locale);
+  const m = all.detail;
+  const templateName = await templateNameTranslator();
   const snapshot = parseSnapshot(purchase.snapshot);
-  const defs = gimmickMap(await listGimmicks());
+  // ギミックの名前と設定項目は、今の定義の表示している言語のもので出す（記録の名前は購入時の日本語）
+  const defs = gimmickMap((await listGimmicks()).map((d) => localizeGimmick(d, locale)));
   const paths = [...(purchase.thumbnail_path ? [purchase.thumbnail_path] : []), ...Object.values(snapshot?.images ?? {})];
   const { data: signed } = paths.length ? await supabase.storage.from("packages").createSignedUrls(paths, 60 * 60) : { data: [] };
   const urlByPath = new Map((signed ?? []).map((s) => [s.path, s.signedUrl]));
@@ -65,27 +79,27 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-10">
       <nav className="text-sm text-zinc-500">
         <Link href="/downloads" className="hover:underline">
-          ← ダウンロード履歴
+          {m.back}
         </Link>
       </nav>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-brand">{purchase.work_name || "（名前なし）"}</h1>
+          <h1 className="text-2xl font-bold text-brand">{purchase.work_name || all.noName}</h1>
           <p className="text-sm text-zinc-500">
-            {purchase.template_name}・{dateFormat.format(new Date(purchase.created_at))} に購入・{purchase.token_spent} トークン
+            {m.purchased(templateName(purchase.template_name), formatDateTime(locale, purchase.created_at), purchase.token_spent)}
           </p>
         </div>
         <div className="flex items-center gap-3">
           {work && workSlug ? (
             <Link href={`/editor/${workSlug}?work=${work.id}`} className="text-sm font-semibold text-accent-dark hover:underline">
-              現在の作品を開く
+              {m.openWork}
             </Link>
           ) : (
-            <span className="text-sm text-zinc-500">作品は削除済みです</span>
+            <span className="text-sm text-zinc-500">{m.workDeleted}</span>
           )}
           {purchase.suspended_at ? (
-            <span className="text-sm text-red-700">このダウンロード内容は運営により停止されています</span>
+            <span className="text-sm text-red-700">{m.suspended}</span>
           ) : (
             purchase.package_path && <RedownloadButton purchaseId={purchase.id} />
           )}
@@ -94,14 +108,14 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
 
       {purchase.package_path ? (
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
-          このダウンロード内容の控え（パッケージ・元画像のコピー）を保存しています。
+          {m.kept}
           <DeleteSnapshotButton purchaseId={purchase.id} />
         </p>
       ) : (
         purchase.snapshot_deleted_at && (
           <p className="rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-600">
-            控えは {dateFormat.format(new Date(purchase.snapshot_deleted_at))} に削除したため、ダウンロード履歴からは再ダウンロードできません。
-            作品が残っていて内容が同じ場合は、エディタから無料でダウンロードできます。
+            {m.deleted1(formatDateTime(locale, purchase.snapshot_deleted_at))}
+            {m.deleted2}
           </p>
         )
       )}
@@ -110,9 +124,9 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
         <div className="aspect-[4/3] overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100">
           {thumbnailUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={thumbnailUrl} alt={`${purchase.work_name} のプレビュー`} className="h-full w-full object-cover" />
+            <img src={thumbnailUrl} alt={m.previewAlt(purchase.work_name)} className="h-full w-full object-cover" />
           ) : (
-            <span className="flex h-full items-center justify-center text-sm text-zinc-400">プレビュー画像の記録はありません</span>
+            <span className="flex h-full items-center justify-center text-sm text-zinc-400">{m.noPreview}</span>
           )}
         </div>
 
@@ -125,7 +139,7 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
                   <Card key={slot.key} className="flex items-center gap-3 !p-4">
                     <span className="h-8 w-8 shrink-0 rounded-full border border-zinc-300" style={{ backgroundColor: p.color }} />
                     <div>
-                      <p className="text-sm font-semibold">{slot.label}</p>
+                      <p className="text-sm font-semibold">{slotLabel(slot, locale)}</p>
                       <p className="font-mono text-xs text-zinc-500">{p.color}</p>
                     </div>
                   </Card>
@@ -136,19 +150,19 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
                 const imageUrl = imagePath ? urlByPath.get(imagePath) : undefined;
                 return (
                   <Card key={slot.key} className="flex flex-col gap-3 !p-4">
-                    <p className="text-sm font-semibold">{slot.label}</p>
+                    <p className="text-sm font-semibold">{slotLabel(slot, locale)}</p>
                     {p.imageId ? (
                       <div className="flex gap-4">
                         <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-[repeating-conic-gradient(#e4e4e7_0%_25%,#fff_0%_50%)] bg-[length:16px_16px]">
                           {imageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={imageUrl} alt="使用した画像" className="max-h-full max-w-full object-contain" />
+                            <img src={imageUrl} alt={m.imageAlt} className="max-h-full max-w-full object-contain" />
                           ) : (
-                            <span className="text-[10px] text-zinc-400">画像の記録なし</span>
+                            <span className="text-[10px] text-zinc-400">{m.noImageRecord}</span>
                           )}
                         </div>
                         <dl className="grid flex-1 grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
-                          {printRows(p).map(([label, value]) => (
+                          {printRows(p, m).map(([label, value]) => (
                             <div key={label} className="contents">
                               <dt className="text-zinc-500">{label}</dt>
                               <dd className="tabular-nums">{value}</dd>
@@ -157,7 +171,7 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
                         </dl>
                       </div>
                     ) : (
-                      <p className="text-xs text-zinc-500">画像なし</p>
+                      <p className="text-xs text-zinc-500">{m.noImage}</p>
                     )}
                   </Card>
                 );
@@ -165,9 +179,9 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
               return null;
             })}
             <Card className="flex flex-col gap-2 !p-4">
-              <p className="text-sm font-semibold">ギミック</p>
+              <p className="text-sm font-semibold">{m.gimmicks}</p>
               {snapshot.gimmicks.length === 0 ? (
-                <p className="text-xs text-zinc-500">なし</p>
+                <p className="text-xs text-zinc-500">{m.none}</p>
               ) : (
                 <ul className="flex flex-col gap-2">
                   {snapshot.gimmicks.map((g) => {
@@ -177,12 +191,12 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
                       <li key={g.slug} className="text-sm">
                         <span className="flex items-center gap-2 font-medium">
                           {color && <span className="h-3 w-3 rounded-full border border-zinc-300" style={{ backgroundColor: String(color[1]) }} />}
-                          {g.name}
+                          {def?.name ?? g.name}
                         </span>
                         <span className="block text-xs text-zinc-500">
                           {Object.entries(g.params)
                             .filter(([k]) => def?.params.find((p) => p.key === k)?.type !== "color")
-                            .map(([k, v]) => formatGimmickParam(def, k, v))
+                            .map(([k, v]) => formatGimmickParam(def, k, v, m))
                             .filter(Boolean)
                             .join(" / ")}
                         </span>
@@ -195,7 +209,7 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
           </div>
         ) : (
           <p className="rounded-lg bg-zinc-50 p-4 text-sm text-zinc-600">
-            このダウンロード内容は、編集内容を記録する機能を追加する前にダウンロードされたため、詳しい内容を表示できません。
+            {m.legacy}
           </p>
         )}
       </div>

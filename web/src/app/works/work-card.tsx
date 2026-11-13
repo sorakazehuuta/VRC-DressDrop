@@ -1,10 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui";
+import { useLocale, useMessages } from "@/i18n/client";
+import { formatDateTime } from "@/i18n/format";
+import Link from "@/i18n/link";
 import { deleteWork, duplicateWork, renameWork, type WorkActionResult } from "./actions";
+import { worksMessages } from "./messages";
 
 export type WorkCardData = {
   id: string;
@@ -16,9 +19,9 @@ export type WorkCardData = {
   thumbnailUrl: string | null;
 };
 
-const dateFormat = new Intl.DateTimeFormat("ja-JP", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Tokyo" });
-
 export function WorkCard({ work, canDuplicate }: { work: WorkCardData; canDuplicate: boolean }) {
+  const locale = useLocale();
+  const m = useMessages(worksMessages).card;
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [name, setName] = useState(work.name);
@@ -42,10 +45,10 @@ export function WorkCard({ work, canDuplicate }: { work: WorkCardData; canDuplic
           // eslint-disable-next-line @next/next/no-img-element
           <img src={work.thumbnailUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <span className="flex h-full items-center justify-center text-sm text-zinc-400">プレビューなし</span>
+          <span className="flex h-full items-center justify-center text-sm text-zinc-400">{m.noPreview}</span>
         )}
         {work.suspended && (
-          <span className="absolute left-2 top-2 rounded bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">公開停止中</span>
+          <span className="absolute left-2 top-2 rounded bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">{m.suspended}</span>
         )}
       </Link>
 
@@ -63,11 +66,11 @@ export function WorkCard({ work, canDuplicate }: { work: WorkCardData; canDuplic
               onChange={(e) => setName(e.target.value)}
               maxLength={100}
               autoFocus
-              aria-label="作品名"
+              aria-label={m.name}
               className="min-w-0 flex-1 rounded-md border border-zinc-300 px-2 py-1 text-sm focus:border-accent focus:outline-none"
             />
             <button type="submit" disabled={pending} className="text-sm font-semibold text-accent-dark">
-              保存
+              {m.save}
             </button>
             <button
               type="button"
@@ -77,7 +80,7 @@ export function WorkCard({ work, canDuplicate }: { work: WorkCardData; canDuplic
               }}
               className="text-sm text-zinc-500"
             >
-              取消
+              {m.cancelRename}
             </button>
           </form>
         ) : (
@@ -86,7 +89,7 @@ export function WorkCard({ work, canDuplicate }: { work: WorkCardData; canDuplic
           </Link>
         )}
         <p className="text-xs text-zinc-500">
-          {work.templateName}・{dateFormat.format(new Date(work.updatedAt))} 更新
+          {m.updated(work.templateName, formatDateTime(locale, work.updatedAt))}
         </p>
         {error && (
           <p role="alert" className="text-xs text-red-700">
@@ -95,19 +98,19 @@ export function WorkCard({ work, canDuplicate }: { work: WorkCardData; canDuplic
         )}
         <div className="mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-2 text-sm">
           <Link href={work.editUrl} className="font-semibold text-accent-dark hover:underline">
-            編集する
+            {m.edit}
           </Link>
           <button type="button" disabled={pending} onClick={() => setEditing(true)} className="cursor-pointer text-zinc-600 hover:underline">
-            名前を変更
+            {m.rename}
           </button>
           <button
             type="button"
             disabled={pending || !canDuplicate}
-            title={canDuplicate ? undefined : "保存できる作品数の上限に達しています"}
+            title={canDuplicate ? undefined : m.limitReached}
             onClick={() => run(() => duplicateWork(work.id))}
             className="cursor-pointer text-zinc-600 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
           >
-            複製
+            {m.duplicate}
           </button>
           <button
             type="button"
@@ -115,25 +118,25 @@ export function WorkCard({ work, canDuplicate }: { work: WorkCardData; canDuplic
             onClick={() => setConfirmingDelete(true)}
             className="cursor-pointer text-red-600 hover:underline"
           >
-            削除
+            {m.delete}
           </button>
         </div>
       </div>
       {confirmingDelete && (
-        <ConfirmDialog title={`「${work.name}」を削除しますか？`} onClose={() => setConfirmingDelete(false)}>
+        <ConfirmDialog title={m.deleteTitle(work.name)} onClose={() => setConfirmingDelete(false)}>
           <div className="flex flex-col gap-2 text-sm leading-relaxed text-zinc-600">
-            <p>作品と、編集用にアップロードした画像を削除します。元に戻せません。</p>
+            <p>{m.deleteBody}</p>
             <p>
-              ダウンロードした内容の控え（パッケージと元画像のコピー）は削除されず、
+              {m.keep1}
               <Link href="/downloads" className="underline">
-                ダウンロード履歴
+                {m.keepLink}
               </Link>
-              から再ダウンロードできます。控えも消したい場合は、ダウンロード履歴の詳細から削除してください。
+              {m.keep2}
             </p>
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setConfirmingDelete(false)}>
-              キャンセル
+              {m.cancel}
             </Button>
             <Button
               type="button"
@@ -143,7 +146,7 @@ export function WorkCard({ work, canDuplicate }: { work: WorkCardData; canDuplic
                 run(() => deleteWork(work.id));
               }}
             >
-              削除する
+              {m.confirmDelete}
             </Button>
           </div>
         </ConfirmDialog>

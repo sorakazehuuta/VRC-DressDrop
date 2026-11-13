@@ -12,7 +12,8 @@ export type WorkPackageInput = {
   workName: string;
   packageName: string;
   // prefabPath: テンプレートの unitypackage の中で使う Prefab（Assets/...）
-  template: { slug: string; name: string; slots: Slot[]; prefabPath: string };
+  // nameEn: 英語のテンプレート名（README・LICENSE の英語の部分に使う。空なら日本語の名前）
+  template: { slug: string; name: string; nameEn?: string; slots: Slot[]; prefabPath: string };
   params: EditorParams;
   gimmicks: GimmickInput[];
   // テンプレートの unitypackage
@@ -74,6 +75,55 @@ BOOTH などで販売・無料配布もできます（販売用のライセン�
 画像を貼っていないテンプレート、画像を外したモデル、色を変えただけのモデルは、再配布・販売できません。
 完成品を受け取った人は利用・配置・調整ができますが、このパッケージや取り出したモデル・テクスチャの
 再配布・再販売はできません。詳しくは LICENSE.txt と利用規約（${termsUrl()}）をご覧ください。
+
+${readmeEnglish(input, folder, prefabName)}`;
+}
+
+// README の英語の部分（日本語の部分と同じ内容。日本語を変えたらこちらも直す）
+function readmeEnglish(input: WorkPackageInput, folder: string, prefabName: string) {
+  const date = new Intl.DateTimeFormat("en-US", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Tokyo" }).format(input.createdAt);
+  const gimmickLines = input.gimmicks.length
+    ? input.gimmicks.map((g) => `- ${g.def.en.name}: ${g.def.en.description}${g.def.en.note ? ` (${g.def.en.note})` : ""}`).join("\n")
+    : "None";
+  const needsUdon = gimmickScripts(input.gimmicks).size > 0;
+  return `[English]
+
+Model created with VRPrintLab
+==============================
+
+Work name : ${input.workName}
+Template  : ${input.template.nameEn || input.template.name}
+Created   : ${date} (JST)
+
+■ How to use
+1. Open your world project created with VRChat Creator Companion (VCC) or ALCOM in Unity.
+${needsUdon ? "   This work uses gimmicks, so add UdonSharp from Manage Project in VCC first.\n" : ""}2. Drag and drop this unitypackage into the Unity window and click "Import".
+3. When the import finishes, Assets/VRPrintLab/${folder}/${prefabName}.prefab is created automatically.
+   Drag it into the Hierarchy (scene) to place it. Colors, prints, and gimmicks are already set up.
+   * If the Prefab isn't created, run Tools > VRPrintLab > Prefab をすべて作り直す (Rebuild all Prefabs) from the menu.
+4. Adjust the position, rotation, and scale, then upload your world.
+
+■ Gimmicks
+${gimmickLines}
+
+■ PC / Quest
+The maximum print texture size is set to 2048px.
+The materials use the template's shaders as they are.
+
+■ Included files
+- ${prefabName}.prefab : The object to place in your scene (created automatically on import)
+- Template/ : The template's 3D model, materials, and Prefab (colors and prints are set for this work)
+- Tex_*.png : Print textures
+- VRPrintLab.json : Settings for building the Prefab
+- LICENSE.txt : Terms of use
+- Assets/VRPrintLab/_Runtime : Scripts for building the Prefab and for the selected gimmicks (shared with other works)
+
+■ Terms of use
+Finished works with images you own the rights to (or have permission to use) can be used inside and outside VRChat,
+and can be sold or distributed for free on BOOTH and similar platforms (no commercial license or revenue share required).
+Templates without images, models with the images removed, and models where only the colors were changed can't be redistributed or sold.
+People who receive a finished work can use, place, and adjust it, but can't redistribute or resell this package
+or any models or textures extracted from it. For details, see LICENSE.txt and the Terms of Service (${termsUrl()}).
 `;
 }
 
@@ -113,6 +163,46 @@ function license(input: WorkPackageInput) {
 ■ 貼られた画像について
 - 画像の権利は、その画像の権利者にあります。
 - VRPrintLab の利用条件は、画像の権利者が元の画像を VRPrintLab とは別に利用することを制限しません。
+
+${licenseEnglish(input)}`;
+}
+
+// LICENSE の英語の部分（参考訳。食い違いがあれば日本語が優先する）
+function licenseEnglish(input: WorkPackageInput) {
+  return `[English] (Reference translation. If there is any difference, the Japanese version above prevails.)
+
+VRPrintLab Terms of Use
+==============================
+
+Work name     : ${input.workName}
+Template      : ${input.template.nameEn || input.template.name}
+Purchase ID   : ${input.purchaseId}
+Terms         : ${termsUrl()}
+Terms revised : ${termsVersionLabel("en")}
+
+This package was created with VRPrintLab (${siteUrl()}).
+Anything not stated here is governed by the Terms of Service as of the revision date above.
+
+■ Creator (the person who downloaded this package from VRPrintLab)
+- You may use the finished work both inside and outside VRChat.
+- You may sell finished works on BOOTH and similar platforms, or distribute them for free, as long as they use images
+  you own the rights to or have permission from the rights holder to use.
+  No commercial license or revenue share is required.
+- You may not redistribute or sell:
+  - Unmodified templates without images
+  - Models with the images removed from a finished work
+  - Models where only the colors were changed
+  - Templates or gimmicks extracted from a finished work on their own
+- When selling or distributing, please have the recipients follow the conditions below.
+
+■ Recipients of a finished work (purchasers and people who received it)
+- You may use, place, and adjust the finished work in VRChat and similar platforms
+  (including placing it in a world, adjusting its position, size, and rotation, and changing gimmick settings).
+- You may not redistribute or resell this package, or any models, textures, or scripts extracted from it.
+
+■ About the images used
+- The rights to the images belong to their respective rights holders.
+- These terms do not restrict the rights holders of the images from using the original images separately from VRPrintLab.
 `;
 }
 

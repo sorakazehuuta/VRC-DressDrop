@@ -1,17 +1,25 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { buttonClassName } from "@/components/ui";
+import { formatDateTime } from "@/i18n/format";
+import Link from "@/i18n/link";
+import { getLocale, getMessages } from "@/i18n/server";
+import { pick } from "@/i18n/messages";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { templateNameTranslator } from "@/lib/templates/queries";
+import { downloadsMessages } from "./messages";
 import { RedownloadButton } from "./redownload-button";
 
-export const metadata: Metadata = { title: "ダウンロード履歴 | VRPrintLab" };
-
-const dateFormat = new Intl.DateTimeFormat("ja-JP", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Tokyo" });
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: `${(await getMessages(downloadsMessages)).title} | VRPrintLab` };
+}
 
 export default async function DownloadsPage() {
   const user = await requireUser("/downloads");
   const supabase = await createClient();
+  const locale = await getLocale();
+  const m = pick(downloadsMessages, locale);
+  const templateName = await templateNameTranslator();
   const { data: purchases } = await supabase
     .from("purchases")
     .select("id, work_id, work_name, template_name, token_spent, created_at, package_path, thumbnail_path, snapshot_deleted_at, suspended_at")
@@ -28,21 +36,19 @@ export default async function DownloadsPage() {
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-brand">ダウンロード履歴</h1>
-          <p className="text-sm text-zinc-500">
-            一度ダウンロードした内容は、作品を編集・削除したあとでも何度でも無料でダウンロードできます（控えを削除したものを除く）。
-          </p>
+          <h1 className="text-2xl font-bold text-brand">{m.title}</h1>
+          <p className="text-sm text-zinc-500">{m.lead}</p>
         </div>
         <Link href="/works" className={buttonClassName("secondary")}>
-          マイ作品へ
+          {m.toWorks}
         </Link>
       </div>
 
       {!purchases?.length ? (
         <div className="flex flex-col items-center gap-3 rounded-xl bg-zinc-50 p-10 text-center">
-          <p className="text-zinc-600">まだダウンロードした作品はありません。</p>
+          <p className="text-zinc-600">{m.empty}</p>
           <Link href="/works" className="font-semibold text-accent-dark underline">
-            マイ作品を開く
+            {m.openWorks}
           </Link>
         </div>
       ) : (
@@ -57,27 +63,27 @@ export default async function DownloadsPage() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={thumb} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="flex h-full items-center justify-center text-[10px] text-zinc-400">画像なし</span>
+                    <span className="flex h-full items-center justify-center text-[10px] text-zinc-400">{m.noImage}</span>
                   )}
                 </Link>
                 <div className="min-w-0 flex-1">
                   <Link href={`/downloads/${p.id}`} className="block truncate font-semibold text-brand hover:underline">
-                    {p.work_name || "（名前なし）"}
+                    {p.work_name || m.noName}
                   </Link>
                   <p className="text-xs text-zinc-500">
-                    {p.template_name}・{dateFormat.format(new Date(p.created_at))}・{p.token_spent} トークン
-                    {!p.work_id && "・作品は削除済み"}
+                    {m.meta(templateName(p.template_name), formatDateTime(locale, p.created_at), p.token_spent)}
+                    {!p.work_id && m.workDeleted}
                   </p>
                   <Link href={`/downloads/${p.id}`} className="text-xs font-medium text-accent-dark hover:underline">
-                    編集内容を見る
+                    {m.viewDetails}
                   </Link>
                 </div>
                 {p.suspended_at ? (
-                  <span className="text-xs text-red-700">運営により停止中</span>
+                  <span className="text-xs text-red-700">{m.suspended}</span>
                 ) : p.package_path ? (
                   <RedownloadButton purchaseId={p.id} />
                 ) : (
-                  p.snapshot_deleted_at && <span className="text-xs text-zinc-400">控えは削除済み</span>
+                  p.snapshot_deleted_at && <span className="text-xs text-zinc-400">{m.snapshotDeleted}</span>
                 )}
               </li>
             );

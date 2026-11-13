@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>メールアドレスの確認</title>
+    <title>メールアドレスの確認 / Confirm your email address</title>
   </head>
   <body style="margin: 0; padding: 0; background-color: #f4f4f5">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5">
@@ -25,10 +25,16 @@
                   </tr>
                 </table>
                 <p style="margin: 0; font-size: 13px; color: #71717a">このメールに心当たりがない場合は、何もせずに削除してください。登録は完了しません。</p>
+                <div lang="en" style="margin: 28px 0 0; padding: 20px 0 0; border-top: 1px solid #e4e4e7">
+                  <p style="margin: 0 0 12px; font-size: 16px; font-weight: bold; color: #031e42">Confirm your email address</p>
+                  <p style="margin: 0 0 16px">Thank you for signing up for VRPrintLab.<br />Click the button above (or the link below) to confirm your email address and complete your registration.</p>
+                  <p style="margin: 0 0 16px"><a href="{{ .ConfirmationURL }}" style="font-weight: bold; color: #0f766e">Confirm your email address</a></p>
+                  <p style="margin: 0; font-size: 13px; color: #71717a">If you didn't sign up, you can safely delete this email. Your registration won't be completed.</p>
+                </div>
               </td>
             </tr>
             <tr>
-              <td style="padding: 16px 28px; border-top: 1px solid #e4e4e7; font-family: Arial, 'Hiragino Sans', 'Yu Gothic', Meiryo, sans-serif; font-size: 12px; line-height: 1.7; color: #71717a">このメールは VRPrintLab から自動で送信しています。返信はできません。</td>
+              <td style="padding: 16px 28px; border-top: 1px solid #e4e4e7; font-family: Arial, 'Hiragino Sans', 'Yu Gothic', Meiryo, sans-serif; font-size: 12px; line-height: 1.7; color: #71717a">このメールは VRPrintLab から自動で送信しています。返信はできません。<br /><span lang="en">This email was sent automatically by VRPrintLab. Please do not reply.</span></td>
             </tr>
           </table>
         </td>

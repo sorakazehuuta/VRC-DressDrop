@@ -1,34 +1,38 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Card } from "@/components/ui";
+import { formatDate, formatDateTime } from "@/i18n/format";
+import Link from "@/i18n/link";
+import { getLocale, getMessages } from "@/i18n/server";
+import { pick } from "@/i18n/messages";
 import { requireUser } from "@/lib/auth";
 import { stripeConfigured, type SyncResult } from "@/lib/payments/stripe";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
-import { tokenReasonLabels } from "@/lib/tokens/labels";
 import { BuyButton } from "./buy-button";
+import { tokensMessages } from "./messages";
 
-export const metadata: Metadata = { title: "トークン | VRPrintLab" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: `${(await getMessages(tokensMessages)).title} | VRPrintLab` };
+}
 
-const dateFormat = new Intl.DateTimeFormat("ja-JP", { dateStyle: "medium", timeZone: "Asia/Tokyo" });
-const dateTimeFormat = new Intl.DateTimeFormat("ja-JP", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Tokyo" });
-const yen = (n: number) => `${n.toLocaleString("ja-JP")}円`;
-
-const checkoutMessages: Record<SyncResult, { kind: "ok" | "info" | "error"; text: string }> = {
-  completed: { kind: "ok", text: "お支払いが完了し、トークンを追加しました。" },
-  awaiting_payment: { kind: "info", text: "コンビニでのお支払いをお待ちしています。入金が確認できしだいトークンを追加します（下の「お支払い待ち」から払込票を確認できます）。" },
-  pending: { kind: "info", text: "お支払いを確認しています。反映まで少し時間がかかることがあります。しばらくしてからページを再読み込みしてください。" },
-  blocked: { kind: "error", text: "このカードはご利用いただけません。お支払いは全額返金しました。" },
-  account_deleted: { kind: "error", text: "退会済みのアカウントのため、お支払いは全額返金しました。" },
-  expired: { kind: "error", text: "決済画面の有効期限が切れました。もう一度お試しください。" },
-  failed: { kind: "error", text: "お支払いを完了できませんでした。もう一度お試しください。" },
-  unknown: { kind: "error", text: "お支払いの情報を確認できませんでした。" },
+const checkoutKinds: Record<SyncResult, "ok" | "info" | "error"> = {
+  completed: "ok",
+  awaiting_payment: "info",
+  pending: "info",
+  blocked: "error",
+  account_deleted: "error",
+  expired: "error",
+  failed: "error",
+  unknown: "error",
 };
 
 export default async function TokensPage({ searchParams }: { searchParams: Promise<{ result?: string; canceled?: string }> }) {
   const user = await requireUser("/tokens");
   // 決済画面から戻ったときは /tokens/return で状態を反映してから、結果だけを受け取る
   const { result: rawResult, canceled } = await searchParams;
-  const result = rawResult && rawResult in checkoutMessages ? (rawResult as SyncResult) : null;
+  const result = rawResult && rawResult in checkoutKinds ? (rawResult as SyncResult) : null;
+  const locale = await getLocale();
+  const m = pick(tokensMessages, locale);
+  const yen = m.yen;
 
   // 期限が切れたトークンを履歴に「有効期限切れ」として記録してから表示する
   await createAdminClient().rpc("expire_token_lots", { p_user_id: user.id });
@@ -64,11 +68,11 @@ export default async function TokensPage({ searchParams }: { searchParams: Promi
   const suspended = profile?.status === "suspended";
   const canBuy = stripeConfigured() && !suspended;
   const basePrice = packs?.[0] ? packs[0].price_jpy / packs[0].tokens : null;
-  const message = result ? checkoutMessages[result] : canceled ? { kind: "info" as const, text: "購入をキャンセルしました。" } : null;
+  const message = result ? { kind: checkoutKinds[result], text: m.checkout[result] } : canceled ? { kind: "info" as const, text: m.checkout.canceled } : null;
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10">
-      <h1 className="text-2xl font-bold text-brand">トークン</h1>
+      <h1 className="text-2xl font-bold text-brand">{m.title}</h1>
 
       {message && (
         <p
@@ -82,30 +86,30 @@ export default async function TokensPage({ searchParams }: { searchParams: Promi
       )}
 
       <Card className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">残高</h2>
+        <h2 className="text-lg font-semibold">{m.balance.heading}</h2>
         <p className={`text-4xl font-bold tabular-nums ${(balance ?? 0) < 0 ? "text-red-700" : ""}`}>
           {balance ?? 0}
-          <span className="ml-1 text-base font-medium text-zinc-500">トークン</span>
+          <span className="ml-1 text-base font-medium text-zinc-500">{m.balance.unit}</span>
         </p>
         {nextExpiry && (
           <p className="text-sm text-zinc-600">
-            うち {nextExpiry.remaining} トークンの有効期限: {dateFormat.format(new Date(nextExpiry.expires_at))}（古いものから先に使われます）
+            {m.balance.nextExpiry(nextExpiry.remaining, formatDate(locale, nextExpiry.expires_at))}
           </p>
         )}
         {(profile?.token_debt ?? 0) > 0 && (
           <p className="text-sm text-red-700">
-            お支払いが取り消された分のトークンが使用済みのため、残高がマイナスになっています。マイナスの間はダウンロードできません。
+            {m.balance.debt}
           </p>
         )}
-        {suspended && <p className="text-sm text-red-700">このアカウントは停止されています。トークンの購入とダウンロードはできません。</p>}
+        {suspended && <p className="text-sm text-red-700">{m.balance.suspended}</p>}
       </Card>
 
       <Card className="flex flex-col gap-4">
         <div>
-          <h2 className="text-lg font-semibold">トークンを購入</h2>
-          <p className="text-sm text-zinc-600">クレジット・デビット・プリペイドカード（Apple Pay / Google Pay を含む）、コンビニ払いが使えます。</p>
+          <h2 className="text-lg font-semibold">{m.buy.heading}</h2>
+          <p className="text-sm text-zinc-600">{m.buy.methods}</p>
         </div>
-        {!stripeConfigured() && <p className="text-sm text-zinc-600">現在トークンの購入を準備中です。</p>}
+        {!stripeConfigured() && <p className="text-sm text-zinc-600">{m.buy.preparing}</p>}
         <ul className="grid gap-3 sm:grid-cols-3">
           {(packs ?? []).map((pack) => {
             const perToken = pack.price_jpy / pack.tokens;
@@ -114,11 +118,12 @@ export default async function TokensPage({ searchParams }: { searchParams: Promi
               <li key={pack.id} className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4">
                 <p className="text-2xl font-bold tabular-nums text-brand">
                   {pack.tokens}
-                  <span className="ml-1 text-sm font-medium text-zinc-500">トークン</span>
+                  <span className="ml-1 text-sm font-medium text-zinc-500">{m.buy.unit}</span>
                 </p>
                 <p className="text-lg font-semibold tabular-nums">{yen(pack.price_jpy)}</p>
                 <p className="text-xs text-zinc-500">
-                  1トークンあたり {Math.round(perToken)}円{discount > 0 && <span className="ml-1 font-semibold text-accent-dark">{discount}% おトク</span>}
+                  {m.buy.perToken(yen(Math.round(perToken)))}
+                  {discount > 0 && <span className="ml-1 font-semibold text-accent-dark">{m.buy.discount(discount)}</span>}
                 </p>
                 <BuyButton packId={pack.id} disabled={!canBuy} />
               </li>
@@ -126,41 +131,36 @@ export default async function TokensPage({ searchParams }: { searchParams: Promi
           })}
         </ul>
         <ul className="list-disc space-y-1 pl-5 text-xs text-zinc-500">
-          <li>代金は表示の金額（税込）で、ほかに手数料はかかりません。カードは購入時に、コンビニ払いは払込票の期限（3日）までにお支払いください。</li>
-          <li>トークンは、カードは決済の完了後すぐに、コンビニ払いは入金の確認後に追加されます。</li>
-          <li>デジタルの商品のため、決済後の購入の取り消し（キャンセル）はできません。</li>
-          <li>トークンの有効期限は、購入・付与から180日です。古いものから先に使われます。</li>
-          <li>トークンは VRPrintLab の中だけで使えます。換金・譲渡はできません。</li>
-          <li>購入したトークンは原則として払い戻しできません。運営側の不具合でダウンロードできなかった場合などは返金に応じます（未使用分のみ）。</li>
-          <li>未成年の方は、保護者の同意を得てから購入してください。</li>
-          <li>コンビニ払いは、お支払いから反映まで数分かかることがあります。支払い期限は3日です。</li>
+          {m.buy.notes.map((note) => (
+            <li key={note}>{note}</li>
+          ))}
         </ul>
         <p className="text-xs text-zinc-600">
-          「購入する」を押すと、
+          {m.buy.agree1}
           <Link href="/terms" className="underline" target="_blank">
-            利用規約
+            {m.buy.terms}
           </Link>
-          と
+          {m.buy.and}
           <Link href="/tokushoho" className="underline" target="_blank">
-            特定商取引法に基づく表記
+            {m.buy.tokushoho}
           </Link>
-          の内容に同意したものとみなします。
+          {m.buy.agree2}
         </p>
       </Card>
 
       {!!waiting?.length && (
         <Card className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold">お支払い待ち（コンビニ払い）</h2>
+          <h2 className="text-lg font-semibold">{m.waiting.heading}</h2>
           <ul className="divide-y divide-zinc-100 text-sm">
             {waiting.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                 <span>
-                  {p.tokens} トークン（{yen(p.amount_jpy)}）
-                  {p.konbini_expires_at && <span className="ml-2 text-zinc-500">期限: {dateTimeFormat.format(new Date(p.konbini_expires_at))}</span>}
+                  {m.waiting.item(p.tokens, yen(p.amount_jpy))}
+                  {p.konbini_expires_at && <span className="ml-2 text-zinc-500">{m.waiting.deadline(formatDateTime(locale, p.konbini_expires_at))}</span>}
                 </span>
                 {p.konbini_voucher_url && (
                   <a href={p.konbini_voucher_url} target="_blank" rel="noopener noreferrer" className="font-semibold text-accent-dark underline">
-                    払込票を見る
+                    {m.waiting.voucher}
                   </a>
                 )}
               </li>
@@ -170,24 +170,24 @@ export default async function TokensPage({ searchParams }: { searchParams: Promi
       )}
 
       <Card className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">履歴</h2>
+        <h2 className="text-lg font-semibold">{m.history.heading}</h2>
         {!history?.length ? (
-          <p className="text-sm text-zinc-600">まだ履歴はありません。</p>
+          <p className="text-sm text-zinc-600">{m.history.empty}</p>
         ) : (
           <table className="w-full text-sm">
             <thead className="text-left text-zinc-500">
               <tr>
-                <th className="py-1 font-medium">日付</th>
-                <th className="py-1 font-medium">内容</th>
-                <th className="py-1 text-right font-medium">増減</th>
+                <th className="py-1 font-medium">{m.history.date}</th>
+                <th className="py-1 font-medium">{m.history.detail}</th>
+                <th className="py-1 text-right font-medium">{m.history.delta}</th>
               </tr>
             </thead>
             <tbody>
               {history.map((tx) => (
                 <tr key={tx.id} className="border-t border-zinc-100">
-                  <td className="py-1.5 align-top whitespace-nowrap">{dateFormat.format(new Date(tx.created_at))}</td>
+                  <td className="py-1.5 align-top whitespace-nowrap">{formatDate(locale, tx.created_at)}</td>
                   <td className="py-1.5 pl-3">
-                    {tokenReasonLabels[tx.reason] ?? tx.reason}
+                    {m.history.reasons[tx.reason] ?? tx.reason}
                     {tx.note && tx.reason !== "signup_grant" && tx.reason !== "expire" && <span className="block text-xs text-zinc-500">{tx.note}</span>}
                   </td>
                   <td className={`py-1.5 text-right align-top tabular-nums ${tx.delta > 0 ? "text-emerald-700" : ""}`}>{tx.delta > 0 ? `+${tx.delta}` : tx.delta}</td>
@@ -197,7 +197,7 @@ export default async function TokensPage({ searchParams }: { searchParams: Promi
           </table>
         )}
         <Link href="/downloads" className="self-start text-sm font-semibold text-accent-dark underline">
-          ダウンロード履歴を見る
+          {m.history.downloads}
         </Link>
       </Card>
     </main>

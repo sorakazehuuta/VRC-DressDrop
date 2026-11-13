@@ -4,30 +4,33 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui";
+import { useMessages } from "@/i18n/client";
 import { deleteSnapshot } from "./actions";
+import { downloadsMessages } from "./messages";
 
 export function DeleteSnapshotButton({ purchaseId }: { purchaseId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const m = useMessages(downloadsMessages).deleteSnapshot;
 
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} disabled={pending} className="cursor-pointer text-sm text-red-600 hover:underline disabled:opacity-50">
-        {pending ? "削除中…" : "控えを削除"}
+        {pending ? m.deleting : m.button}
       </button>
       {error && <span className="text-xs text-red-700">{error}</span>}
       {open && (
-        <ConfirmDialog title="このダウンロード内容の控えを削除しますか？" onClose={() => setOpen(false)}>
+        <ConfirmDialog title={m.title} onClose={() => setOpen(false)}>
           <div className="flex flex-col gap-2 text-sm leading-relaxed text-zinc-600">
-            <p>このダウンロード内容のパッケージ、元画像のコピー、プレビュー画像を削除します。元に戻せません。</p>
-            <p className="font-semibold text-red-700">削除すると、ダウンロード履歴から再ダウンロードできなくなります。</p>
-            <p>購入の記録（日時・使ったトークン数・編集内容）は残ります。</p>
+            <p>{m.body1}</p>
+            <p className="font-semibold text-red-700">{m.body2}</p>
+            <p>{m.body3}</p>
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-              キャンセル
+              {m.cancel}
             </Button>
             <Button
               type="button"
@@ -42,7 +45,7 @@ export function DeleteSnapshotButton({ purchaseId }: { purchaseId: string }) {
                 });
               }}
             >
-              削除する
+              {m.confirm}
             </Button>
           </div>
         </ConfirmDialog>

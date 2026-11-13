@@ -219,7 +219,7 @@ export async function downloadWork(workId: string, confirmed: boolean): Promise<
       purchaseId,
       workName: work.name,
       packageName,
-      template: { slug: template.slug, name: template.name, slots, prefabPath },
+      template: { slug: template.slug, name: template.name, nameEn: template.name_en, slots, prefabPath },
       params,
       gimmicks: gimmicks.map((g) => ({ def: defs.get(g.slug) as GimmickDefinition, params: g.params })),
       templatePackage: Buffer.from(await templatePackage.arrayBuffer()),

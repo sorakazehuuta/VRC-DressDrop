@@ -1,32 +1,37 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { getLocale, localized } from "@/i18n/server";
+import { pick } from "@/i18n/messages";
 import { requireUser, siteOrigin } from "@/lib/auth";
 import { TERMS_VERSION } from "@/lib/legal";
 import { paymentMethodTypes, stripe, stripeConfigured } from "@/lib/payments/stripe";
 import { createAdminClient } from "@/lib/supabase/server";
+import { tokensMessages } from "./messages";
 
 export type CheckoutState = { error?: string } | null;
 
 // 選んだパックの決済画面（Stripe Checkout）を作って移動する。トークンの付与は入金の確認後（Webhook または戻ってきた画面）に行う
 export async function startCheckout(_prev: CheckoutState, formData: FormData): Promise<CheckoutState> {
   const user = await requireUser("/tokens");
-  if (!stripeConfigured()) return { error: "現在トークンの購入を準備中です。" };
+  const locale = await getLocale();
+  const m = pick(tokensMessages, locale);
+  if (!stripeConfigured()) return { error: m.errors.preparing };
   const admin = createAdminClient();
 
   const { data: profile } = await admin.from("profiles").select("status").eq("id", user.id).single();
-  if (profile?.status !== "active") return { error: "このアカウントは停止されているため、トークンを購入できません。" };
+  if (profile?.status !== "active") return { error: m.errors.suspended };
 
   const packId = String(formData.get("packId") ?? "");
   const { data: pack } = await admin.from("token_packs").select("id, name, tokens, price_jpy").eq("id", packId).eq("is_active", true).maybeSingle();
-  if (!pack) return { error: "選んだパックが見つかりません。ページを再読み込みしてください。" };
+  if (!pack) return { error: m.errors.packNotFound };
 
   const { data: payment, error } = await admin
     .from("payments")
     .insert({ user_id: user.id, pack_id: pack.id, amount_jpy: pack.price_jpy, tokens: pack.tokens, status: "created", terms_version: TERMS_VERSION })
     .select("id")
     .single();
-  if (error || !payment) return { error: "購入の準備に失敗しました。時間をおいて再度お試しください。" };
+  if (error || !payment) return { error: m.errors.prepareFailed };
 
   let url: string | null = null;
   try {
@@ -36,7 +41,7 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
     const session = await stripe().checkout.sessions.create(
       {
         mode: "payment",
-        locale: "ja",
+        locale,
         client_reference_id: user.id,
         customer_email: user.email,
         line_items: [
@@ -46,8 +51,8 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
               currency: "jpy",
               unit_amount: pack.price_jpy,
               product_data: {
-                name: `VRPrintLab ${pack.tokens} トークン`,
-                description: "VRPrintLab の中だけで使えるトークンです。有効期限は付与から180日です。換金・譲渡はできません。",
+                name: m.stripe.productName(pack.tokens),
+                description: m.stripe.productDescription,
               },
             },
           },
@@ -60,8 +65,8 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
         },
         metadata,
         payment_intent_data: { metadata },
-        success_url: `${origin}/tokens/return?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${origin}/tokens?canceled=1`,
+        success_url: `${origin}${await localized("/tokens/return")}?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}${await localized("/tokens?canceled=1")}`,
       },
       { idempotencyKey: `checkout-${payment.id}` },
     );
@@ -70,8 +75,8 @@ export async function startCheckout(_prev: CheckoutState, formData: FormData): P
   } catch (e) {
     console.error("[checkout]", e);
     await admin.from("payments").update({ status: "failed" }).eq("id", payment.id);
-    return { error: "決済画面を開けませんでした。時間をおいて再度お試しください。" };
+    return { error: m.errors.checkoutFailed };
   }
-  if (!url) return { error: "決済画面を開けませんでした。" };
+  if (!url) return { error: m.errors.checkoutFailedShort };
   redirect(url);
 }

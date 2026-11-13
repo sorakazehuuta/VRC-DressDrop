@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { localized } from "@/i18n/server";
 import { getCurrentUser } from "@/lib/auth";
 import { stripe, stripeConfigured, syncCheckoutSession, type SyncResult } from "@/lib/payments/stripe";
 
@@ -19,5 +20,6 @@ export async function GET(request: NextRequest) {
       result = "pending";
     }
   }
-  return NextResponse.redirect(new URL(`/tokens?result=${result}`, request.url), 303);
+  // 英語版から戻ってきたとき（/en/tokens/return）は英語版のトークン画面へ
+  return NextResponse.redirect(new URL(await localized(`/tokens?result=${result}`), request.url), 303);
 }

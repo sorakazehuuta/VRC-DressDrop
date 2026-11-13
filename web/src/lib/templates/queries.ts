@@ -36,6 +36,16 @@ export function localizedTemplateText(row: { name: string; description?: string;
   };
 }
 
+// 購入の記録などに残っている日本語のテンプレート名を、表示している言語の名前に置き換える関数（見つからなければそのまま）
+export async function templateNameTranslator(): Promise<(name: string) => string> {
+  const locale = await getLocale();
+  if (locale === "ja") return (name) => name;
+  const supabase = await createClient();
+  const { data } = await supabase.from("templates").select("*");
+  const names = new Map((data ?? []).map((t) => [t.name as string, localizedTemplateText(t, locale).name]));
+  return (name) => names.get(name) ?? name;
+}
+
 export async function listTemplates(): Promise<TemplateListItem[]> {
   const supabase = await createClient();
   const locale = await getLocale();
