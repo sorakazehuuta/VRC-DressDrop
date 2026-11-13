@@ -79,13 +79,14 @@ template.json の例:
   "name": "マグカップ",
   "category": "グッズ",
   "description": "好きな画像を貼れるマグカップ。本体の色も変えられます。",
+  "en": { "name": "Mug", "description": "A mug you can add your favorite images to. You can also change its color." },
   "tokenCost": 1,
   "isPublic": false,
   "sortOrder": 30,
   "files": { "package": "mug.unitypackage" },
   "slots": [
-    { "key": "base", "type": "color", "label": "本体の色", "material": "Mug Body", "defaultColor": "#ffffff" },
-    { "key": "print", "type": "print", "label": "プリント", "material": "Mug Print", "background": { "slot": "base" }, "aspect": 2.4 }
+    { "key": "base", "type": "color", "label": "本体の色", "labelEn": "Body color", "material": "Mug Body", "defaultColor": "#ffffff" },
+    { "key": "print", "type": "print", "label": "プリント", "labelEn": "Print", "material": "Mug Print", "background": { "slot": "base" }, "aspect": 2.4 }
   ]
 }
 ```
@@ -94,6 +95,7 @@ template.json の例:
 |---|---|
 | `slug` | フォルダ名と同じにする |
 | `name` / `category` / `description` | サイトに表示する名前・カテゴリ・説明。カテゴリは「グッズ」「パネル・ディスプレイ」「看板」「カフェ・バー用品」「フード・ドリンク」から選ぶ（一覧の絞り込みに使う。新しいカテゴリを作るときは `src/lib/templates/categories.ts` に足す）。カテゴリは初回の登録だけに使い、登録後は管理画面（/admin/catalog）で変える |
+| `en` | 英語版の名前と説明（必須）。templates:sync のたびに DB（`name_en` / `description_en`）へ書き込む。日本語の `name` / `description` を変えたら、こちらも直す |
 | `nameReading` | 名前の読み（ひらがな、省略可）。一覧の「名前順」に使う。初回の登録だけに使い、あとは管理画面で変える |
 | `tokenCost` | ダウンロードに必要なトークン数 |
 | `isPublic` | 初回の登録のときの公開状態。`false` の間は一覧に出ない（管理者だけがエディタの URL で確認できる）。登録後の公開・非公開は管理画面で変える |
@@ -101,7 +103,7 @@ template.json の例:
 | `files.package` | unitypackage のファイル名 |
 | `files.prefab` | 使う Prefab の Unity 上のパス（例: `Assets/VRPrintLab/Mug/Mug.prefab`）。Prefab が1つだけなら書かなくてよい |
 | `files.thumbnail` | 自分で用意したサムネイル画像のファイル名（省略すると `thumbnail.png`） |
-| `slots` | 利用者が編集できる部分。画面にはこの順番で並ぶ |
+| `slots` | 利用者が編集できる部分。画面にはこの順番で並ぶ。各スロットの `labelEn`（英語版の名前）は必須 |
 
 ### スロット（編集できる部分）
 

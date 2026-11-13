@@ -128,6 +128,18 @@ npm run typecheck                # ルートの型を作ってから型チェッ
 - **パッケージのスクリプト**: `_Runtime/Editor` の組み立て処理は常に入れ、`_Runtime/Scripts` は選んだギミックの分だけ入れる（`gimmickScripts`。魔法陣は VRPLSpin を使う）
 - **ギミックのスクリプト**: ネットワークイベントを送るものは同期方式を `None` にしない。手で触れる判定は「手のボーン」と「手のトラッキング位置」の両方を見る（デスクトップの人は手のボーンが下に垂れている）
 
+### 多言語（日本語・英語。2026-11-13〜）
+
+- **URL**: 日本語は今までの URL、英語は `/en/...`。`src/proxy.ts` が `/en` を外して同じページに振り替え、表示する言語をヘッダー（`x-locale`）でページに伝える。`/ja/...` は言語なしの URL へ転送。管理画面・API・認証の受け口（`/admin` `/api` `/auth`）は言語を付けない
+- **最初の言語**: 選んだ言語の Cookie（`lang`）→ アクセス元の国（Vercel の `x-vercel-ip-country`。日本なら日本語、ほかは英語）。日本語の URL に日本以外から初めて来た人は英語版へ転送する。検索エンジンとリンクのプレビューは転送しない（`src/i18n/detect.ts`）。国が分からない手元の開発環境は日本語
+- **切り替え**: ヘッダーの地球のアイコンとフッター。Cookie に保存して、同じページの別の言語の URL を読み込み直す
+- **検索エンジン**: ルートのレイアウトで canonical と hreflang（ja / en / x-default）を出す
+- **文言**: 画面ごとの `messages.ts` に日本語と英語を並べて書く（`defineMessages`）。英語が日本語と同じ形でないと型チェックで失敗する。サーバーは `getMessages()`、ブラウザ側は `useMessages()`。リンクは `@/i18n/link`（英語なら `/en` を付ける）、転送は `localized()` / `redirectLocalized()`
+- **本文**: 規約・FAQ・ガイド・お知らせは `web/content/*.md`、英語版は `web/content/en/*.md`。規約類の英語版は参考訳（日本語版が正本と各ページに表示）。未確定の箇所は英語版では【TBD …】
+- **テンプレート・ギミック**: template.json の `en`（名前・説明）と各スロットの `labelEn`、ギミックの JSON の `en` が必須（check で確かめる）。テンプレートの英語の名前・説明は DB の `name_en` / `description_en`（マイグレーション `20261115000000_template_english.sql`）。カテゴリの英語名と URL 用の ID は `src/lib/templates/categories.ts`
+- **記録**: 購入の記録・パッケージの中の名前は日本語のまま。英語版の画面では今のテンプレート・ギミックの英語名に置き換えて表示する。パッケージの README / LICENSE と認証メールは日英併記
+- **決済**: Stripe Checkout は表示している言語で開く。英語版でも円で支払う
+
 ## 5. 残課題・既知の問題
 
 - **決済**: Stripe（Checkout + Webhook）で実装済み（2026-11-03）。トークン画面は `/tokens`、Webhook は `/api/stripe/webhook`、DB 関数は `complete_token_payment` / `revoke_token_payment` / `expire_token_lots`。パックの価格は仮（5/12/30 トークンで 1,000/2,200/5,000 円）。1か月あたりの購入上限は利用者の判断で今回は作っていない。PayPay は後で検討
@@ -154,3 +166,4 @@ npm run typecheck                # ルートの型を作ってから型チェッ
 - テンプレートの追加・更新は `templates` ブランチで行う（システムの改修は `feature/...` ブランチから main へ）
 - 利用者の Supabase に影響する SQL は、ファイルを作って利用者に SQL Editor で実行してもらう
 - 画面の変更はブラウザで、Unity 側の変更は GUI の Unity（TestProject のコピー）で動作を確認してから報告する
+- **サイトの更新は日本語と英語の両方に行う**（2026-11-13 に利用者が指示）。画面の文言・規約類・FAQ・ガイド・お知らせ・テンプレートやギミックの表示名・認証メール・パッケージの README / LICENSE が対象。管理画面は日本語のみ

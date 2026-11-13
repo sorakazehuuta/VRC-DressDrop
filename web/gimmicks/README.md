@@ -16,7 +16,7 @@ gimmicks/
 | やりたいこと | 手順 |
 |---|---|
 | トークン数を変える | 管理画面（/admin/catalog）で変える。登録済みのギミックは gimmicks:sync でトークン数・公開状態が変わらない（`tokenCost` / `isPublic` は初回の登録だけに使う） |
-| 名前・説明を変える | `name` / `description` を書き換えて `npm run gimmicks:sync` |
+| 名前・説明を変える | `name` / `description` と、英語版の `en` を両方書き換えて `npm run gimmicks:sync` |
 | 一時的に隠す | 管理画面（/admin/catalog）で「公開」を外す |
 | 削除する | `catalog/<slug>.json` を消して `npm run gimmicks:sync`（非公開になる。使っている作品を壊さないため DB からは消さない） |
 | 設定項目を足す | `params` に追加。スクリプトを使うギミックなら、同じ名前の `public` フィールドを `.cs` に足す |
@@ -38,6 +38,15 @@ npm run gimmicks:sync    # Supabase に登録・更新
   "category": "動き",
   "description": "その場でゆっくり回り続けます。",
   "note": "",
+  "en": {
+    "name": "Spins continuously",
+    "category": "Motion",
+    "description": "Keeps spinning slowly in place.",
+    "params": {
+      "speed": { "label": "Spin speed", "unit": "°/s" },
+      "axis": { "label": "Rotation axis", "options": { "1": "Vertical (Y axis)", "0": "Horizontal (X axis)" } }
+    }
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 210,
@@ -59,6 +68,7 @@ npm run gimmicks:sync    # Supabase に登録・更新
 | `slug` | 英小文字・数字・`-`。ファイル名と同じにする。保存済みの作品はこの値で参照するので、公開後は変えない |
 | `category` | エディタでの見出し。同じ文字列のものがまとまる |
 | `note` | 選んだときに出す注意書き（例: Quest で重い） |
+| `en` | 英語版の表示（必須）。`name`・`category`・`description`・`note` と、設定項目ごとの `label`・`unit`（単位がある数値のとき）・`options`（選択肢の値ごとの名前）。足りないと gimmicks:check で失敗する |
 | `sortOrder` | 同時に新しく登録するもの同士の並び順（小さいほど上）。新しいものは最後に並ぶ。登録後の並び順は管理画面のドラッグで変える |
 | `script` | `unity/Runtime/<script>.cs` のクラス名（`VRPL` で始める）。組み立てだけで済むものは `null` |
 | `groups` | 同じグループのギミックは同時に選べない（下の表） |
