@@ -143,7 +143,7 @@ export function TemplateList({
                       <strong className="text-base">{t.tokenCost}</strong> {m.tokenUnit(t.tokenCost)}
                     </span>
                   </div>
-                  {t.description && <p className="line-clamp-2 text-sm leading-relaxed text-zinc-600">{t.description}</p>}
+                  {t.description && <p className="text-sm leading-relaxed text-zinc-600">{t.description}</p>}
                 </div>
               </Link>
             </li>

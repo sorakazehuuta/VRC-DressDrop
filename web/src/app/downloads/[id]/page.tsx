@@ -170,7 +170,13 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
                         </dl>
                       </div>
                     ) : (
-                      <p className="text-xs text-zinc-500">{m.noImage}</p>
+                      !p.text && <p className="text-xs text-zinc-500">{m.noImage}</p>
+                    )}
+                    {p.text && (
+                      <p className="text-xs">
+                        <span className="text-zinc-500">{m.rows.text}: </span>
+                        <span className="whitespace-pre-wrap">{p.text.content}</span>
+                      </p>
                     )}
                   </section>
                 );

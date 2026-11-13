@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { duplicateWork, saveWork } from "@/app/works/actions";
 import { useOnTabReturn } from "@/components/tab-return";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui";
 import { useLocale, useLocalePath, useMessages } from "@/i18n/client";
 import Link from "@/i18n/link";
 import { defaultParams, type ColorParams, type EditorParams, type PrintParams, type SlotParams } from "@/lib/templates/params";
 import type { Slot } from "@/lib/templates/schema";
+import type { PrintText } from "@/lib/templates/text";
 import type { GimmickDefinition, GimmickSelection } from "@/lib/gimmicks/schema";
 import { ColorControls, PrintControls } from "./controls";
 import { latestCosts } from "./costs";
@@ -17,13 +19,15 @@ import { DownloadPanel } from "./download-panel";
 import { GimmickPanel } from "./gimmick-panel";
 import { PreviewOverlay } from "./gimmick-preview/preview-overlay";
 import { initialPreviewState, looksBetterInDark, primaryAction, type PreviewState } from "./gimmick-preview/spec";
-import { removeExpiredDrafts, saveDraft, takeDraft } from "./draft";
+import { removeExpiredDrafts, saveDraft, takeDraft, type Draft } from "./draft";
+import { ReuseDialog, type ReuseTemplate } from "./reuse-dialog";
 import { IMAGE_LIMITS, loadImage, type LoadedImage } from "./images";
 import { formatSavedAt, useKeepPreviousDialog } from "./keep-previous-dialog";
 import { removeBackground } from "./background";
 import { editorMessages } from "./messages";
 import { imageExt, uploadImages, uploadThumbnail } from "./save";
 import { useHistory } from "./use-history";
+import { useLeaveGuard } from "./leave-guard";
 
 function ViewerLoading() {
   const m = useMessages(editorMessages);
@@ -60,8 +64,18 @@ async function fetchSavedImage(img: InitialWork["images"][number], m: (typeof ed
   return loadImage(new File([blob], `${img.slot}.${img.ext}`, { type }), m.errors, img.id);
 }
 
+// 持ち越した画像と文字を、最初の印刷面に貼った編集内容
+function withCarry(params: EditorParams, slots: Slot[], carry: Draft["carry"]): EditorParams {
+  const target = slots.find((s) => s.type === "print");
+  if (!carry || !target) return params;
+  const slot = params.slots[target.key] as PrintParams;
+  return { ...params, slots: { ...params.slots, [target.key]: { ...slot, imageId: carry.imageId, ...(carry.text ? { text: carry.text } : {}) } } };
+}
+
 type EditorProps = {
   template: EditorTemplate;
+  // 「この画像でほかのグッズも作る」で選べるテンプレート（今のテンプレートを除く公開中のもの）
+  otherTemplates: ReuseTemplate[];
   gimmickDefs: GimmickDefinition[];
   userId: string | null;
   initialWork: InitialWork | null;
@@ -86,7 +100,7 @@ export function EditorHost(props: EditorProps) {
   return <Editor key={generation} {...props} onWorkId={onWorkId} />;
 }
 
-function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWorkId }: EditorProps & { onWorkId: (id: string) => void }) {
+function Editor({ template, otherTemplates, gimmickDefs, userId, initialWork, restoreDraft, onWorkId }: EditorProps & { onWorkId: (id: string) => void }) {
   const router = useRouter();
   const locale = useLocale();
   const toLocale = useLocalePath();
@@ -133,11 +147,14 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
   const [resetViewSignal, setResetViewSignal] = useState(0);
   const [preview, setPreview] = useState<PreviewState>(initialPreviewState);
   const [saveCount, setSaveCount] = useState(0);
+  const [reuse, setReuse] = useState<{ image: LoadedImage | null; text?: PrintText } | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(initialWork?.updatedAt ?? null);
   const { ask: askKeepPrevious, dialog: keepPreviousDialog } = useKeepPreviousDialog();
   const captureRef = useRef<(() => Promise<Blob | null>) | null>(null);
 
   const dirty = snapshot(name, state) !== savedSnapshot;
+  const leaveGuard = useLeaveGuard(dirty);
+  const { replaceUrl } = leaveGuard;
   const readOnly = initialWork?.suspended ?? false;
 
   // ギミックの組み合わせが変わったら、プレビューを最初の状態（触る前）に戻す。
@@ -179,10 +196,11 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
           if (draft && !cancelled) {
             const loaded = await Promise.all(draft.images.map((i) => loadImage(i.file, m.errors, i.id)));
             setImages((prev) => ({ ...prev, ...Object.fromEntries(loaded.map((i) => [i.id, i])) }));
-            setName(draft.name);
+            if (draft.name) setName(draft.name);
             // 下書きのあとに非公開になったギミックは外す（パネルが出ないと外せなくなる）
             const usable = gimmickSlugs.split(",");
-            reset({ params: draft.params, gimmicks: (draft.gimmicks ?? []).filter((g) => usable.includes(g.slug)) });
+            const restored = draft.params ?? withCarry(defaultParams(template.slots), template.slots, draft.carry);
+            reset({ params: restored, gimmicks: (draft.gimmicks ?? []).filter((g) => usable.includes(g.slug)) });
           }
           window.history.replaceState(null, "", toLocale(`/editor/${template.slug}`));
         }
@@ -195,7 +213,7 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
     return () => {
       cancelled = true;
     };
-  }, [initialWork, restoreDraft, template.slug, reset, gimmickSlugs, m, toLocale]);
+  }, [initialWork, restoreDraft, template.slug, template.slots, reset, gimmickSlugs, m, toLocale]);
 
   const changeSlot = useCallback(
     <T extends SlotParams>(key: string) =>
@@ -283,14 +301,14 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
       setName(name.trim());
       setStatus({ kind: "saved", at: result.updatedAt });
       setLastSavedAt(result.updatedAt);
-      if (!workId) window.history.replaceState(null, "", toLocale(`/editor/${template.slug}?work=${result.workId}`));
+      if (!workId) replaceUrl(toLocale(`/editor/${template.slug}?work=${result.workId}`));
       setSaveCount((n) => n + 1);
       return result.workId;
     } catch (e) {
       setStatus({ kind: "error", message: e instanceof Error ? e.message : m.errors.saveFailed });
       return null;
     }
-  }, [readOnly, status.kind, loadingImages, referencedImages, params, gimmicks, state, userId, template, name, router, workId, savedImageIds, dirty, savedSnapshot, lastSavedAt, askKeepPrevious, onWorkId, locale, m, toLocale]);
+  }, [readOnly, status.kind, loadingImages, referencedImages, params, gimmicks, state, userId, template, name, router, workId, savedImageIds, dirty, savedSnapshot, lastSavedAt, askKeepPrevious, onWorkId, locale, m, toLocale, replaceUrl]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -329,7 +347,8 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
   return (
     <div className="flex flex-1 flex-col gap-4 lg:min-h-0">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex min-w-0 flex-1 flex-col sm:max-w-md">
+        {/* スマホ幅では作品名に 1 行使い、保存の表示とボタンは次の行に回す（作品名が押しつぶされないように） */}
+        <div className="flex w-full min-w-0 flex-col sm:w-auto sm:max-w-md sm:flex-1">
           <input
             type="text"
             value={name}
@@ -350,6 +369,47 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
       </div>
 
       {keepPreviousDialog}
+      {leaveGuard.pending && (
+        <ConfirmDialog title={m.leave.title} onClose={leaveGuard.stay}>
+          <p className="text-sm leading-relaxed text-zinc-600">{m.leave.body}</p>
+          <div className="flex flex-col gap-2">
+            <Button
+              type="button"
+              variant="accent"
+              onClick={() => {
+                if (userId) return void leaveGuard.saveAndLeave(save);
+                leaveGuard.dismiss();
+                void save();
+              }}
+            >
+              {userId ? m.leave.save : m.leave.loginToSave}
+            </Button>
+            <Button type="button" variant="secondary" onClick={leaveGuard.leave}>
+              {m.leave.discard}
+            </Button>
+            <Button type="button" variant="secondary" onClick={leaveGuard.stay} autoFocus>
+              {m.leave.stay}
+            </Button>
+          </div>
+        </ConfirmDialog>
+      )}
+      {reuse && (
+        <ReuseDialog
+          templates={otherTemplates}
+          onClose={() => setReuse(null)}
+          onPick={async (slug) => {
+            await saveDraft(slug, {
+              name: "",
+              carry: { imageId: reuse.image?.id ?? null, ...(reuse.text ? { text: reuse.text } : {}) },
+              images: reuse.image ? [{ id: reuse.image.id, file: reuse.image.file }] : [],
+              savedAt: Date.now(),
+            });
+            // 今の作品の編集はこのタブに残し、新しいタブで開く
+            window.open(toLocale(`/editor/${slug}?draft=1`), "_blank", "noopener");
+            setReuse(null);
+          }}
+        />
+      )}
 
       {readOnly && (
         <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -434,6 +494,11 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
                       changeSlot<PrintParams>(slot.key)((p) => ({ ...p, imageId: loaded.id }));
                       return "done";
                     }}
+                    onReuse={
+                      slotParams.imageId || slotParams.text
+                        ? () => setReuse({ image: slotParams.imageId ? images[slotParams.imageId] ?? null : null, text: slotParams.text })
+                        : undefined
+                    }
                     onRestoreBackground={() => {
                       const current = slotParams.imageId ? images[slotParams.imageId] : undefined;
                       const originalId = current?.background?.originalId;

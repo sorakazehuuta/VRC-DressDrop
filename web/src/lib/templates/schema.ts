@@ -29,6 +29,16 @@ export const printSlotSchema = z.object({
   aspect: z.number().positive().default(1),
   // 出力テクスチャの長辺ピクセル数（Quest の上限に合わせて最大 2048）
   textureSize: z.number().int().min(256).max(2048).default(2048),
+  // アクリルの縁取り（絵の周りを半透明の板にする。アクリルスタンドなど。lib/templates/outline.ts）
+  outline: z
+    .object({
+      width: z.number().min(0).max(0.2),
+      color: hexColor.default("#ffffff"),
+      opacity: z.number().min(0).max(1).default(0.3),
+      edgeOpacity: z.number().min(0).max(1).default(0.7),
+      tab: z.number().min(0).max(1).default(0),
+    })
+    .optional(),
 });
 
 export const slotSchema = z.discriminatedUnion("type", [colorSlotSchema, printSlotSchema]);

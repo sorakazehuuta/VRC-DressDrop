@@ -2,6 +2,9 @@ import "server-only";
 import sharp from "sharp";
 import { printPlacement, textureDimensions, type PrintParams } from "@/lib/templates/params";
 import type { PrintSlot } from "@/lib/templates/schema";
+import { applyOutline } from "@/lib/templates/outline";
+import { layoutText, textSvg } from "@/lib/templates/text";
+import { loadTextFont } from "./fonts";
 
 // CSS の saturate() と同じ行列（https://www.w3.org/TR/filter-effects-1/#feColorMatrixElement）
 function saturateMatrix(s: number): [[number, number, number], [number, number, number], [number, number, number]] {
@@ -28,7 +31,26 @@ export async function renderPrintTexture(slot: PrintSlot, params: PrintParams, i
       background: background ? { ...hexToRgb(background), alpha: 1 } : { r: 0, g: 0, b: 0, alpha: 0 },
     },
   });
-  if (!image) return base.png().toBuffer();
+  const layers = [...(image ? await imageLayer(params, image, canvas) : []), ...(await textLayer(params, canvas))];
+  if (!slot.outline || background) return base.composite(layers).png({ compressionLevel: 9 }).toBuffer();
+
+  // 絵と文字の周りをアクリルの板にする（エディタの drawPrint と同じ処理）
+  const composed = await sharp(await base.composite(layers).png().toBuffer()).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  applyOutline(composed.data, composed.info.width, composed.info.height, slot.outline);
+  return sharp(composed.data, { raw: { width: composed.info.width, height: composed.info.height, channels: 4 } })
+    .png({ compressionLevel: 9 })
+    .toBuffer();
+}
+
+// 文字（画像の上に重ねる。明るさ・彩度は掛けない）
+async function textLayer(params: PrintParams, canvas: { width: number; height: number }) {
+  if (!params.text) return [];
+  const layout = layoutText(await loadTextFont(params.text.font), params.text, canvas);
+  if (!layout) return [];
+  return [{ input: Buffer.from(textSvg(layout, params.text, canvas)), left: 0, top: 0 }];
+}
+
+async function imageLayer(params: PrintParams, image: Buffer, canvas: { width: number; height: number }) {
 
   const source = sharp(image).rotate(); // EXIF の向きを反映
   const meta = await source.metadata();
@@ -59,14 +81,11 @@ export async function renderPrintTexture(slot: PrintSlot, params: PrintParams, i
   const cropTop = Math.max(0, -top);
   const cropWidth = Math.min(rendered.info.width - cropLeft, canvas.width - Math.max(0, left));
   const cropHeight = Math.min(rendered.info.height - cropTop, canvas.height - Math.max(0, top));
-  if (cropWidth <= 0 || cropHeight <= 0) return base.png().toBuffer();
+  if (cropWidth <= 0 || cropHeight <= 0) return [];
 
   const visible = await sharp(rendered.data)
     .extract({ left: cropLeft, top: cropTop, width: cropWidth, height: cropHeight })
     .png()
     .toBuffer();
-  return base
-    .composite([{ input: visible, left: Math.max(0, left), top: Math.max(0, top) }])
-    .png({ compressionLevel: 9 })
-    .toBuffer();
+  return [{ input: visible, left: Math.max(0, left), top: Math.max(0, top) }];
 }

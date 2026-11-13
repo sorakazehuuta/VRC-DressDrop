@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ColorSlot, PrintSlot, Slot } from "./schema";
+import { TEXT_FONTS, TEXT_LIMITS, type PrintText } from "./text";
 
 // エディタの編集内容。works.params にこの形で保存し、unitypackage 生成時もこれを元にテクスチャを作る
 
@@ -14,6 +15,8 @@ export type PrintParams = {
   rotation: number; // 度。時計回りが正
   brightness: number; // %
   saturation: number; // %
+  // 入れる文字。文字がないときはこの項目自体を持たない（以前の作品と同じ JSON・同じ版のハッシュになるように）
+  text?: PrintText;
 };
 
 export type ColorParams = { kind: "color"; color: string };
@@ -91,7 +94,45 @@ const printParamsSchema = z.object({
   rotation: z.number(),
   brightness: z.number(),
   saturation: z.number(),
+  text: z.unknown().optional(),
 });
+const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+const printTextSchema = z.object({
+  content: z.string(),
+  font: z.enum(Object.keys(TEXT_FONTS) as [keyof typeof TEXT_FONTS, ...(keyof typeof TEXT_FONTS)[]]),
+  size: z.number(),
+  color: hex,
+  outlineColor: hex,
+  outlineWidth: z.number(),
+  align: z.enum(["left", "center", "right"]),
+  offsetX: z.number(),
+  offsetY: z.number(),
+});
+
+// 文字の正規化。改行は LF にそろえ、長さ・行数・範囲を丸める。空なら undefined（項目を持たない）
+export function parsePrintText(raw: unknown): PrintText | undefined {
+  const parsed = printTextSchema.safeParse(raw);
+  if (!parsed.success) return undefined;
+  const t = parsed.data;
+  const content = t.content
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .slice(0, TEXT_LIMITS.maxLines)
+    .join("\n")
+    .slice(0, TEXT_LIMITS.maxLength);
+  if (!content.trim()) return undefined;
+  return {
+    content,
+    font: t.font,
+    size: clamp(t.size, TEXT_LIMITS.size),
+    color: t.color.toLowerCase(),
+    outlineColor: t.outlineColor.toLowerCase(),
+    outlineWidth: clamp(t.outlineWidth, TEXT_LIMITS.outlineWidth),
+    align: t.align,
+    offsetX: clamp(t.offsetX, TEXT_LIMITS.offset),
+    offsetY: clamp(t.offsetY, TEXT_LIMITS.offset),
+  };
+}
 const colorParamsSchema = z.object({ kind: z.literal("color"), color: z.string().regex(/^#[0-9a-fA-F]{6}$/) });
 
 // 保存データやクライアントから届いた値を、テンプレートのスロット定義に合わせて正規化する。
@@ -104,9 +145,11 @@ export function parseEditorParams(raw: unknown, slots: Slot[]): EditorParams {
     if (slot.type === "print") {
       const parsed = printParamsSchema.safeParse(value);
       if (!parsed.success) continue;
-      const p = parsed.data;
+      const { text: rawText, ...p } = parsed.data;
+      const text = parsePrintText(rawText);
       result.slots[slot.key] = {
         ...p,
+        ...(text ? { text } : {}),
         scaleX: clamp(p.scaleX, PRINT_LIMITS.scale),
         scaleY: clamp(p.scaleY, PRINT_LIMITS.scale),
         offsetX: clamp(p.offsetX, PRINT_LIMITS.offset),
