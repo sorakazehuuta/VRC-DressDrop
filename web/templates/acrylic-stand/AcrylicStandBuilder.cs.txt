@@ -12,7 +12,7 @@ public static class AcrylicStandBuilder
 {
     const string Folder = "Assets/VRPrintLab/AcrylicStand";
 
-    // 寸法（メートル）。絵の面 10×15cm、板の余白 5mm、厚さ 3mm
+    // 寸法（メートル）。絵の面 10×15cm、板の余白 5mm、厚さ 3mm（プリントの面 11×16cm。template.json の outline.sizeMm と合わせる）
     const float ArtW = 0.10f, ArtH = 0.15f;
     const float Margin = 0.005f;
     const float PlateT = 0.003f;
@@ -147,6 +147,25 @@ public static class AcrylicStandBuilder
             print.Tri(bl, tr, br, n, new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0));
         }
 
+        // 板の側面（厚み 3mm の切り口）。購入時にサイトが、板の外周（絵の形・四角）に合わせてこのメッシュの中身を作り直す
+        // （template.json の outline.edge）。ここでは仮に、板の大きさの四角の側面を入れておく
+        var edge = new MeshBuilder();
+        {
+            var corners = new[] { new Vector2(x0, y1), new Vector2(x1, y1), new Vector2(x1, y0), new Vector2(x0, y0) };
+            var center = new Vector2(0, (y0 + y1) / 2);
+            for (int i = 0; i < 4; i++)
+            {
+                var a = corners[i];
+                var b = corners[(i + 1) % 4];
+                var mid = (a + b) / 2 - center;
+                var outward = new Vector3(mid.x, mid.y, 0);
+                Vector3 af = new Vector3(a.x, a.y, PlateT / 2), bf = new Vector3(b.x, b.y, PlateT / 2);
+                Vector3 ab = new Vector3(a.x, a.y, -PlateT / 2), bb = new Vector3(b.x, b.y, -PlateT / 2);
+                edge.Tri(af, bf, bb, outward);
+                edge.Tri(af, bb, ab, outward);
+            }
+        }
+
         // 台座（角丸の板）
         var stand = new MeshBuilder();
         Prism(stand, RoundedRect(0, 0, BaseW, BaseD, BaseR), 0, BaseH, true);
@@ -155,12 +174,15 @@ public static class AcrylicStandBuilder
         {
             ["AcrylicStand_Print"] = print.Build("AcrylicStand_Print"),
             ["AcrylicStand_Base"] = stand.Build("AcrylicStand_Base"),
+            ["AcrylicStand_Edge"] = edge.Build("AcrylicStand_Edge"),
         };
         foreach (var kv in meshes) AssetDatabase.CreateAsset(kv.Value, $"{Folder}/{kv.Key}.asset");
 
         // プリントは半透明（Fade）。絵は不透明、縁取り（アクリル）は半透明、その外は透明になる
         var matPrint = MakeMaterial("Mat_Print", Color.white, 0.85f, "fade");
         var matBase = MakeMaterial("Mat_Base", new Color(0.93f, 0.95f, 0.97f, 1f), 0.85f, "opaque");
+        // 側面は不透明（半透明どうしの描く順番の乱れを避け、手前の板越しに奥の側面が見えるようにする。Quest でも軽い）
+        var matEdge = MakeMaterial("Mat_Edge", new Color(0.84f, 0.9f, 0.93f, 1f), 0.9f, "opaque");
 
         var root = new GameObject("AcrylicStand");
         void Part(string name, Mesh mesh, Material mat)
@@ -171,6 +193,7 @@ public static class AcrylicStandBuilder
             go.AddComponent<MeshRenderer>().sharedMaterial = mat;
         }
         Part("Print", meshes["AcrylicStand_Print"], matPrint);
+        Part("Edge", meshes["AcrylicStand_Edge"], matEdge);
         Part("Base", meshes["AcrylicStand_Base"], matBase);
         PrefabUtility.SaveAsPrefabAsset(root, $"{Folder}/AcrylicStand.prefab");
         Object.DestroyImmediate(root);
