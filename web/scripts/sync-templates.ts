@@ -154,7 +154,7 @@ async function main() {
     return name;
   }
 
-  // トークン数・公開状態・並び順・読みは、登録済みなら DB の値（管理画面で変えた値）を残す。template.json の値は初回の登録だけに使う
+  // トークン数・公開状態・並び順・読み・カテゴリは、登録済みなら DB の値（管理画面で変えた値）を残す。template.json の値は初回の登録だけに使う
   const { data: registered } = await supabase.from("templates").select("slug, sort_order");
   const registeredSlugs = new Set((registered ?? []).map((t) => t.slug));
   // 新しく登録するものは、管理画面で並べた順番を崩さないよう最後に並べる（新しいもの同士は sortOrder の順）
@@ -180,7 +180,6 @@ async function main() {
     const row = {
       slug: manifest.slug,
       name: manifest.name,
-      category: manifest.category,
       description: manifest.description,
       preview_model_path: previewPath,
       package_model_path: packagePath,
@@ -189,7 +188,7 @@ async function main() {
       slots: manifest.slots,
     };
     const { error } = isNew
-      ? await supabase.from("templates").insert({ ...row, token_cost: manifest.tokenCost, is_public: manifest.isPublic, sort_order: newSortOrders.get(manifest.slug), name_reading: manifest.nameReading })
+      ? await supabase.from("templates").insert({ ...row, token_cost: manifest.tokenCost, is_public: manifest.isPublic, sort_order: newSortOrders.get(manifest.slug), name_reading: manifest.nameReading, category: manifest.category })
       : await supabase.from("templates").update(row).eq("slug", manifest.slug);
     if (error) {
       const hint = error.message.includes("package_prefab_path") ? "（マイグレーション 20261016000000_unitypackage_templates.sql を SQL Editor で実行してください）" : "";
@@ -198,7 +197,7 @@ async function main() {
     console.log(
       isNew
         ? `登録しました: ${manifest.slug}（${manifest.isPublic ? "公開" : "非公開"}）`
-        : `更新しました: ${manifest.slug}（トークン数・公開状態・並び順・読みは管理画面の値のまま）`,
+        : `更新しました: ${manifest.slug}（トークン数・公開状態・並び順・読み・カテゴリは管理画面の値のまま）`,
     );
   }
 }

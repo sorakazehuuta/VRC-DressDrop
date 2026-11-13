@@ -5,7 +5,7 @@ import { useActionState, useState, type DragEvent } from "react";
 import type { FormState } from "@/app/auth/actions";
 import { Button, FormMessage } from "@/components/ui";
 
-type Row = { id: string; slug: string; name: string; token_cost: number; is_public: boolean; name_reading?: string };
+type Row = { id: string; slug: string; name: string; token_cost: number; is_public: boolean; name_reading?: string; category?: string };
 
 export function CatalogForm({
   rows,
@@ -13,12 +13,15 @@ export function CatalogForm({
   previewBase,
   saveLabel,
   orderNote,
+  categories,
 }: {
   rows: Row[];
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   previewBase?: string;
   saveLabel: string;
   orderNote: string;
+  // テンプレートのカテゴリの選択肢（ギミックでは渡さない）
+  categories?: readonly string[];
 }) {
   const [state, formAction, pending] = useActionState(action, null);
   const rowKey = rows.map((r) => r.id).join(",");
@@ -83,6 +86,20 @@ export function CatalogForm({
               </Link>
             )}
           </span>
+          {categories && row.category !== undefined && (
+            <label className="flex items-center gap-1">
+              カテゴリ
+              {/* 保存後のフォームの初期化で、最初に開いたときの値に戻らないよう、保存された値が変わったら作り直す */}
+              <select key={row.category} name={`category:${row.id}`} defaultValue={row.category} className="rounded border border-zinc-300 bg-white px-2 py-1">
+                {/* 一覧にないカテゴリが入っている行は、その値も選べるようにして勝手に変えない */}
+                {(categories.includes(row.category) ? categories : [...categories, row.category]).map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {row.name_reading !== undefined && (
             <label className="flex items-center gap-1">
               読み

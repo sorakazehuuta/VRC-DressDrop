@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/admin";
 import { catalogSortOrders } from "@/lib/catalog-order";
 import { processDeletions } from "@/lib/storage-deletions";
 import { createAdminClient } from "@/lib/supabase/server";
+import { TEMPLATE_CATEGORIES } from "@/lib/templates/categories";
 
 const adjustErrors: Record<string, string> = {
   invalid_delta: "調整するトークン数は 0 以外、±1000 以内で入力してください。",
@@ -94,12 +95,12 @@ const costSchema = (raw: string) => {
   return raw !== "" && Number.isInteger(n) && n >= 0 && n <= 100 ? n : null;
 };
 
-// トークン数・公開状態・並び順（・テンプレートの読み）をまとめて保存する（同期コマンドより DB の値が優先される）。変わった行だけ更新して記録に残す
+// トークン数・公開状態・並び順（・テンプレートの読みとカテゴリ）をまとめて保存する（同期コマンドより DB の値が優先される）。変わった行だけ更新して記録に残す
 async function saveCatalog(table: "templates" | "gimmicks", formData: FormData): Promise<FormState> {
   const adminUser = await requireAdmin();
   const admin = createAdminClient();
   const { data: rows, error } = await (table === "templates"
-    ? admin.from("templates").select("id, token_cost, is_public, sort_order, name_reading")
+    ? admin.from("templates").select("id, token_cost, is_public, sort_order, name_reading, category")
     : admin.from("gimmicks").select("id, token_cost, is_public, sort_order"));
   if (error) return { error: `読み込めませんでした: ${error.message}` };
 
@@ -121,6 +122,14 @@ async function saveCatalog(table: "templates" | "gimmicks", formData: FormData):
       const reading = field(formData, `nameReading:${row.id}`);
       if (reading.length > 100) return { error: "読みは 100 文字以内で入力してください。保存していません。" };
       if (reading !== row.name_reading) update.name_reading = reading;
+    }
+    if ("category" in row) {
+      const category = field(formData, `category:${row.id}`);
+      // 選べるのは決めたカテゴリだけ（一覧にない今の値はそのまま残せる）
+      if (category && category !== row.category) {
+        if (!(TEMPLATE_CATEGORIES as readonly string[]).includes(category)) return { error: "カテゴリは一覧から選んでください。保存していません。" };
+        update.category = category;
+      }
     }
     if (Object.keys(update).length) changes.push({ id: row.id, update, note: Object.entries(update).map(([k, v]) => `${k}=${v}`).join(" ") });
   }
