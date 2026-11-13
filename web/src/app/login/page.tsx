@@ -16,7 +16,7 @@ const errorMessages: Record<string, string> = {
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const params = await searchParams;
-  const next = safeNextPath(params.next, "/works");
+  const next = safeNextPath(params.next, "/");
   if (await getCurrentUser()) redirect(next);
 
   const error = typeof params.error === "string" ? errorMessages[params.error] : undefined;

@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "新規登録 | VRPrintLab" };
 
 export default async function SignupPage({ searchParams }: PageProps<"/signup">) {
   const params = await searchParams;
-  const next = safeNextPath(params.next, "/works");
+  const next = safeNextPath(params.next, "/");
   if (await getCurrentUser()) redirect(next);
 
   return (
