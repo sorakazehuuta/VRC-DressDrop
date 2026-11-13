@@ -17,7 +17,7 @@
 | 9 | テストの整備 | 完了（main にマージ済み）。単体テスト・DB 関数のテスト・Unity の手動確認の手順書・GitHub Actions |
 
 - サービス名は **VRPrintLab**（ロゴ・ファビコンは `web/images/common`）。リポジトリ名・フォルダ名は VRC-DressDrop のまま
-- **ブランチ**: すべての作業は `main` にマージ済み。`templates` は main と同じ位置（`de3e3f9` 以降の main の変更は、次にテンプレートを追加するときに templates で `git merge main` して取り込む）。GitHub の main・templates はローカルと同じ位置まで push 済み（2026-11-13 時点。push は利用者が行う）。デザインの見直しは `feature/site-design-refresh` ブランチ（main へのマージは利用者の確認後）
+- **ブランチ**（2026-11-13 夜の時点）: 機能の作業はすべて `main` にマージ済み（最新は `7a998cc`）。この資料は `docs/handoff-20261113b` ブランチ。`templates` は main の `cb9e5e4` までを取り込み、アクリルスタンドを追加（`b1053c5`）。templates に main の最新（`7a998cc` 以降）はまだ取り込んでいない（次にテンプレートを触るときに `git merge main`）。**GitHub への push は 11-13 の昼以降していない**（push は利用者が行う）
 - **2026-11-12〜11-13 に入れた主な変更**（すべて main）
   - 新規登録・ログイン・パスワード再設定に CAPTCHA（Cloudflare Turnstile。Supabase 側の CAPTCHA はまだ無効）、使い捨てメールアドレスでの登録の拒否（Before User Created フック、有効化済み）
   - 導入ガイドに Unity の画面の画像 3 枚（`web/public/guide/`）
@@ -37,6 +37,33 @@
 - 規約の日付は `web/src/lib/legal.ts`（`TERMS_VERSION` / `TERMS_DRAFT`）。文面を変えたら日付を更新する。パッケージの LICENSE.txt、登録（profiles.terms_version）、購入（payments.terms_version）に記録する
 - 本番前に [production-check.md](production-check.md) の未確認の項目を確かめる。運営の手順は [admin-operations.md](admin-operations.md)
 - テンプレートは `templates` ブランチで管理（`main` の変更は templates 側で `git merge main` して取り込む）
+
+## 次に行う作業（2026-11-13 に利用者が指定）
+
+### アクリルスタンドの改良
+
+1. **絵の部分に厚みを付ける**（実物のアクリルスタンドと同じくらい。一般的なアクスタの板は 3mm 前後）
+2. **形を選べるようにする**: 「絵の形に切り抜く」か「四角のまま」か。四角のときは大きさを調整でき、角を丸めるかも選べる。切り抜くときは縁取りの幅を調整できる
+
+今の作り（設計を変えるときの前提）:
+
+- テンプレートは `templates` ブランチの `web/templates/acrylic-stand/`。モデルは Unity のエディタのスクリプト（`AcrylicStandBuilder.cs.txt`）で作った。メッシュは「プリントの面（表と裏の2枚の四角。3mm 離して置き、裏は左右反転して見える）」と「台座」だけ。**板のメッシュはない**
+- 板の形は、テクスチャに描いている。印刷面の定義の `outline`（template.json。幅・色・不透明度・外周の濃さ・台座に差し込む帯の幅）を見て、絵の不透明な部分の周りを半透明の板にする。処理は `web/src/lib/templates/outline.ts` の `applyOutline` で、ブラウザ（`editor/[slug]/print-canvas.ts`）とサーバー（`lib/package/texture.ts`）で同じものを使う。距離の計算は長辺 512px に縮小して行う（スライダー操作で重くならないように）
+- プリントのマテリアルは Fade（半透明）。テンプレートの処理（`setCutout`）は Fade のマテリアルをそのままにする
+- そのため今は、横から見ると「薄い板が 2 枚」に見え、切り口（厚みの側面）がない。形は template.json で決まっていて、利用者は変えられない
+
+考えられるやり方（どれにするかは検討する）:
+
+- 厚み: (a) 絵の形の側面のメッシュを作品ごとにサーバーで作る（unitypackage にメッシュを足す。Prefab の組み立て・GUID・ブラウザのプレビューも対応が要る）、(b) 同じテクスチャの薄い面を厚みの方向に何枚も重ねて側面に見せる（メッシュは固定のまま。Quest の負荷とプレビューの見え方を確かめる）、(c) シェーダーで描く（Quest・VRChat の制約に注意）。四角（角丸）のときは、固定の形なのでメッシュで厚みを作りやすい
+- 形の選択: 利用者が変える値なので、作品の編集内容（`PrintParams`）に持たせることになる。**以前の作品の版のハッシュを変えない**よう、文字（`text`）と同じく「既定と違うときだけ項目を持つ」形にする（`lib/templates/params.ts` の `parsePrintText` と `tests/unit/print-text.test.ts` を参照）。四角の大きさ・角の丸み・縁取りの幅を変えると見た目が変わるので、新しいダウンロード（トークンが必要）になる
+- 画面: エディタの印刷面の欄に、アクリルの形の欄を足す（`outline` がある印刷面だけに出す）。文言は日英の両方
+- 確認: ブラウザ（日英・PC とスマホ幅）、ダウンロードしたパッケージのテクスチャ、Unity での見え方（下の「確認のやり方」）、既存の確認スクリプト 12 本
+
+確認のやり方（アクリルスタンドで使ったもの）:
+
+- エディタ: 管理者の確認用ユーザーを作ってログインし、白い背景の画像を貼って「背景の色を消す」→ 斜めからも撮る。保存してダウンロードし、unitypackage を展開して `Tex_print.png` のアルファ（不透明・半透明・透明の割合、下端の中央の帯）を調べる。確認用ユーザーは `tools/verification/e2e/cleanup.cjs` の `cleanupUser` で消す
+- Unity: 新しい Unity 2022.3 のプロジェクトを `-createProject` で作り、ダウンロードした unitypackage を `-importPackage` で読み込み、`tools/verification/unity/VRPLBatchTest.cs.txt` で Prefab を組み立てる。カメラで撮るには、シーンに Prefab とライトを置いて `Camera.Render` → `RenderTexture` を PNG に書き出すエディタのスクリプトを、`-nographics` を付けずに `-batchmode` で実行する（裏から撮るときは、ライトを裏側にも向ける）
+- テンプレートを作り直したら: unitypackage を差し替え → `templates:prepare` → `templates:check` → サムネイル → `templates:sync`。アクリルスタンドのサムネイルは自動のものではなく、背景を消した見本のアイコンをエディタで貼って撮ったもの（3D 表示を 4:3 に切り出して 800×600）
 
 ## 保留・残っている予定の作業
 
@@ -182,6 +209,7 @@ Claude の Skill「frontend-design」（決まりきった作りに見えない 
   - 管理画面の URL・文字を管理者以外に届けない（`admin-link-check` で確かめる）: 「管理画面」の文言はサーバーだけで読む `components/admin-nav-messages.ts`、管理画面に言語を付けない判定は `proxy.ts` の `isAdminPath`。ブラウザでも読み込む `i18n/config.ts` や共通の文言（`components/messages.ts`）に管理画面の URL・文字を書かない
   - `gimmick-e2e` は、確認の間だけ全ギミックを公開し、最後に元の公開状態に戻す（今は 16 件すべて非公開）
   - 画面の要素は、見た目のクラス名ではなく文言・ラベル・`data-*` 属性（`data-download-panel`、`data-gimmick-item`、`data-template`）で探す
+- **履歴の扱い（エディタ）**: この版の Next.js は `history.pushState` / `replaceState` を内部で置き換えていて、state に `null` を渡しても Next.js の情報を引き継ぎ、URL の変化を Next.js に伝える。エディタを離れるときの確認（`leave-guard.ts`）は、目印が外れた popstate を capture で先に受け取って止める（Next.js に渡すと前の履歴の URL のページが描き直され、編集中のエディタが作り直される）
 - **確認スクリプトの起動**: 本番モードのサーバーを `npx next start -p 3002` で起動する。止めるときは node の `next start` のプロセスを止める（ポートの一覧からは見つからないことがある）
 - **テンプレート（unitypackage 形式）**: 購入時はテンプレートの中身を作品フォルダの `Template/` に複製し、GUID を振り直してスロットの .mat の色・テクスチャだけを書き換える。プレビューの glb は `templates:prepare` が Unity のバッチモードで Prefab から作る（登録する PC に Unity 2022.3 が必要）。エディタの最初の視点は、1つ目のプリント面の UV の中心を正面から見る向き（`src/lib/templates/view.ts`）。ケーキは 6.7 万・缶は 1.32 万・スケートボードは 1.06 万三角形で Quest の目安（1万）を超えている。チェンジングパネル（`angle-fold`）は短冊が 45 度なので、`aspect` 1.03 は斜めから見たときの比。本はエディタのプレビューで、表紙のプリントの上に背の溝が細かい点で透ける（Unity では出ない）
 - **ギミック**: VRChat 上での全員への同期は未確認。直近の修正版（光る・触れる・振る）は利用者の Unity での再確認待ち。公開と導入ガイドは「保留・残っている予定の作業」の C
