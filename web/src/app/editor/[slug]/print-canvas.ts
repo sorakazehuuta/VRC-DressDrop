@@ -1,9 +1,10 @@
 import type { Font } from "opentype.js";
 import { printPlacement, type PrintParams } from "@/lib/templates/params";
-import { applyOutline, type PrintOutline } from "@/lib/templates/outline";
+import { applyOutline, type OutlineLoop, type PrintOutline } from "@/lib/templates/outline";
 import { layoutText } from "@/lib/templates/text";
 
-// プリント面のテクスチャを canvas に描く。サーバー側の生成処理もこれと同じ見た目になるよう printPlacement を共有する
+// プリント面のテクスチャを canvas に描く。サーバー側の生成処理もこれと同じ見た目になるよう printPlacement を共有する。
+// アクリルの縁取りがあるときは、板の外周の線（側面のメッシュを作る元）を返す
 export function drawPrint(
   canvas: HTMLCanvasElement,
   params: PrintParams,
@@ -13,9 +14,9 @@ export function drawPrint(
   font?: Font,
   // アクリルの縁取り（印刷面の定義にあるときだけ）
   outline?: PrintOutline,
-) {
+): OutlineLoop[] {
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+  if (!ctx) return [];
 
   ctx.save();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -58,7 +59,9 @@ export function drawPrint(
   // 絵と文字を描いたあとで、その周りをアクリルの板にする（サーバーの renderPrintTexture と同じ順番）
   if (outline && !background) {
     const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    applyOutline(pixels.data, canvas.width, canvas.height, outline);
+    const loops = applyOutline(pixels.data, canvas.width, canvas.height, outline, params.acrylic);
     ctx.putImageData(pixels, 0, 0);
+    return loops;
   }
+  return [];
 }

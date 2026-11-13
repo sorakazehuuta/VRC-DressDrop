@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ColorSlot, PrintSlot, Slot } from "./schema";
+import { parseAcrylic, type AcrylicParams } from "./acrylic";
 import { TEXT_FONTS, TEXT_LIMITS, type PrintText } from "./text";
 
 // エディタの編集内容。works.params にこの形で保存し、unitypackage 生成時もこれを元にテクスチャを作る
@@ -17,6 +18,8 @@ export type PrintParams = {
   saturation: number; // %
   // 入れる文字。文字がないときはこの項目自体を持たない（以前の作品と同じ JSON・同じ版のハッシュになるように）
   text?: PrintText;
+  // アクリルの板の形（印刷面の定義に outline があるときだけ）。テンプレートの既定（絵の形・既定の縁取りの幅）のときは項目自体を持たない
+  acrylic?: AcrylicParams;
 };
 
 export type ColorParams = { kind: "color"; color: string };
@@ -95,6 +98,7 @@ const printParamsSchema = z.object({
   brightness: z.number(),
   saturation: z.number(),
   text: z.unknown().optional(),
+  acrylic: z.unknown().optional(),
 });
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 const printTextSchema = z.object({
@@ -145,11 +149,13 @@ export function parseEditorParams(raw: unknown, slots: Slot[]): EditorParams {
     if (slot.type === "print") {
       const parsed = printParamsSchema.safeParse(value);
       if (!parsed.success) continue;
-      const { text: rawText, ...p } = parsed.data;
+      const { text: rawText, acrylic: rawAcrylic, ...p } = parsed.data;
       const text = parsePrintText(rawText);
+      const acrylic = parseAcrylic(rawAcrylic, slot.outline);
       result.slots[slot.key] = {
         ...p,
         ...(text ? { text } : {}),
+        ...(acrylic ? { acrylic } : {}),
         scaleX: clamp(p.scaleX, PRINT_LIMITS.scale),
         scaleY: clamp(p.scaleY, PRINT_LIMITS.scale),
         offsetX: clamp(p.offsetX, PRINT_LIMITS.offset),

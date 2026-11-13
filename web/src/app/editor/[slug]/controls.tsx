@@ -4,6 +4,7 @@ import { useId, useRef, useState, type DragEvent } from "react";
 import { Button } from "@/components/ui";
 import { useLocale } from "@/i18n/client";
 import { pick } from "@/i18n/messages";
+import { ACRYLIC_LIMITS, DEFAULT_RECT, normalizeAcrylic, resolveAcrylic, type AcrylicParams, type PrintOutline } from "@/lib/templates/acrylic";
 import { PRINT_LIMITS, defaultPrintParams, textureDimensions, type ColorParams, type PrintParams } from "@/lib/templates/params";
 import { slotLabel, type ColorSlot, type PrintSlot } from "@/lib/templates/schema";
 import { TEXT_FONTS, TEXT_LIMITS, defaultPrintText, type PrintText, type TextFont } from "@/lib/templates/text";
@@ -307,11 +308,17 @@ export function PrintControls({
           type="button"
           variant="secondary"
           className="self-start"
-          onClick={() => onChange((p) => ({ ...defaultPrintParams(), imageId: p.imageId, ...(p.text ? { text: p.text } : {}) }))}
+          onClick={() =>
+            onChange((p) => ({ ...defaultPrintParams(), imageId: p.imageId, ...(p.text ? { text: p.text } : {}), ...(p.acrylic ? { acrylic: p.acrylic } : {}) }))
+          }
         >
           {c.resetPrint}
         </Button>
       </fieldset>
+
+      {slot.outline && slot.background === "transparent" && (
+        <AcrylicControls outline={slot.outline} acrylic={params.acrylic} onChange={onChange} onCommit={onCommit} />
+      )}
 
       <TextControls text={params.text} onChange={onChange} onCommit={onCommit} />
 
@@ -321,6 +328,107 @@ export function PrintControls({
         </Button>
       )}
     </section>
+  );
+}
+
+// アクリルの板の形（印刷面の定義に outline があるときだけ）。テンプレートの既定（絵の形・既定の幅）のときは編集内容に項目を持たせない。
+// 切り替えたときに、もう一方の形の設定をこの欄で覚えておく
+function AcrylicControls({
+  outline,
+  acrylic,
+  onChange,
+  onCommit,
+}: {
+  outline: PrintOutline;
+  acrylic: AcrylicParams | undefined;
+  onChange: Change<PrintParams>;
+  onCommit: () => void;
+}) {
+  const locale = useLocale();
+  const c = pick(editorMessages, locale).controls;
+  const id = useId();
+  const current = resolveAcrylic(outline, acrylic);
+  const [lastBorder, setLastBorder] = useState(current.shape === "cutout" ? current.border : outline.width);
+  const [lastRect, setLastRect] = useState<AcrylicParams>(current.shape === "rect" ? current : DEFAULT_RECT);
+
+  const set = (next: AcrylicParams, commit: boolean) => {
+    if (next.shape === "cutout") setLastBorder(next.border);
+    else setLastRect(next);
+    const normalized = normalizeAcrylic(next, outline);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    onChange(({ acrylic: _removed, ...p }) => (normalized ? { ...p, acrylic: normalized } : p), commit);
+  };
+
+  // 実寸があれば mm、なければ % で出す
+  const size = outline.sizeMm;
+  const mm = (scale: number): Display => ({ scale, unit: "mm" });
+  const rectHeightMm = size ? size.height * (outline.tab > 0 ? 1 - outline.rectBottom : 1) : 0;
+  const borderDisplay = size ? mm(Math.min(size.width, size.height)) : PERCENT;
+  const widthDisplay = size ? mm(size.width) : PERCENT;
+  const heightDisplay = size ? mm(rectHeightMm) : PERCENT;
+  const decimals = size ? 1 : 0;
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-zinc-200 pt-4" data-acrylic-controls>
+      <div className="flex flex-col gap-1">
+        <h3 className="text-sm font-bold text-zinc-900">{c.acrylicHeading}</h3>
+        <p className="text-xs text-zinc-600">{c.acrylicHint}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm" role="radiogroup" aria-label={c.acrylicHeading}>
+        {(["cutout", "rect"] as const).map((shape) => (
+          <label key={shape} className="flex items-center gap-1.5">
+            <input
+              type="radio"
+              name={`${id}-shape`}
+              checked={current.shape === shape}
+              onChange={() => set(shape === "cutout" ? { shape: "cutout", border: lastBorder } : lastRect, true)}
+              className="accent-brand"
+            />
+            {c.acrylicShapes[shape]}
+          </label>
+        ))}
+      </div>
+      {current.shape === "cutout" ? (
+        <>
+          <Slider
+            label={c.acrylicBorder}
+            value={current.border}
+            limits={ACRYLIC_LIMITS.border}
+            display={borderDisplay}
+            decimals={decimals}
+            onChange={(v) => set({ shape: "cutout", border: v }, false)}
+            onCommit={onCommit}
+          />
+          <p className="-mt-1 text-xs text-zinc-500">{c.acrylicBorderHint}</p>
+        </>
+      ) : (
+        <>
+          <Slider
+            label={c.acrylicWidth}
+            value={current.width}
+            limits={ACRYLIC_LIMITS.size}
+            display={widthDisplay}
+            decimals={decimals}
+            onChange={(v) => set({ ...current, width: v }, false)}
+            onCommit={onCommit}
+          />
+          <Slider
+            label={c.acrylicHeight}
+            value={current.height}
+            limits={ACRYLIC_LIMITS.size}
+            display={heightDisplay}
+            decimals={decimals}
+            onChange={(v) => set({ ...current, height: v }, false)}
+            onCommit={onCommit}
+          />
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={current.rounded} onChange={(e) => set({ ...current, rounded: e.target.checked }, true)} className="accent-brand" />
+            {c.acrylicRounded}
+          </label>
+          <p className="text-xs text-zinc-500">{c.acrylicRectHint}</p>
+        </>
+      )}
+    </div>
   );
 }
 

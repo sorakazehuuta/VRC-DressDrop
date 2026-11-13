@@ -6,9 +6,10 @@ import { getLocale, getMessages } from "@/i18n/server";
 import { pick } from "@/i18n/messages";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { resolveAcrylic } from "@/lib/templates/acrylic";
 import type { PrintParams } from "@/lib/templates/params";
 import { templateNameTranslator } from "@/lib/templates/queries";
-import { slotLabel } from "@/lib/templates/schema";
+import { slotLabel, type PrintSlot } from "@/lib/templates/schema";
 import { DeleteSnapshotButton } from "../delete-snapshot-button";
 import { RedownloadButton } from "../redownload-button";
 import { parseSnapshot } from "../snapshot";
@@ -24,6 +25,18 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const signedPct = (v: number) => `${v > 0 ? "+" : ""}${Math.round(v * 100)}%`;
+
+// アクリルの板の形（実寸があれば mm、なければ %）
+function acrylicText(slot: PrintSlot, p: PrintParams, m: DetailMessages) {
+  if (!slot.outline) return null;
+  const outline = slot.outline;
+  const a = resolveAcrylic(outline, p.acrylic);
+  const size = outline.sizeMm;
+  const mm = (v: number) => `${Math.round(v * 10) / 10}mm`;
+  if (a.shape === "cutout") return m.acrylicCutout(size ? mm(a.border * Math.min(size.width, size.height)) : pct(a.border));
+  const rectHeight = size ? size.height * (outline.tab > 0 ? 1 - outline.rectBottom : 1) : 0;
+  return m.acrylicRect(size ? mm(a.width * size.width) : pct(a.width), size ? mm(a.height * rectHeight) : pct(a.height), a.rounded);
+}
 
 function printRows(p: PrintParams, m: DetailMessages) {
   return [
@@ -176,6 +189,12 @@ export default async function PurchaseDetailPage({ params }: PageProps<"/downloa
                       <p className="text-xs">
                         <span className="text-zinc-500">{m.rows.text}: </span>
                         <span className="whitespace-pre-wrap">{p.text.content}</span>
+                      </p>
+                    )}
+                    {slot.outline && (
+                      <p className="text-xs">
+                        <span className="text-zinc-500">{m.acrylic}: </span>
+                        {acrylicText(slot, p, m)}
                       </p>
                     )}
                   </section>

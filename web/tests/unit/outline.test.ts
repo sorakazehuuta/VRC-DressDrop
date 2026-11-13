@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyOutline, type PrintOutline } from "@/lib/templates/outline";
 
-const OUTLINE: PrintOutline = { width: 0.05, color: "#ffffff", opacity: 0.3, edgeOpacity: 0.7, tab: 0.2 };
+const OUTLINE: PrintOutline = { width: 0.05, color: "#ffffff", opacity: 0.3, edgeOpacity: 0.7, tab: 0.2, rectBottom: 0.05, cornerRadius: 0.06 };
 
 // 透明な面の真ん中に、不透明な赤い四角（絵）を置く
 function canvas(w: number, h: number, art: { x0: number; y0: number; x1: number; y1: number }) {

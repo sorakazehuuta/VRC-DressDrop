@@ -4,7 +4,9 @@ import { backgroundColor, type EditorParams } from "@/lib/templates/params";
 import type { Slot } from "@/lib/templates/schema";
 import { gimmickScripts, runtimeAssets, workBuildAssets, type GimmickInput } from "./gimmick-assets";
 import { setCutout, setMainTexture, setMaterialColor, templateFiles } from "./template-package";
-import { renderPrintTexture } from "./texture";
+import { buildEdgeMesh, printFaces } from "@/lib/templates/acrylic-edge";
+import { renderPrint } from "./texture";
+import { readUnityMesh, writeUnityMesh } from "./unity-mesh";
 import { buildUnityPackage, deterministicGuid, textAssetMeta, textureMeta, type PackageAsset } from "./unitypackage";
 
 export type WorkPackageInput = {
@@ -228,11 +230,19 @@ export async function buildWorkPackage(input: WorkPackageInput) {
     } else if (slot.type === "print" && slotParams?.kind === "print") {
       const image = slotParams.imageId ? (input.images.get(slotParams.imageId) ?? null) : null;
       const texturePath = `${base}/Tex_${slot.key}.png`;
-      assets.push({
-        path: texturePath,
-        data: await renderPrintTexture(slot, slotParams, image, backgroundColor(slot, input.params)),
-        meta: textureMeta,
-      });
+      const rendered = await renderPrint(slot, slotParams, image, backgroundColor(slot, input.params));
+      assets.push({ path: texturePath, data: rendered.png, meta: textureMeta });
+      // アクリルの板の厚み: 側面のメッシュを、板の外周に合わせて作り直す
+      const edge = slot.outline?.edge;
+      if (edge) {
+        const print = readUnityMesh(template.readObjectMesh(edge.printObject));
+        // Unity の UV は v が上向きなので、(u, t) の t は 1 - v
+        const uvT = print.uvs.map((v, i) => (i % 2 === 1 ? 1 - v : v));
+        const faces = printFaces(print.positions, uvT, print.indices);
+        if (!faces) throw new Error(`「${edge.printObject}」のメッシュから表と裏の面を見つけられません`);
+        const mesh = buildEdgeMesh(rendered.loops, faces[0], faces[1]);
+        template.editObjectMesh(edge.edgeObject, (yaml) => writeUnityMesh(yaml, mesh));
+      }
       template.editMaterial(slot.material, (yaml) => {
         const textured = setMainTexture(setMaterialColor(yaml, "#ffffff"), guidOf(texturePath));
         return slot.background === "transparent" ? setCutout(textured) : textured;

@@ -2,7 +2,7 @@ import "server-only";
 import sharp from "sharp";
 import { printPlacement, textureDimensions, type PrintParams } from "@/lib/templates/params";
 import type { PrintSlot } from "@/lib/templates/schema";
-import { applyOutline } from "@/lib/templates/outline";
+import { applyOutline, type OutlineLoop } from "@/lib/templates/outline";
 import { layoutText, textSvg } from "@/lib/templates/text";
 import { loadTextFont } from "./fonts";
 
@@ -22,6 +22,16 @@ function hexToRgb(hex: string) {
 
 // エディタの drawPrint（print-canvas.ts）と同じ見た目のテクスチャ PNG を作る
 export async function renderPrintTexture(slot: PrintSlot, params: PrintParams, image: Buffer | null, background: string | null) {
+  return (await renderPrint(slot, params, image, background)).png;
+}
+
+// テクスチャ PNG と、アクリルの板の外周の線（縁取りがない印刷面では空）
+export async function renderPrint(
+  slot: PrintSlot,
+  params: PrintParams,
+  image: Buffer | null,
+  background: string | null,
+): Promise<{ png: Buffer; loops: OutlineLoop[] }> {
   const canvas = textureDimensions(slot);
   const base = sharp({
     create: {
@@ -32,14 +42,15 @@ export async function renderPrintTexture(slot: PrintSlot, params: PrintParams, i
     },
   });
   const layers = [...(image ? await imageLayer(params, image, canvas) : []), ...(await textLayer(params, canvas))];
-  if (!slot.outline || background) return base.composite(layers).png({ compressionLevel: 9 }).toBuffer();
+  if (!slot.outline || background) return { png: await base.composite(layers).png({ compressionLevel: 9 }).toBuffer(), loops: [] };
 
   // 絵と文字の周りをアクリルの板にする（エディタの drawPrint と同じ処理）
   const composed = await sharp(await base.composite(layers).png().toBuffer()).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  applyOutline(composed.data, composed.info.width, composed.info.height, slot.outline);
-  return sharp(composed.data, { raw: { width: composed.info.width, height: composed.info.height, channels: 4 } })
+  const loops = applyOutline(composed.data, composed.info.width, composed.info.height, slot.outline, params.acrylic);
+  const png = await sharp(composed.data, { raw: { width: composed.info.width, height: composed.info.height, channels: 4 } })
     .png({ compressionLevel: 9 })
     .toBuffer();
+  return { png, loops };
 }
 
 // 文字（画像の上に重ねる。明るさ・彩度は掛けない）
