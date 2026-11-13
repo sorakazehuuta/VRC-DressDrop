@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { authMessages } from "@/app/auth/messages";
+import { useLocale, useMessages } from "@/i18n/client";
 
 // Cloudflare Turnstile。トークンは Supabase Auth が検証する（ダッシュボードの Attack Protection で CAPTCHA を有効にする）
 // サイトキーが未設定なら何も出さない（開発中に CAPTCHA を使わない場合）
@@ -47,6 +49,8 @@ export function useCaptcha(resetSignal: unknown) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<string | null>(null);
   const signalRef = useRef<unknown>(resetSignal);
+  const m = useMessages(authMessages).captcha;
+  const locale = useLocale();
 
   useEffect(() => {
     if (!SITE_KEY || !containerRef.current) return;
@@ -57,7 +61,7 @@ export function useCaptcha(resetSignal: unknown) {
         if (cancelled) return;
         widgetRef.current = turnstile.render(el, {
           sitekey: SITE_KEY,
-          language: "ja",
+          language: locale,
           callback: (value: string) => {
             setToken({ value, signal: signalRef.current });
             setFailed(false);
@@ -93,7 +97,7 @@ export function useCaptcha(resetSignal: unknown) {
       <input type="hidden" name="captchaToken" value={current} />
       {failed && (
         <p className="text-xs text-red-700">
-          ロボットでないことの確認を読み込めませんでした。広告ブロックなどの拡張機能を止めるか、ページを再読み込みしてください。
+          {m.failedToLoad}
         </p>
       )}
     </div>

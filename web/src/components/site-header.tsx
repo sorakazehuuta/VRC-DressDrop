@@ -1,9 +1,10 @@
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/i18n/link";
 import logo from "../../images/common/logos/VRPrintLab_logo.png";
 import { createClient } from "@/lib/supabase/server";
 import { AdminNavLink } from "./admin-nav-link";
 import { HeaderNav } from "./header-nav";
+import { LanguageSwitcher } from "./language-switcher";
 
 export async function SiteHeader() {
   const supabase = await createClient();
@@ -21,12 +22,15 @@ export async function SiteHeader() {
         <Link href="/" className="shrink-0">
           <Image src={logo} alt="VRPrintLab" priority className="h-9 w-auto sm:h-14" sizes="(min-width: 640px) 168px, 108px" />
         </Link>
-        <HeaderNav
-          loggedIn={loggedIn}
-          balance={balance ?? 0}
-          adminTab={isAdmin ? <AdminNavLink variant="tab" /> : null}
-          adminMenuItem={isAdmin ? <AdminNavLink variant="menu" /> : null}
-        />
+        <div className="flex items-center gap-1.5 sm:gap-4">
+          <HeaderNav
+            loggedIn={loggedIn}
+            balance={balance ?? 0}
+            adminTab={isAdmin ? <AdminNavLink variant="tab" /> : null}
+            adminMenuItem={isAdmin ? <AdminNavLink variant="menu" /> : null}
+          />
+          <LanguageSwitcher variant="toggle" />
+        </div>
       </div>
     </header>
   );

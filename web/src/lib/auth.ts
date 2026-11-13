@@ -1,6 +1,10 @@
 import "server-only";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { authMessages } from "@/app/auth/messages";
+import type { Locale } from "@/i18n/config";
+import { pick } from "@/i18n/messages";
+import { localized } from "@/i18n/server";
 import { createClient } from "@/lib/supabase/server";
 
 export async function getCurrentUser() {
@@ -11,7 +15,7 @@ export async function getCurrentUser() {
 
 export async function requireUser(nextPath: string) {
   const user = await getCurrentUser();
-  if (!user) redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+  if (!user) redirect(await localized(`/login?next=${encodeURIComponent(nextPath)}`));
   return user;
 }
 
@@ -30,27 +34,12 @@ export async function siteOrigin() {
   return `${proto}://${host}`;
 }
 
-const authErrorMessages: Record<string, string> = {
-  invalid_credentials: "メールアドレスまたはパスワードが正しくありません。",
-  email_not_confirmed: "メールアドレスの確認が済んでいません。届いた確認メールのリンクを開いてください。",
-  user_already_exists: "このメールアドレスはすでに登録されています。",
-  email_exists: "このメールアドレスはすでに登録されています。",
-  weak_password: "パスワードが弱すぎます。8文字以上で、推測されにくいものにしてください。",
-  same_password: "新しいパスワードが現在のパスワードと同じです。",
-  email_address_invalid: "メールアドレスの形式が正しくありません。",
-  over_email_send_rate_limit: "メールの送信回数が上限に達しました。しばらく時間をおいてから再度お試しください。",
-  over_request_rate_limit: "操作が集中しています。しばらく時間をおいてから再度お試しください。",
-  signup_disabled: "現在、新規登録を受け付けていません。",
-  otp_expired: "リンクの有効期限が切れています。もう一度やり直してください。",
-  captcha_failed: "ロボットでないことの確認に失敗しました。もう一度お試しください。",
-};
-
 // 使い捨てメールアドレスの拒否（DB の hook_before_user_created が返す文言に含まれる目印）
 export const DISPOSABLE_EMAIL_MARKER = "disposable_email_domain";
-export const DISPOSABLE_EMAIL_MESSAGE = "使い捨てメールアドレスでは登録できません。普段お使いのメールアドレスで登録してください。";
 
-export function authErrorMessage(error: { code?: string; message?: string } | null | undefined) {
-  if (!error) return "エラーが発生しました。";
-  if (error.message?.includes(DISPOSABLE_EMAIL_MARKER)) return DISPOSABLE_EMAIL_MESSAGE;
-  return (error.code && authErrorMessages[error.code]) || "エラーが発生しました。時間をおいて再度お試しください。";
+export function authErrorMessage(error: { code?: string; message?: string } | null | undefined, locale: Locale) {
+  const m = pick(authMessages, locale);
+  if (!error) return m.errorUnknown;
+  if (error.message?.includes(DISPOSABLE_EMAIL_MARKER)) return m.disposableEmail;
+  return (error.code && m.errorCodes[error.code]) || m.errorDefault;
 }

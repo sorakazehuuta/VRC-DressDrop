@@ -1,19 +1,22 @@
-import Link from "next/link";
+import Link from "@/i18n/link";
+import { getMessages } from "@/i18n/server";
+import { LanguageSwitcher } from "./language-switcher";
+import { commonMessages } from "./messages";
 
-const links = [
-  { href: "/news", label: "お知らせ" },
-  { href: "/guide", label: "導入ガイド" },
-  { href: "/faq", label: "よくある質問" },
-  { href: "/terms", label: "利用規約" },
-  { href: "/privacy", label: "プライバシーポリシー" },
-  { href: "/tokushoho", label: "特定商取引法に基づく表記" },
-];
-
-export function SiteFooter() {
+export async function SiteFooter() {
+  const m = (await getMessages(commonMessages)).footer;
+  const links = [
+    { href: "/news", label: m.news },
+    { href: "/guide", label: m.guide },
+    { href: "/faq", label: m.faq },
+    { href: "/terms", label: m.terms },
+    { href: "/privacy", label: m.privacy },
+    { href: "/tokushoho", label: m.tokushoho },
+  ];
   return (
     <footer className="border-t border-zinc-200 bg-zinc-50">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-6 text-sm text-zinc-600 sm:flex-row sm:items-center sm:justify-between">
-        <nav aria-label="サイト情報">
+        <nav aria-label={m.label}>
           <ul className="flex flex-wrap gap-x-5 gap-y-2">
             {links.map((l) => (
               <li key={l.href}>
@@ -24,7 +27,10 @@ export function SiteFooter() {
             ))}
           </ul>
         </nav>
-        <p className="text-xs text-zinc-500">© VRPrintLab</p>
+        <div className="flex items-center justify-between gap-4 sm:justify-end">
+          <LanguageSwitcher />
+          <p className="text-xs text-zinc-500">© VRPrintLab</p>
+        </div>
       </div>
     </footer>
   );

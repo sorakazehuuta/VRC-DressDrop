@@ -1,22 +1,27 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { AuthLayout } from "@/components/auth-layout";
+import Link from "@/i18n/link";
+import { getMessages } from "@/i18n/server";
 import { ForgotPasswordForm } from "../auth/forms";
+import { authMessages } from "../auth/messages";
 
-export const metadata: Metadata = { title: "パスワードの再設定 | VRPrintLab" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: `${(await getMessages(authMessages)).forgot.title} | VRPrintLab` };
+}
 
-export default function ForgotPasswordPage() {
+export default async function ForgotPasswordPage() {
+  const m = (await getMessages(authMessages)).forgot;
   return (
     <AuthLayout
-      title="パスワードの再設定"
+      title={m.title}
       footer={
         <Link href="/login" className="underline">
-          ログイン画面に戻る
+          {m.back}
         </Link>
       }
     >
       <p className="text-sm text-zinc-600">
-        登録したメールアドレスに、パスワード再設定用のリンクを送ります。
+        {m.lead}
       </p>
       <ForgotPasswordForm />
     </AuthLayout>

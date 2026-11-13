@@ -1,17 +1,22 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { useMessages, usePathWithoutLocale } from "@/i18n/client";
+import Link from "@/i18n/link";
 import { LogoutButton } from "./logout-button";
+import { commonMessages } from "./messages";
 
 type NavItem = { href: string; label: string; match: string[] };
+type NavMessages = (typeof commonMessages)["ja"]["nav"];
 
 // match: このタブをハイライトするパスの先頭（エディタはテンプレート、ダウンロード履歴はマイ作品の一部として扱う。
 // 保存済みの作品を開いたエディタは、currentPath で /works/edit に読み替えてマイ作品に含める）
-const TEMPLATES: NavItem = { href: "/templates", label: "テンプレート", match: ["/templates", "/editor"] };
-const WORKS: NavItem = { href: "/works", label: "マイ作品", match: ["/works", "/downloads"] };
-const ACCOUNT: NavItem = { href: "/account", label: "アカウント", match: ["/account"] };
+const navItems = (m: NavMessages) => ({
+  TEMPLATES: { href: "/templates", label: m.templates, match: ["/templates", "/editor"] },
+  WORKS: { href: "/works", label: m.works, match: ["/works", "/downloads"] },
+  ACCOUNT: { href: "/account", label: m.account, match: ["/account"] },
+});
 
 const isActive = (pathname: string, item: NavItem) => item.match.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
@@ -48,7 +53,9 @@ function NavWithSearchParams(props: HeaderNavProps) {
 }
 
 function Nav({ loggedIn, balance, adminTab, adminMenuItem, editingWork }: HeaderNavProps & { editingWork: boolean }) {
-  const rawPath = usePathname();
+  const m = useMessages(commonMessages).nav;
+  const { TEMPLATES, WORKS, ACCOUNT } = navItems(m);
+  const rawPath = usePathWithoutLocale();
   const pathname = editingWork && rawPath.startsWith("/editor/") ? "/works/edit" : rawPath;
 
   if (!loggedIn) {
@@ -56,10 +63,10 @@ function Nav({ loggedIn, balance, adminTab, adminMenuItem, editingWork }: Header
       <nav className="flex items-center gap-2.5 whitespace-nowrap text-xs sm:gap-5 sm:text-sm">
         <TabLink item={TEMPLATES} pathname={pathname} />
         <Link href="/login" aria-current={pathname === "/login" ? "page" : undefined} className={pathname === "/login" ? "font-medium text-accent-dark" : "hover:text-accent-dark"}>
-          ログイン
+          {m.login}
         </Link>
         <Link href="/signup" className="rounded-md bg-brand px-2.5 py-1.5 font-semibold text-white hover:bg-brand-light sm:px-3">
-          新規登録
+          {m.signup}
         </Link>
       </nav>
     );
@@ -71,7 +78,7 @@ function Nav({ loggedIn, balance, adminTab, adminMenuItem, editingWork }: Header
       aria-current={pathname === "/tokens" ? "page" : undefined}
       className={`rounded-full px-3 py-1 font-semibold tabular-nums ${balance < 0 ? "bg-red-50 text-red-700" : "bg-accent-soft text-accent-dark"}`}
     >
-      {balance} トークン
+      {m.tokens(balance)}
     </Link>
   );
 
@@ -87,14 +94,15 @@ function Nav({ loggedIn, balance, adminTab, adminMenuItem, editingWork }: Header
       </nav>
       <div className="flex items-center gap-2 text-xs sm:hidden">
         {tokenChip}
-        <MobileMenu pathname={pathname} adminMenuItem={adminMenuItem} />
+        <MobileMenu pathname={pathname} adminMenuItem={adminMenuItem} m={m} />
       </div>
     </>
   );
 }
 
 // スマホ幅ではタブを並べきれないため、メニューボタンの中にまとめる
-function MobileMenu({ pathname, adminMenuItem }: { pathname: string; adminMenuItem?: ReactNode }) {
+function MobileMenu({ pathname, adminMenuItem, m }: { pathname: string; adminMenuItem?: ReactNode; m: NavMessages }) {
+  const { TEMPLATES, WORKS, ACCOUNT } = navItems(m);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -121,7 +129,7 @@ function MobileMenu({ pathname, adminMenuItem }: { pathname: string; adminMenuIt
     };
   }, [open]);
 
-  const items: NavItem[] = [TEMPLATES, { ...WORKS, match: ["/works"] }, { href: "/downloads", label: "ダウンロード履歴", match: ["/downloads"] }, ACCOUNT];
+  const items: NavItem[] = [TEMPLATES, { ...WORKS, match: ["/works"] }, { href: "/downloads", label: m.downloads, match: ["/downloads"] }, ACCOUNT];
 
   return (
     <div ref={rootRef}>
@@ -129,7 +137,7 @@ function MobileMenu({ pathname, adminMenuItem }: { pathname: string; adminMenuIt
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-label="メニュー"
+        aria-label={m.menu}
         className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-md hover:bg-zinc-100"
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>

@@ -1,20 +1,26 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import Link from "next/link";
 import type { ReactNode } from "react";
+import type { Locale } from "@/i18n/config";
+import Link from "@/i18n/link";
+import { pick } from "@/i18n/messages";
+import { getLocale } from "@/i18n/server";
+import { commonMessages } from "./messages";
 
 // 規約・FAQ などの文面（web/content/*.md）を表示する。
 // 使える書き方: 見出し（# / ## / ###）、段落、箇条書き（- / 1.）、**太字**、[リンク](URL)、`コード`、
 // 画像（1行に ![説明](/パス)。パスを placeholder にすると「画像準備中」の枠を出す）。
-// 【要確認】は未確定の箇所として目立たせる
+// 【要確認】（英語版では【TBD …】）は未確定の箇所として目立たせる。
+// 英語版の文面は content/en/ に同じ名前で置く。日本語版を変えたら英語版も合わせて直す
 
-export async function readContent(name: string) {
-  return readFile(path.join(process.cwd(), "content", name), "utf8");
+export async function readContent(name: string, locale?: Locale) {
+  const lang = locale ?? (await getLocale());
+  return readFile(path.join(process.cwd(), "content", ...(lang === "en" ? ["en"] : []), name), "utf8");
 }
 
 function inline(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];
-  const pattern = /\*\*(.+?)\*\*|\[(.+?)\]\((.+?)\)|(【要確認[^】]*】)|`(.+?)`/g;
+  const pattern = /\*\*(.+?)\*\*|\[(.+?)\]\((.+?)\)|(【(?:要確認|TBD)[^】]*】)|`(.+?)`/g;
   let last = 0;
   for (const m of text.matchAll(pattern)) {
     if (m.index > last) nodes.push(text.slice(last, m.index));
@@ -78,7 +84,8 @@ function parse(source: string): Block[] {
   return blocks;
 }
 
-export function Markdown({ source }: { source: string }) {
+export async function Markdown({ source }: { source: string }) {
+  const m = pick(commonMessages, await getLocale());
   return (
     <div className="flex flex-col gap-3 text-sm leading-relaxed text-zinc-800">
       {parse(source).map((b, i) => {
@@ -92,7 +99,7 @@ export function Markdown({ source }: { source: string }) {
             <figure key={i} className="flex flex-col gap-1">
               {b.src === "placeholder" ? (
                 <div className="flex aspect-video items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50 p-4 text-center text-xs text-zinc-500">
-                  画像準備中: {b.alt}
+                  {m.imagePending(b.alt)}
                 </div>
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element

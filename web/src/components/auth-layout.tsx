@@ -1,5 +1,7 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
+import Link from "@/i18n/link";
+import { getMessages } from "@/i18n/server";
+import { commonMessages } from "./messages";
 import { Card } from "./ui";
 
 export function AuthLayout({ title, children, footer }: { title: string; children: ReactNode; footer?: ReactNode }) {
@@ -13,18 +15,20 @@ export function AuthLayout({ title, children, footer }: { title: string; childre
 }
 
 // 登録・ログインの操作で同意したものとして、規約の版を記録する（auth/actions.ts と auth/callback）
-export function TermsNotice({ action }: { action: string }) {
+// action: 「ログイン・登録」など（英語では "logging in or signing up" のように動名詞で渡す）
+export async function TermsNotice({ action }: { action: string }) {
+  const m = (await getMessages(commonMessages)).terms;
   return (
     <p className="text-xs leading-relaxed text-zinc-500">
-      {action}すると、
+      {m.before(action)}
       <Link href="/terms" className="underline" target="_blank">
-        利用規約
+        {m.terms}
       </Link>
-      と
+      {m.and}
       <Link href="/privacy" className="underline" target="_blank">
-        プライバシーポリシー
+        {m.privacy}
       </Link>
-      に同意したものとみなします。
+      {m.after}
     </p>
   );
 }

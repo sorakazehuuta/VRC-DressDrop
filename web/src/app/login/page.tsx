@@ -1,43 +1,43 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthLayout, Divider, TermsNotice } from "@/components/auth-layout";
 import { FormMessage } from "@/components/ui";
-import { DISPOSABLE_EMAIL_MESSAGE, getCurrentUser, safeNextPath } from "@/lib/auth";
+import Link from "@/i18n/link";
+import { getMessages, localized } from "@/i18n/server";
+import { getCurrentUser, safeNextPath } from "@/lib/auth";
 import { LoginForm, OAuthButtons } from "../auth/forms";
+import { authMessages } from "../auth/messages";
 
-export const metadata: Metadata = { title: "ログイン | VRPrintLab" };
-
-const errorMessages: Record<string, string> = {
-  callback: "ログインできませんでした。リンクの有効期限が切れているか、別のブラウザで開いた可能性があります。もう一度お試しください。",
-  oauth: "外部サービスでのログインを開始できませんでした。時間をおいて再度お試しください。",
-  disposable: DISPOSABLE_EMAIL_MESSAGE,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: `${(await getMessages(authMessages)).login.title} | VRPrintLab` };
+}
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const params = await searchParams;
   const next = safeNextPath(params.next, "/");
-  if (await getCurrentUser()) redirect(next);
+  if (await getCurrentUser()) redirect(await localized(next));
 
+  const m = await getMessages(authMessages);
+  const errorMessages: Record<string, string> = { ...m.login.errors, disposable: m.disposableEmail };
   const error = typeof params.error === "string" ? errorMessages[params.error] : undefined;
 
   return (
     <AuthLayout
-      title="ログイン"
+      title={m.login.title}
       footer={
         <>
-          アカウントをお持ちでない方は{" "}
+          {m.login.noAccount}{" "}
           <Link href={`/signup?next=${encodeURIComponent(next)}`} className="font-semibold underline">
-            新規登録
+            {m.login.signupLink}
           </Link>
         </>
       }
     >
       {error && <FormMessage state={{ error }} />}
       <OAuthButtons next={next} />
-      <Divider>またはメールアドレスで</Divider>
+      <Divider>{m.login.orEmail}</Divider>
       <LoginForm next={next} />
-      <TermsNotice action="ログイン・登録" />
+      <TermsNotice action={m.login.termsAction} />
     </AuthLayout>
   );
 }

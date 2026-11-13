@@ -1,15 +1,21 @@
 import type { Metadata } from "next";
 import { DocumentPage } from "@/components/document-page";
 import { Markdown, readContent } from "@/components/markdown";
-import { TERMS_DRAFT, termsVersionLabel } from "@/lib/legal";
+import { getLocale, getMessages } from "@/i18n/server";
+import { documentMessages } from "../document-messages";
+import { legalNotice } from "../legal-notice";
+import { termsVersionLabel } from "@/lib/legal";
 
-export const metadata: Metadata = { title: "利用規約 | VRPrintLab" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: `${(await getMessages(documentMessages)).titles.terms} | VRPrintLab` };
+}
 
 export default async function TermsPage() {
+  const m = await getMessages(documentMessages);
   return (
-    <DocumentPage notice={TERMS_DRAFT && "この利用規約は確認用の下書きです。【要確認】の箇所は未確定です。"}>
+    <DocumentPage notice={legalNotice(m.titles.terms, m)}>
       <Markdown source={await readContent("terms.md")} />
-      <p className="mt-6 text-right text-xs text-zinc-500">{termsVersionLabel()}</p>
+      <p className="mt-6 text-right text-xs text-zinc-500">{termsVersionLabel(await getLocale())}</p>
     </DocumentPage>
   );
 }

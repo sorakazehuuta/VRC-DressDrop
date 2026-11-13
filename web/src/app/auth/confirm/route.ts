@@ -1,5 +1,6 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import { localePath, splitLocale } from "@/i18n/config";
 import { safeNextPath } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,5 +18,5 @@ export async function GET(request: NextRequest) {
     if (!error) return NextResponse.redirect(`${origin}${next}`);
   }
 
-  return NextResponse.redirect(`${origin}/login?error=callback`);
+  return NextResponse.redirect(`${origin}${localePath(splitLocale(next).locale, "/login?error=callback")}`);
 }

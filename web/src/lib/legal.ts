@@ -3,7 +3,10 @@ export const TERMS_VERSION = "2026-11-12";
 // 共同開発者の確認が終わるまでは true。ページと LICENSE.txt に「確認用」と表示する
 export const TERMS_DRAFT = true;
 
-export const termsVersionLabel = () => `${TERMS_VERSION} 改定${TERMS_DRAFT ? "（確認用・未確定）" : ""}`;
+export const termsVersionLabel = (locale: "ja" | "en" = "ja") =>
+  locale === "en"
+    ? `Revised ${TERMS_VERSION}${TERMS_DRAFT ? " (draft for review, not final)" : ""}`
+    : `${TERMS_VERSION} 改定${TERMS_DRAFT ? "（確認用・未確定）" : ""}`;
 
 // 本番のドメインが決まったら NEXT_PUBLIC_SITE_URL に設定する
 export function siteUrl() {

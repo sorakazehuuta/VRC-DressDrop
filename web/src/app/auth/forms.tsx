@@ -1,32 +1,36 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState } from "react";
 import { useCaptcha } from "@/components/captcha";
 import { Button, Field, FormMessage } from "@/components/ui";
+import { useMessages } from "@/i18n/client";
+import Link from "@/i18n/link";
 import { requestPasswordReset, signIn, signInWithOAuth, signUp, updatePassword } from "./actions";
+import { authMessages } from "./messages";
 
 export function LoginForm({ next }: { next: string }) {
+  const m = useMessages(authMessages);
   const [state, action, pending] = useActionState(signIn, null);
   const captcha = useCaptcha(state);
   return (
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="next" value={next} />
-      <Field label="メールアドレス" name="email" type="email" autoComplete="email" required />
-      <Field label="パスワード" name="password" type="password" autoComplete="current-password" required />
+      <Field label={m.fields.email} name="email" type="email" autoComplete="email" required />
+      <Field label={m.fields.password} name="password" type="password" autoComplete="current-password" required />
       {captcha.field}
       <FormMessage state={state} />
       <Button type="submit" disabled={pending || !captcha.ready}>
-        {pending ? "ログイン中…" : "ログイン"}
+        {pending ? m.buttons.loggingIn : m.buttons.login}
       </Button>
       <Link href="/forgot-password" className="text-center text-sm text-zinc-600 underline">
-        パスワードを忘れた方
+        {m.buttons.forgot}
       </Link>
     </form>
   );
 }
 
 export function SignupForm({ next }: { next: string }) {
+  const m = useMessages(authMessages);
   const [state, action, pending] = useActionState(signUp, null);
   const captcha = useCaptcha(state);
   if (state?.message) {
@@ -34,15 +38,15 @@ export function SignupForm({ next }: { next: string }) {
       <div className="flex flex-col gap-3">
         <FormMessage state={state} />
         <p className="text-sm leading-relaxed text-zinc-600">
-          メールが届かない場合は、このメールアドレスがすでに登録されている可能性があります。
+          {m.signup.notReceived1}
           <Link href={`/login?next=${encodeURIComponent(next)}`} className="underline">
-            ログイン
+            {m.signup.notReceivedLogin}
           </Link>
-          か
+          {m.signup.notReceivedOr}
           <Link href="/forgot-password" className="underline">
-            パスワードの再設定
+            {m.signup.notReceivedReset}
           </Link>
-          をお試しください。迷惑メールのフォルダも確認してください。
+          {m.signup.notReceived2}
         </p>
       </div>
     );
@@ -50,66 +54,61 @@ export function SignupForm({ next }: { next: string }) {
   return (
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="next" value={next} />
-      <Field label="表示名" name="displayName" maxLength={50} autoComplete="nickname" hint="あとから変更できます" />
-      <Field label="メールアドレス" name="email" type="email" autoComplete="email" required />
-      <Field
-        label="パスワード"
-        name="password"
-        type="password"
-        autoComplete="new-password"
-        minLength={8}
-        required
-        hint="8文字以上"
-      />
-      <Field label="パスワード（確認）" name="passwordConfirm" type="password" autoComplete="new-password" minLength={8} required />
+      <Field label={m.fields.displayName} name="displayName" maxLength={50} autoComplete="nickname" hint={m.fields.displayNameHint} />
+      <Field label={m.fields.email} name="email" type="email" autoComplete="email" required />
+      <Field label={m.fields.password} name="password" type="password" autoComplete="new-password" minLength={8} required hint={m.fields.passwordHint} />
+      <Field label={m.fields.passwordConfirm} name="passwordConfirm" type="password" autoComplete="new-password" minLength={8} required />
       {captcha.field}
       <FormMessage state={state} />
       <Button type="submit" disabled={pending || !captcha.ready}>
-        {pending ? "登録中…" : "登録する"}
+        {pending ? m.buttons.signingUp : m.buttons.signup}
       </Button>
     </form>
   );
 }
 
 export function OAuthButtons({ next }: { next: string }) {
+  const m = useMessages(authMessages);
   return (
     <form action={signInWithOAuth} className="flex flex-col gap-2">
       <input type="hidden" name="next" value={next} />
       <Button type="submit" name="provider" value="google" variant="secondary">
-        Google で続ける
+        {m.buttons.google}
       </Button>
       <Button type="submit" name="provider" value="discord" variant="secondary">
-        Discord で続ける
+        {m.buttons.discord}
       </Button>
     </form>
   );
 }
 
 export function ForgotPasswordForm() {
+  const m = useMessages(authMessages);
   const [state, action, pending] = useActionState(requestPasswordReset, null);
   const captcha = useCaptcha(state);
   if (state?.message) return <FormMessage state={state} />;
   return (
     <form action={action} className="flex flex-col gap-4">
-      <Field label="登録したメールアドレス" name="email" type="email" autoComplete="email" required />
+      <Field label={m.fields.registeredEmail} name="email" type="email" autoComplete="email" required />
       {captcha.field}
       <FormMessage state={state} />
       <Button type="submit" disabled={pending || !captcha.ready}>
-        {pending ? "送信中…" : "再設定メールを送る"}
+        {pending ? m.buttons.sending : m.buttons.sendReset}
       </Button>
     </form>
   );
 }
 
 export function PasswordForm() {
+  const m = useMessages(authMessages);
   const [state, action, pending] = useActionState(updatePassword, null);
   return (
     <form action={action} className="flex flex-col gap-4">
-      <Field label="新しいパスワード" name="password" type="password" autoComplete="new-password" minLength={8} required hint="8文字以上" />
-      <Field label="新しいパスワード（確認）" name="passwordConfirm" type="password" autoComplete="new-password" minLength={8} required />
+      <Field label={m.fields.newPassword} name="password" type="password" autoComplete="new-password" minLength={8} required hint={m.fields.passwordHint} />
+      <Field label={m.fields.newPasswordConfirm} name="passwordConfirm" type="password" autoComplete="new-password" minLength={8} required />
       <FormMessage state={state} />
       <Button type="submit" disabled={pending}>
-        {pending ? "変更中…" : "パスワードを変更する"}
+        {pending ? m.buttons.changing : m.buttons.changePassword}
       </Button>
     </form>
   );

@@ -1,19 +1,16 @@
 import Image from "next/image";
-import Link from "next/link";
 import { readContent } from "@/components/markdown";
 import { FormMessage } from "@/components/ui";
 import { parseNews } from "@/lib/news";
+import Link from "@/i18n/link";
+import { getMessages } from "@/i18n/server";
 import { createClient } from "@/lib/supabase/server";
 import icon from "../../images/common/icons/VRPrintLab_icon.png";
-
-const steps = [
-  { title: "テンプレートを選ぶ", body: "ケーキなど、展示したいグッズの形を選びます。" },
-  { title: "画像を貼って調整", body: "画像をアップロードして、大きさ・位置・色をブラウザ上で調整します。" },
-  { title: "VRChat に置く", body: "unitypackage をダウンロードして、ワールドのブースに配置します。" },
-];
+import { homeMessages } from "./home-messages";
 
 export default async function Home({ searchParams }: PageProps<"/">) {
   const { deleted } = await searchParams;
+  const m = await getMessages(homeMessages);
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const loggedIn = Boolean(data?.claims);
@@ -23,31 +20,31 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     <main className="flex flex-1 flex-col">
       {deleted === "1" && (
         <div className="mx-auto w-full max-w-5xl px-4 pt-6">
-          <FormMessage state={{ message: "退会が完了しました。ご利用ありがとうございました。" }} />
+          <FormMessage state={{ message: m.deleted }} />
         </div>
       )}
 
       <section className="mx-auto grid w-full max-w-5xl items-center gap-10 px-4 py-16 md:grid-cols-[1fr_auto] md:py-24">
         <div className="flex flex-col gap-6">
           <h1 className="text-3xl font-bold leading-tight text-brand sm:text-4xl">
-            画像を貼るだけで、
+            {m.headline1}
             <br />
-            VRChat に置ける3Dグッズに。
+            {m.headline2}
           </h1>
           <p className="text-lg leading-relaxed text-zinc-600">
-            モデリングの知識は不要です。即売会のブースに、あなたのグッズのサンプルを並べましょう。
+            {m.lead}
           </p>
           <div className="flex flex-wrap gap-3">
             <Link href="/templates" className="rounded-md bg-accent px-5 py-3 font-semibold text-white hover:bg-accent-dark">
-              さっそく作ってみる
+              {m.start}
             </Link>
             {loggedIn ? (
               <Link href="/works" className="rounded-md border border-brand px-5 py-3 font-semibold text-brand hover:bg-zinc-50">
-                マイ作品を見る
+                {m.myWorks}
               </Link>
             ) : (
               <Link href="/signup" className="rounded-md border border-brand px-5 py-3 font-semibold text-brand hover:bg-zinc-50">
-                無料で登録（3トークン付き）
+                {m.signup}
               </Link>
             )}
           </div>
@@ -57,7 +54,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
 
       <section className="border-t border-zinc-200 bg-zinc-50">
         <ol className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-12 sm:grid-cols-3">
-          {steps.map((step, i) => (
+          {m.steps.map((step, i) => (
             <li key={step.title} className="flex flex-col gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">{i + 1}</span>
               <h2 className="font-semibold text-brand">{step.title}</h2>
@@ -71,9 +68,9 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         <section className="border-t border-zinc-200">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-10">
             <div className="flex items-baseline justify-between gap-3">
-              <h2 className="font-semibold text-brand">お知らせ</h2>
+              <h2 className="font-semibold text-brand">{m.news}</h2>
               <Link href="/news" className="text-sm text-zinc-600 underline">
-                すべて見る
+                {m.allNews}
               </Link>
             </div>
             <ul className="flex flex-col gap-2 text-sm">

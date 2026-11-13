@@ -1,36 +1,43 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthLayout, Divider, TermsNotice } from "@/components/auth-layout";
+import Link from "@/i18n/link";
+import { getMessages, localized } from "@/i18n/server";
 import { getCurrentUser, safeNextPath } from "@/lib/auth";
 import { OAuthButtons, SignupForm } from "../auth/forms";
+import { authMessages } from "../auth/messages";
 
-export const metadata: Metadata = { title: "新規登録 | VRPrintLab" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: `${(await getMessages(authMessages)).signup.title} | VRPrintLab` };
+}
 
 export default async function SignupPage({ searchParams }: PageProps<"/signup">) {
   const params = await searchParams;
   const next = safeNextPath(params.next, "/");
-  if (await getCurrentUser()) redirect(next);
+  if (await getCurrentUser()) redirect(await localized(next));
+  const m = await getMessages(authMessages);
 
   return (
     <AuthLayout
-      title="新規登録"
+      title={m.signup.title}
       footer={
         <>
-          すでにアカウントをお持ちの方は{" "}
+          {m.signup.hasAccount}{" "}
           <Link href={`/login?next=${encodeURIComponent(next)}`} className="font-semibold underline">
-            ログイン
+            {m.signup.loginLink}
           </Link>
         </>
       }
     >
       <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
-        今なら登録するだけで <strong>3トークン</strong> をプレゼント。すぐにモデルをダウンロードできます。
+        {m.signup.bonus1}
+        <strong>{m.signup.bonusTokens}</strong>
+        {m.signup.bonus2}
       </p>
       <OAuthButtons next={next} />
-      <Divider>またはメールアドレスで</Divider>
+      <Divider>{m.login.orEmail}</Divider>
       <SignupForm next={next} />
-      <TermsNotice action="登録" />
+      <TermsNotice action={m.signup.termsAction} />
     </AuthLayout>
   );
 }

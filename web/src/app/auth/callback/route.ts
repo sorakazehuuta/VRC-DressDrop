@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { localePath, splitLocale } from "@/i18n/config";
 import { DISPOSABLE_EMAIL_MARKER, safeNextPath } from "@/lib/auth";
 import { TERMS_VERSION } from "@/lib/legal";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
@@ -27,5 +28,7 @@ export async function GET(request: NextRequest) {
 
   // Google / Discord のメールアドレスが使い捨てのドメインで、登録を拒否されたとき
   const reason = searchParams.get("error_description")?.includes(DISPOSABLE_EMAIL_MARKER) ? "disposable" : "callback";
-  return NextResponse.redirect(`${origin}/login?error=${reason}&next=${encodeURIComponent(next)}`);
+  // ログイン画面は、戻り先（next）と同じ言語で開く
+  const login = localePath(splitLocale(next).locale, `/login?error=${reason}&next=${encodeURIComponent(next)}`);
+  return NextResponse.redirect(`${origin}${login}`);
 }

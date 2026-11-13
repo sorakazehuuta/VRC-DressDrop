@@ -3,39 +3,44 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { FormState } from "@/app/auth/actions";
+import { getMessages, localized } from "@/i18n/server";
 import { stripe } from "@/lib/payments/stripe";
 import { cancelDeletions, enqueueDeletions, processDeletions } from "@/lib/storage-deletions";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { accountMessages } from "./messages";
 
 const WORK_IMAGES_BUCKET = "work-images";
 const PACKAGES_BUCKET = "packages";
 
 export async function updateDisplayName(_prev: FormState, formData: FormData): Promise<FormState> {
+  const m = await getMessages(accountMessages);
   const raw = formData.get("displayName");
   const displayName = typeof raw === "string" ? raw.trim() : "";
-  if (displayName.length > 50) return { error: "表示名は50文字以内で入力してください。" };
+  if (displayName.length > 50) return { error: m.profile.tooLong };
 
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
-  if (!claims) redirect("/login?next=/account");
+  if (!claims) redirect(await localized("/login?next=/account"));
 
   const { error } = await supabase.from("profiles").update({ display_name: displayName }).eq("id", claims.claims.sub);
-  if (error) return { error: "保存できませんでした。時間をおいて再度お試しください。" };
+  if (error) return { error: m.errors.saveFailed };
 
   revalidatePath("/", "layout");
-  return { message: "表示名を保存しました。" };
+  return { message: m.profile.saved };
 }
 
 // 退会: 作品・画像・購入した版の控え・残っているトークンを消し、ログインできなくする。
 // 支払い・トークンの履歴・ダウンロードの記録（画像とパッケージを除く）は取引の記録として残す（外部キーを外してある）
 export async function deleteAccount(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (formData.get("confirm") !== "退会する") {
-    return { error: "確認のため「退会する」と入力してください。" };
+  const m = await getMessages(accountMessages);
+  // 確認の言葉は表示している言語のもの（日本語は「退会する」、英語は DELETE）
+  if (String(formData.get("confirm") ?? "").trim() !== m.delete.confirmWord) {
+    return { error: m.delete.confirmError };
   }
 
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
-  if (!claims) redirect("/login?next=/account");
+  if (!claims) redirect(await localized("/login?next=/account"));
   const userId = claims.claims.sub;
   const admin = createAdminClient();
 
@@ -50,9 +55,9 @@ export async function deleteAccount(_prev: FormState, formData: FormData): Promi
     try {
       const session = await stripe().checkout.sessions.retrieve(p.stripe_checkout_session_id as string);
       if (session.status === "open") await stripe().checkout.sessions.expire(session.id);
-      else if (session.status === "complete") return { error: "処理中の支払いがあります。支払いの反映を待ってから、もう一度お試しください。" };
+      else if (session.status === "complete") return { error: m.errors.paymentProcessing };
     } catch {
-      return { error: "支払いの状態を確認できませんでした。時間をおいて再度お試しください。" };
+      return { error: m.errors.paymentCheckFailed };
     }
   }
 
@@ -67,16 +72,16 @@ export async function deleteAccount(_prev: FormState, formData: FormData): Promi
       "account_deleted",
     );
   } catch {
-    return { error: "退会処理に失敗しました。時間をおいて再度お試しください。" };
+    return { error: m.errors.deleteFailed };
   }
 
   const { error: prepareError } = await admin.rpc("prepare_account_deletion", { p_user_id: userId });
   if (prepareError) {
     await cancelDeletions(deletionIds);
     if (prepareError.message.includes("payment_pending")) {
-      return { error: "コンビニ払いの支払い待ちがあるため、退会できません。支払うか、支払い期限が過ぎてからもう一度お試しください。" };
+      return { error: m.errors.konbiniPending };
     }
-    return { error: "退会処理に失敗しました。時間をおいて再度お試しください。" };
+    return { error: m.errors.deleteFailed };
   }
 
   // 作品などは auth.users の削除に連動して消える（on delete cascade）
@@ -86,12 +91,12 @@ export async function deleteAccount(_prev: FormState, formData: FormData): Promi
     const [workImagesId, packagesId] = deletionIds;
     await cancelDeletions([workImagesId]);
     await processDeletions([packagesId]);
-    return { error: "退会処理に失敗しました。時間をおいて再度お試しください。" };
+    return { error: m.errors.deleteFailed };
   }
   // 消せなかったファイルはキューに残り、あとで再試行する
   await processDeletions(deletionIds);
 
   await supabase.auth.signOut({ scope: "local" });
   revalidatePath("/", "layout");
-  redirect("/?deleted=1");
+  redirect(await localized("/?deleted=1"));
 }
