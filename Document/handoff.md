@@ -27,6 +27,7 @@
   - **デザインの見直し**（Skill の frontend-design と humanizer を使用。管理画面も含む。決まりは「4. 主な設計」の「デザイン」）
   - **印刷面の大きさの表示と下絵の PNG**（エディタの印刷面ごと。下絵はプレビュー用の glb の UV から、モデルで見える範囲を白で描く。`editor/[slug]/print-guide.ts`）
   - **背景の色を消す**（エディタの印刷面ごと。縁の色に近い色を透明にする簡単な方式で、AI は使わない。ブラウザで処理して透過 PNG に差し替え、元の画像は保存しない。`editor/[slug]/background.ts`）
+  - **文字を入れる**（印刷面ごとに 1 つ。価格札・お品書き・「新刊」など。画像なしでも使える。書体はゴシック（M PLUS 1p Bold）と丸ゴシック（M PLUS Rounded 1c Bold）、ライセンスは SIL OFL で `web/public/fonts`。文字は opentype.js でパスに変えて、ブラウザ（canvas）とサーバー（SVG を sharp で描く）で同じ形に描く。共通の処理は `lib/templates/text.ts`。編集内容の `text` は文字があるときだけ持つので、以前の作品の版のハッシュは変わらない）
 - **サービスの選定（2026-11-12 に比較。未決）**: おすすめの構成は Vercel Pro（$20/月。Hobby は商用不可）＋ Supabase Pro（$25/月。本番用プロジェクトを東京で新しく作る）＋ Resend の無料プラン（メール送信）＋ Cloudflare（.com ドメイン・DNS・問い合わせメールの転送・Turnstile）。立ち上げ時は月 7,000 円前後。国内では さくらの AppRun 共用型（約 4,000 円〜、要 Docker 化）か Xserver / KAGOYA の VPS（保守が必要）が次点。ドメイン名・契約は利用者が決める
 - 規約類の下書き: `web/content/terms.md` / `privacy.md` / `tokushoho.md`（【要確認】は未確定。共同開発者が直す予定）。英語版は `web/content/en/`（参考訳）。FAQ は `faq.md`、導入ガイドは `guide.md`（画像は `web/public/guide/`。撮り直しの手順は `web/tools/verification/README.md`。Unity の表示言語は日本語で撮影）
 - 規約の日付は `web/src/lib/legal.ts`（`TERMS_VERSION` / `TERMS_DRAFT`）。文面を変えたら日付を更新する。パッケージの LICENSE.txt、登録（profiles.terms_version）、購入（payments.terms_version）に記録する

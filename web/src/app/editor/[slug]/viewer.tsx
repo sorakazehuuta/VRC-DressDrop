@@ -14,6 +14,7 @@ import type { LoadedImage } from "./images";
 import { applyMaterialFx, createPreviewRig, GimmickBody, GimmickEffects, NEUTRAL_FX, type PreviewRig } from "./gimmick-preview/preview-3d";
 import type { PreviewState } from "./gimmick-preview/spec";
 import { drawPrint } from "./print-canvas";
+import { useTextFonts } from "./text-fonts";
 import { useMessages } from "@/i18n/client";
 import { editorMessages } from "./messages";
 
@@ -345,6 +346,7 @@ function Model({
     camera.lookAt(0, 0, 0);
   }, [gltf, camera, viewDirRef]);
   const { scene, materials, prints: printTextures } = useMemo(() => buildRig(gltf.scene, slots), [gltf.scene, slots]);
+  const textFonts = useTextFonts(Object.values(params.slots).flatMap((p) => (p.kind === "print" && p.text ? [p.text.font] : [])));
 
   // ギミックの発光・半透明を毎フレーム反映し、サムネイルの撮影中だけ元に戻す
   useFrame(() => applyMaterialFx(materials.values(), rigRef.current.fx));
@@ -378,11 +380,11 @@ function Model({
         const target = printTextures.get(slot.key);
         if (!target) continue;
         const image = slotParams.imageId ? images[slotParams.imageId] : undefined;
-        drawPrint(target.canvas, slotParams, image ?? null, backgroundColor(slot as PrintSlot, params));
+        drawPrint(target.canvas, slotParams, image ?? null, backgroundColor(slot as PrintSlot, params), slotParams.text && textFonts[slotParams.text.font]);
         target.texture.needsUpdate = true;
       }
     }
-  }, [slots, params, images, materials, printTextures]);
+  }, [slots, params, images, materials, printTextures, textFonts]);
 
   return <primitive object={scene} />;
 }

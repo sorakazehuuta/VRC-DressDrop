@@ -329,7 +329,8 @@ function Editor({ template, gimmickDefs, userId, initialWork, restoreDraft, onWo
   return (
     <div className="flex flex-1 flex-col gap-4 lg:min-h-0">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex min-w-0 flex-1 flex-col sm:max-w-md">
+        {/* スマホ幅では作品名に 1 行使い、保存の表示とボタンは次の行に回す（作品名が押しつぶされないように） */}
+        <div className="flex w-full min-w-0 flex-col sm:w-auto sm:max-w-md sm:flex-1">
           <input
             type="text"
             value={name}

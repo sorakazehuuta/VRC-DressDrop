@@ -6,6 +6,7 @@ import { useLocale } from "@/i18n/client";
 import { pick } from "@/i18n/messages";
 import { PRINT_LIMITS, defaultPrintParams, textureDimensions, type ColorParams, type PrintParams } from "@/lib/templates/params";
 import { slotLabel, type ColorSlot, type PrintSlot } from "@/lib/templates/schema";
+import { TEXT_FONTS, TEXT_LIMITS, defaultPrintText, type PrintText, type TextFont } from "@/lib/templates/text";
 import { IMAGE_LIMITS, type LoadedImage } from "./images";
 import { editorMessages } from "./messages";
 import { createPrintGuide, downloadBlob } from "./print-guide";
@@ -303,12 +304,125 @@ export function PrintControls({
           type="button"
           variant="secondary"
           className="self-start"
-          onClick={() => onChange((p) => ({ ...defaultPrintParams(), imageId: p.imageId }))}
+          onClick={() => onChange((p) => ({ ...defaultPrintParams(), imageId: p.imageId, ...(p.text ? { text: p.text } : {}) }))}
         >
           {c.resetPrint}
         </Button>
       </fieldset>
+
+      <TextControls text={params.text} onChange={onChange} onCommit={onCommit} />
     </section>
+  );
+}
+
+const TEXT_SWATCHES = ["#031e42", "#111111", "#ffffff", "#dc2626", "#00837e", "#facc15"];
+const SIZE_DISPLAY: Display = { scale: 100, unit: "%" };
+
+// 文字を入れる欄。画像がなくても使える（価格札・お品書きなど）。
+// 文字が空のときは編集内容に文字の項目を持たせず、設定（大きさ・色など）だけをこの欄で覚えておく
+function TextControls({ text, onChange, onCommit }: { text: PrintText | undefined; onChange: Change<PrintParams>; onCommit: () => void }) {
+  const locale = useLocale();
+  const c = pick(editorMessages, locale).controls;
+  const [draft, setDraft] = useState<PrintText>(text ?? defaultPrintText());
+  // 元に戻す・やり直すで文字が変わったら、欄の表示も合わせる
+  const [shown, setShown] = useState(text);
+  if (shown !== text) {
+    setShown(text);
+    if (text) setDraft(text);
+    else setDraft((d) => ({ ...d, content: "" }));
+  }
+  const id = useId();
+
+  const update = (patch: Partial<PrintText>, commit: boolean) => {
+    const next = { ...draft, ...patch };
+    setDraft(next);
+    if (!next.content.trim()) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      if (text) onChange(({ text: _removed, ...p }) => p, commit);
+      return;
+    }
+    onChange((p) => ({ ...p, text: next }), commit);
+  };
+
+  const colorRow = (label: string, value: string, key: "color" | "outlineColor") => (
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      <span className="w-24 shrink-0">{label}</span>
+      {TEXT_SWATCHES.map((hex) => (
+        <button
+          key={hex}
+          type="button"
+          aria-label={`${label} ${hex}`}
+          aria-pressed={value === hex}
+          onClick={() => update({ [key]: hex }, true)}
+          className={`h-6 w-6 cursor-pointer rounded-full border ${value === hex ? "ring-2 ring-accent ring-offset-1" : "border-zinc-300"}`}
+          style={{ backgroundColor: hex }}
+        />
+      ))}
+      <input
+        type="color"
+        value={value}
+        aria-label={c.textOtherColor(label)}
+        onChange={(e) => update({ [key]: e.target.value }, false)}
+        onBlur={onCommit}
+        className="h-7 w-9 cursor-pointer rounded border border-zinc-300 bg-white p-0.5"
+      />
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-zinc-200 pt-4" data-text-controls>
+      <div className="flex flex-col gap-1">
+        <label htmlFor={id} className="text-sm font-bold text-zinc-900">
+          {c.textHeading}
+        </label>
+        <p className="text-xs text-zinc-600">{c.textHint}</p>
+      </div>
+      <textarea
+        id={id}
+        value={draft.content}
+        rows={3}
+        maxLength={TEXT_LIMITS.maxLength}
+        placeholder={c.textPlaceholder}
+        onChange={(e) => update({ content: e.target.value.split("\n").slice(0, TEXT_LIMITS.maxLines).join("\n") }, false)}
+        onBlur={onCommit}
+        className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-base outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+      />
+      <p className="-mt-2 text-right text-xs text-zinc-500 tabular-nums">{c.textCount(draft.content.length, TEXT_LIMITS.maxLength, TEXT_LIMITS.maxLines)}</p>
+      <fieldset disabled={!draft.content.trim()} className="flex flex-col gap-3 disabled:opacity-40">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+          <span className="w-24 shrink-0">{c.textFont}</span>
+          {(Object.keys(TEXT_FONTS) as TextFont[]).map((f) => (
+            <label key={f} className="flex items-center gap-1.5">
+              <input type="radio" name={`${id}-font`} checked={draft.font === f} onChange={() => update({ font: f }, true)} className="accent-brand" />
+              {locale === "en" ? TEXT_FONTS[f].labelEn : TEXT_FONTS[f].label}
+            </label>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+          <span className="w-24 shrink-0">{c.textAlign}</span>
+          {(["left", "center", "right"] as const).map((a) => (
+            <label key={a} className="flex items-center gap-1.5">
+              <input type="radio" name={`${id}-align`} checked={draft.align === a} onChange={() => update({ align: a }, true)} className="accent-brand" />
+              {c.textAligns[a]}
+            </label>
+          ))}
+        </div>
+        <Slider label={c.textSize} value={draft.size} limits={TEXT_LIMITS.size} display={SIZE_DISPLAY} decimals={1} onChange={(v) => update({ size: v }, false)} onCommit={onCommit} />
+        <Slider label={c.offsetX} value={draft.offsetX} limits={TEXT_LIMITS.offset} display={PERCENT} onChange={(v) => update({ offsetX: v }, false)} onCommit={onCommit} />
+        <Slider label={c.offsetY} value={draft.offsetY} limits={TEXT_LIMITS.offset} display={PERCENT} onChange={(v) => update({ offsetY: v }, false)} onCommit={onCommit} />
+        {colorRow(c.textColor, draft.color, "color")}
+        {colorRow(c.textOutline, draft.outlineColor, "outlineColor")}
+        <Slider
+          label={c.textOutlineWidth}
+          value={draft.outlineWidth}
+          limits={TEXT_LIMITS.outlineWidth}
+          display={SIZE_DISPLAY}
+          decimals={1}
+          onChange={(v) => update({ outlineWidth: v }, false)}
+          onCommit={onCommit}
+        />
+      </fieldset>
+    </div>
   );
 }
 
