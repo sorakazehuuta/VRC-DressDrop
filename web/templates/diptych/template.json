@@ -3,6 +3,10 @@
   "name": "二つ折りパネル",
   "category": "パネル・ディスプレイ",
   "description": "二つ折りのパネル。左右に別々の画像をプリントできます。",
+  "en": {
+    "name": "Folding Panel",
+    "description": "A two-part folding panel. You can print separate images on the left and right."
+  },
   "tokenCost": 1,
   "isPublic": false,
   "sortOrder": 230,
@@ -14,6 +18,7 @@
       "key": "base",
       "type": "color",
       "label": "本体の色",
+      "labelEn": "Body color",
       "material": "Mat_Base",
       "defaultColor": "#ffffff"
     },
@@ -21,6 +26,7 @@
       "key": "print",
       "type": "print",
       "label": "左のパネル",
+      "labelEn": "Left panel",
       "material": "Mat_Print1",
       "background": "transparent",
       "aspect": 0.75
@@ -29,6 +35,7 @@
       "key": "print_2",
       "type": "print",
       "label": "右のパネル",
+      "labelEn": "Right panel",
       "material": "Mat_Print2",
       "background": "transparent",
       "aspect": 0.75

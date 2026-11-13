@@ -3,6 +3,10 @@
   "name": "缶バッジ",
   "category": "グッズ",
   "description": "好きなイラストで作れる缶バッジ。",
+  "en": {
+    "name": "Button Badge",
+    "description": "A button badge you can make with your favorite artwork."
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 30,
@@ -14,6 +18,7 @@
       "key": "base",
       "type": "color",
       "label": "本体の色",
+      "labelEn": "Body color",
       "material": "Mat_Base",
       "defaultColor": "#ffffff"
     },
@@ -21,6 +26,7 @@
       "key": "print",
       "type": "print",
       "label": "プリント",
+      "labelEn": "Print",
       "material": "Mat_Print",
       "background": "transparent",
       "aspect": 1

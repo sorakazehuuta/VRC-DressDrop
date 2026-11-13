@@ -3,6 +3,10 @@
   "name": "突き出し看板",
   "category": "看板",
   "description": "壁から突き出す看板。好きな画像をプリントできます。",
+  "en": {
+    "name": "Projecting Sign",
+    "description": "A sign that projects out from a wall. You can print your favorite image on it."
+  },
   "tokenCost": 1,
   "isPublic": false,
   "sortOrder": 200,
@@ -14,6 +18,7 @@
       "key": "print",
       "type": "print",
       "label": "プリント",
+      "labelEn": "Print",
       "material": "Mat_Print",
       "background": "transparent",
       "aspect": 1.6

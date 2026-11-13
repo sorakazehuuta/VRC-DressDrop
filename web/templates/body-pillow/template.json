@@ -3,6 +3,10 @@
   "name": "抱き枕カバー",
   "category": "グッズ",
   "description": "表と裏に別々の画像を貼れる抱き枕カバー。",
+  "en": {
+    "name": "Body Pillow Cover",
+    "description": "A body pillow cover with separate images on the front and back."
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 80,
@@ -14,6 +18,7 @@
       "key": "base",
       "type": "color",
       "label": "生地の色",
+      "labelEn": "Fabric color",
       "material": "Mat_Base",
       "defaultColor": "#e5e5e5"
     },
@@ -21,6 +26,7 @@
       "key": "print",
       "type": "print",
       "label": "表のプリント",
+      "labelEn": "Front print",
       "material": "Mat_Print",
       "background": "transparent",
       "aspect": 0.38
@@ -29,6 +35,7 @@
       "key": "print_back",
       "type": "print",
       "label": "裏のプリント",
+      "labelEn": "Back print",
       "material": "Mat_Print_Back",
       "background": "transparent",
       "aspect": 0.38

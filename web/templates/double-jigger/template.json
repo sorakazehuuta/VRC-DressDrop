@@ -3,6 +3,10 @@
   "name": "ダブルジガー",
   "category": "カフェ・バー用品",
   "description": "好きな画像をプリントできる、カクテル用の計量カップ。",
+  "en": {
+    "name": "Double Jigger",
+    "description": "A cocktail measuring cup you can print your favorite image on."
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 170,
@@ -14,6 +18,7 @@
       "key": "print",
       "type": "print",
       "label": "プリント",
+      "labelEn": "Print",
       "material": "Mat_Print",
       "background": "transparent",
       "aspect": 3.07

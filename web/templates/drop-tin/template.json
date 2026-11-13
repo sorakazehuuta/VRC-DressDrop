@@ -3,6 +3,10 @@
   "name": "ドロップ缶",
   "category": "フード・ドリンク",
   "description": "好きな画像をプリントできるドロップ缶。",
+  "en": {
+    "name": "Candy Tin",
+    "description": "A candy tin you can print your favorite image on."
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 150,
@@ -14,6 +18,7 @@
       "key": "print",
       "type": "print",
       "label": "プリント",
+      "labelEn": "Print",
       "material": "Mat_Print",
       "background": "transparent",
       "aspect": 0.8

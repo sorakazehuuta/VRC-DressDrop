@@ -3,6 +3,10 @@
   "name": "デスクマット",
   "category": "グッズ",
   "description": "机に敷ける大判のデスクマット。",
+  "en": {
+    "name": "Desk Mat",
+    "description": "A large desk mat to lay on your desk."
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 60,
@@ -14,6 +18,7 @@
       "key": "base",
       "type": "color",
       "label": "本体の色",
+      "labelEn": "Body color",
       "material": "Mat_Base",
       "defaultColor": "#ffffff"
     },
@@ -21,6 +26,7 @@
       "key": "print",
       "type": "print",
       "label": "プリント",
+      "labelEn": "Print",
       "material": "Mat_Print",
       "background": "transparent",
       "aspect": 2.25

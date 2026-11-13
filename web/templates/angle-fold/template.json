@@ -3,6 +3,10 @@
   "name": "チェンジングパネル",
   "category": "パネル・ディスプレイ",
   "description": "見る角度で2枚の画像が切り替わる卓上パネル。",
+  "en": {
+    "name": "Changing Panel",
+    "description": "A tabletop panel that shows two different images depending on the viewing angle."
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 140,
@@ -14,6 +18,7 @@
       "key": "base",
       "type": "color",
       "label": "台座の色",
+      "labelEn": "Base color",
       "material": "Mat_Base",
       "defaultColor": "#ffffff"
     },
@@ -21,6 +26,7 @@
       "key": "print",
       "type": "print",
       "label": "左から見た画像",
+      "labelEn": "Image seen from the left",
       "material": "Mat_Print1",
       "background": "transparent",
       "aspect": 1.03
@@ -29,6 +35,7 @@
       "key": "print_2",
       "type": "print",
       "label": "右から見た画像",
+      "labelEn": "Image seen from the right",
       "material": "Mat_Print2",
       "background": "transparent",
       "aspect": 1.03

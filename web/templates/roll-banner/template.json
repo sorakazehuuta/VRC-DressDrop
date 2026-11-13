@@ -3,6 +3,10 @@
   "name": "ロールバナー",
   "category": "看板",
   "description": "大きな面に好きな画像をプリントできるロールバナー。",
+  "en": {
+    "name": "Roll-up Banner",
+    "description": "A roll-up banner with a large surface for your favorite image."
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 130,
@@ -14,6 +18,7 @@
       "key": "base",
       "type": "color",
       "label": "バナーの色",
+      "labelEn": "Banner color",
       "material": "Mat_Base",
       "defaultColor": "#ffffff"
     },
@@ -21,6 +26,7 @@
       "key": "print",
       "type": "print",
       "label": "プリント",
+      "labelEn": "Print",
       "material": "Mat_Print",
       "background": "transparent",
       "aspect": 0.42

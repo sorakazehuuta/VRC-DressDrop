@@ -3,6 +3,10 @@
   "name": "ケーキ",
   "category": "フード・ドリンク",
   "description": "ろうそくの灯るバースデーケーキ。チョコプレートに好きな画像をのせられます。",
+  "en": {
+    "name": "Cake",
+    "description": "A birthday cake with lit candles. You can put your favorite image on the chocolate plate."
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 20,
@@ -14,6 +18,7 @@
       "key": "base",
       "type": "color",
       "label": "クリームの色",
+      "labelEn": "Cream color",
       "material": "Mat_Base",
       "defaultColor": "#fffbed"
     },
@@ -21,6 +26,7 @@
       "key": "print",
       "type": "print",
       "label": "プリント",
+      "labelEn": "Print",
       "material": "Mat_Print",
       "background": "transparent",
       "aspect": 0.85

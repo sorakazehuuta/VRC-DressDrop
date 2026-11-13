@@ -3,6 +3,10 @@
   "name": "スケートボード",
   "category": "グッズ",
   "description": "デッキに好きな画像をプリントできるスケートボード。",
+  "en": {
+    "name": "Skateboard",
+    "description": "A skateboard with your favorite image printed on the deck."
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 90,
@@ -14,6 +18,7 @@
       "key": "base",
       "type": "color",
       "label": "本体の色",
+      "labelEn": "Body color",
       "material": "Mat_Base",
       "defaultColor": "#ffffff"
     },
@@ -21,6 +26,7 @@
       "key": "print",
       "type": "print",
       "label": "プリント",
+      "labelEn": "Print",
       "material": "Mat_Print",
       "background": "transparent",
       "aspect": 0.26

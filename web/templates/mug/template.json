@@ -3,6 +3,10 @@
   "name": "マグカップ",
   "category": "グッズ",
   "description": "側面に好きな画像をプリントできるマグカップ。本体の色も変えられます。",
+  "en": {
+    "name": "Mug",
+    "description": "A mug you can print your favorite image on around the side. You can also change its color."
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 40,
@@ -14,6 +18,7 @@
       "key": "base",
       "type": "color",
       "label": "本体の色",
+      "labelEn": "Body color",
       "material": "Mat_Base",
       "defaultColor": "#ffffff"
     },
@@ -21,6 +26,7 @@
       "key": "print",
       "type": "print",
       "label": "プリント",
+      "labelEn": "Print",
       "material": "Mat_Print",
       "background": "transparent",
       "aspect": 3.04

@@ -3,6 +3,10 @@
   "name": "フレームパネル",
   "category": "パネル・ディスプレイ",
   "description": "枠に吊るしたパネル。好きな画像をプリントできます。",
+  "en": {
+    "name": "Frame Panel",
+    "description": "A panel hung in a frame. You can print your favorite image on it."
+  },
   "tokenCost": 1,
   "isPublic": false,
   "sortOrder": 320,
@@ -14,6 +18,7 @@
       "key": "base",
       "type": "color",
       "label": "本体の色",
+      "labelEn": "Body color",
       "material": "Mat_Base",
       "defaultColor": "#ffffff"
     },
@@ -21,6 +26,7 @@
       "key": "print",
       "type": "print",
       "label": "プリント",
+      "labelEn": "Print",
       "material": "Mat_Print",
       "background": "transparent",
       "aspect": 0.75

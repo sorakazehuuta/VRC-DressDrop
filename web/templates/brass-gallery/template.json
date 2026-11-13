@@ -3,6 +3,10 @@
   "name": "ギャラリーパネル",
   "category": "パネル・ディスプレイ",
   "description": "足付きの木のパネル。好きな画像をプリントできます。",
+  "en": {
+    "name": "Gallery Panel",
+    "description": "A wooden panel on legs. You can print your favorite image on it."
+  },
   "tokenCost": 1,
   "isPublic": false,
   "sortOrder": 210,
@@ -14,6 +18,7 @@
       "key": "print",
       "type": "print",
       "label": "プリント",
+      "labelEn": "Print",
       "material": "Mat_Print",
       "background": "transparent",
       "aspect": 1.33

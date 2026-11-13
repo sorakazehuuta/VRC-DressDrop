@@ -3,6 +3,10 @@
   "name": "タペストリー",
   "category": "グッズ",
   "description": "壁に飾れる布のタペストリー。",
+  "en": {
+    "name": "Tapestry",
+    "description": "A fabric tapestry to hang on the wall."
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 50,
@@ -14,6 +18,7 @@
       "key": "base",
       "type": "color",
       "label": "生地の色",
+      "labelEn": "Fabric color",
       "material": "Mat_Base",
       "defaultColor": "#e5e3dd"
     },
@@ -21,6 +26,7 @@
       "key": "print",
       "type": "print",
       "label": "プリント",
+      "labelEn": "Print",
       "material": "Mat_Print",
       "background": "transparent",
       "aspect": 0.56

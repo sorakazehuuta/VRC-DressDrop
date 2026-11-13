@@ -3,6 +3,10 @@
   "name": "道しるべ看板",
   "category": "看板",
   "description": "矢印の形をした2枚の看板。それぞれに好きな画像をプリントできます。",
+  "en": {
+    "name": "Signpost",
+    "description": "A signpost with two arrow-shaped signs. You can print a different image on each."
+  },
   "tokenCost": 1,
   "isPublic": false,
   "sortOrder": 240,
@@ -14,6 +18,7 @@
       "key": "base",
       "type": "color",
       "label": "本体の色",
+      "labelEn": "Body color",
       "material": "Mat_Base",
       "defaultColor": "#ffffff"
     },
@@ -21,6 +26,7 @@
       "key": "print",
       "type": "print",
       "label": "上の矢印",
+      "labelEn": "Upper arrow",
       "material": "Mat_Print1",
       "background": "transparent",
       "aspect": 2.68
@@ -29,6 +35,7 @@
       "key": "print_2",
       "type": "print",
       "label": "下の矢印",
+      "labelEn": "Lower arrow",
       "material": "Mat_Print2",
       "background": "transparent",
       "aspect": 2.68

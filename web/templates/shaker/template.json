@@ -3,6 +3,10 @@
   "name": "カクテルシェイカー",
   "category": "カフェ・バー用品",
   "description": "好きな画像をプリントできるカクテルシェイカー。",
+  "en": {
+    "name": "Cocktail Shaker",
+    "description": "A cocktail shaker you can print your favorite image on."
+  },
   "tokenCost": 1,
   "isPublic": true,
   "sortOrder": 160,
@@ -14,6 +18,7 @@
       "key": "print",
       "type": "print",
       "label": "プリント",
+      "labelEn": "Print",
       "material": "Mat_Print",
       "background": "transparent",
       "aspect": 1.03
